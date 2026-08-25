@@ -4,7 +4,9 @@ Three minutes. Five beats. Memorize the first line and the last line; improvise 
 
 **Setup before you're called:** board open on the empty state, terminal ready with the run command
 typed but not entered, trigger file on the desktop one drag from the inbox, replay tab open behind
-the live tab.
+the live tab **with the URL in the bar but not loaded** — replay starts animating the moment it
+loads, so a tab pre-loaded at a beat will have played past it by the time you need it. The seek
+numbers come from `python3 tools/beats.py`; keep them where you can see them.
 
 ---
 
@@ -115,7 +117,7 @@ setup line and just do the drag.
 
 | What happens | What you do |
 |---|---|
-| Run dies mid-demo | "Here's the run from ten minutes ago." Switch to the replay tab, which is **already loaded with `&from=<seq>` at the beat you were on** — it folds everything before that instantly and animates from there. Do not debug on stage, ever. |
+| Run dies mid-demo | "Here's the run from ten minutes ago." Switch to the replay tab and **type the `&from=<seq>` for the beat you were on** — it folds everything before that instantly and animates from there. Have the numbers on a sticky note; `python3 tools/beats.py <log>` prints them. Do not debug on stage, ever. |
 | Nothing turns red | Skip Beat 3 entirely. Go straight to the collapse. Nobody knows what you planned. |
 | Runs long | Cut Beat 3. It's the most compressible. |
 | Watcher doesn't fire | "It's also watching that folder — that's the always-on piece." Move on. Never repeat a failed live action. |

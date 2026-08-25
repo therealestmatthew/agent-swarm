@@ -98,7 +98,12 @@ a polished two-beat demo beats a broken four-beat demo every single time.
 - [ ] Second run saved — you now have two parachutes
 - [ ] Browser: close every other tab, hide bookmarks, full screen, notifications off
 - [ ] Terminal font bumped to presentation size
-- [ ] Board open in **two** tabs: live in one, replay in the other, ready to switch without typing
+- [ ] Board open in **two** tabs: live in one, replay in the other. The replay tab holds the URL
+      *unloaded* — `runReplay()` starts animating on load, so a tab pre-loaded at `&from=60` plays
+      itself out and sits on a finished board. Backgrounding it does not help: `step()` paces off
+      `performance.now()` deltas and catches up in one frame when you focus it.
+- [ ] `python3 tools/save-parachute.sh` after the last good run — writes `logs/backup-live.jsonl`
+      and prints the `&from=<seq>` for every beat. Keep that output visible.
 - [ ] `?big=1` tested on the actual projector if you can get near it
 
 An unrehearsed three-minute demo runs six minutes and gets cut off before the closing beat.

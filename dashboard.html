@@ -137,6 +137,15 @@ body{
   font-family:var(--data);font-size:var(--fs-label);color:var(--dim);
   width:96px;flex:none;text-align:right;font-variant-numeric:tabular-nums;
 }
+/* agent.retry carries budget_remaining and 05 Beat 3 says to narrate the cap "even
+   though it's on screen". This is what puts it there. An unbounded loop on stage is a
+   demo that never ends; a visible decrementing budget is the difference. */
+.strip .budget{
+  font-family:var(--display);font-weight:600;font-size:var(--fs-label);
+  letter-spacing:.12em;text-transform:uppercase;color:var(--signal);
+  flex:none;white-space:nowrap;
+}
+.strip .budget:empty{display:none}
 .trace{display:flex;align-items:flex-end;gap:2px;height:26px;width:150px;flex:none}
 .trace i{width:3px;background:var(--dim);opacity:.35;display:block}
 
@@ -183,6 +192,16 @@ body{
 .finding.rejected .title{text-decoration:line-through;text-decoration-color:var(--fault)}
 .finding.rejected .sev{color:var(--fault)}
 .finding.collapsed .sum,.finding.collapsed .ref{display:none}
+.finding .amend{display:none}
+/* The rejection and its amendment, pinned together at the top of the feed. A shared
+   tint groups them; the amendment carries the connector and the verified border. */
+.finding.pinned{background:rgba(255,92,92,.07);padding-right:11px}
+.finding.pinned.amendment{background:rgba(78,210,160,.07);border-left-color:var(--verified)}
+.finding.amendment .amend{
+  display:block;font-family:var(--display);font-weight:600;font-size:var(--fs-label);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--verified);margin-bottom:5px;
+}
+.finding.amendment .sev{color:var(--verified)}
 .finding.collapsed{padding-top:5px;padding-bottom:5px;margin-bottom:5px}
 
 /* ── Bottom rail ────────────────────────────────────────────────────────── */
@@ -236,6 +255,10 @@ body{
 
 @media (prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}
+  /* Beat 5 is the watch-trigger flash, and killing every animation killed it outright —
+     #flash never left opacity:0, so the beat that sells always-on silently didn't fire.
+     Hold a static tint instead; render() clears it on the next frame. */
+  #flash.on{opacity:.12}
 }
 </style>
 </head>
@@ -293,6 +316,7 @@ function initialState(){
     findings:[],           // newest last
     verdicts:new Map(),    // finding_id -> {status, reason, attempt}
     retries:0, cost:0,
+    retryOf:new Map(),     // of_agent_id -> {attempt, reason, budget_remaining}
     reduce:{active:false,pct:0,stage:"",headline:"",artifact:""},
     watch:{armed:false,path:"",triggers:0,lastTrigger:null},
     note:null,             // newest log.note — the schema's escape hatch, rendered in the foot
@@ -386,6 +410,12 @@ function apply(st, ev){
 
     case "agent.retry":
       st.retries++;
+      // Keep the payload. 05 Beat 3 narrates the budget cap "even though it's on
+      // screen"; discarding budget_remaining is what made that untrue.
+      st.retryOf.set(p.of_agent_id, {
+        attempt: p.attempt, reason: p.reason || "",
+        budget: p.budget_remaining,
+      });
       break;
 
     case "log.note":
@@ -525,7 +555,8 @@ function renderRack(st){
       el = document.createElement("div");
       el.className = "strip";
       el.innerHTML = `<span class="id"></span><span class="label"></span>`
-                   + `<span class="trace"></span><span class="state"></span><span class="meta"></span>`;
+                   + `<span class="budget"></span><span class="trace"></span>`
+                   + `<span class="state"></span><span class="meta"></span>`;
       el.querySelector(".id").textContent = a.id;
       stripEls.set(a.id, el);
       onceThen(el, "enter");
@@ -533,6 +564,10 @@ function renderRack(st){
     el.classList.toggle("child", child);
     if (el.dataset.state !== a.state) el.dataset.state = a.state;
     setText(el, ".label", a.label);
+    // A retry child shows what it is an attempt at, and how many are left. Nesting says
+    // what retried; this says how many more times it is allowed to.
+    const r = a.parent ? st.retryOf.get(a.parent) : null;
+    setText(el, ".budget", r ? `attempt ${(r.attempt ?? 1) + 1} · budget ${r.budget ?? 0}` : "");
     setText(el, ".state", stateLabel(a));
     setText(el, ".meta", `${a.findings} ▪ $${a.cost.toFixed(3)}`);
     el.querySelector(".trace").innerHTML = traceHTML(a);
@@ -553,14 +588,29 @@ function renderFindings(st){
   }
   if (pane.dataset.empty){ delete pane.dataset.empty; pane.innerHTML = ""; }
 
-  const list = [...st.findings].reverse();   // newest first
+  // Beat 3 is the rejection and the amendment that answers it. Left in feed order they
+  // drift rows apart and the rejection eventually collapses, hiding the verifier's
+  // reason — during the beat built around it. Pin the pair to the top, together, and
+  // keep them expanded. The amendment is a finding filed by a child of the agent whose
+  // finding was rejected, which parent_id already tells us.
+  const contested = [];
+  const pinnedIds = new Set();
+  for (const r of st.findings){
+    if (st.verdicts.get(r.id)?.status !== "failed") continue;
+    const amend = st.findings.find(f => st.agents.get(f.agent)?.parent === r.agent);
+    contested.push(r); pinnedIds.add(r.id);
+    if (amend){ contested.push(amend); pinnedIds.add(amend.id); }
+  }
+  const list = contested.concat([...st.findings].reverse().filter(f => !pinnedIds.has(f.id)));
+
   list.forEach((f,i) => {
     let el = findingEls.get(f.id);
     if (!el){
       el = document.createElement("div");
       el.className = "finding";
       el.dataset.sev = f.severity;
-      el.innerHTML = `<div class="top"><span class="sev"></span><span class="src"></span>`
+      el.innerHTML = `<div class="amend"></div>`
+                   + `<div class="top"><span class="sev"></span><span class="src"></span>`
                    + `<span class="conf"></span></div><div class="title"></div>`
                    + `<div class="sum"></div><div class="ref"></div>`;
       el.querySelector(".src").textContent = f.agent;
@@ -573,8 +623,12 @@ function renderFindings(st){
     }
     const v = st.verdicts.get(f.id);
     const rejected = !!(v && v.status === "failed");
+    const isAmendment = pinnedIds.has(f.id) && !rejected;
+    el.classList.toggle("pinned", pinnedIds.has(f.id));
+    el.classList.toggle("amendment", isAmendment);
+    setText(el, ".amend", isAmendment ? `↓ amended · attempt ${v?.attempt ?? 2}` : "");
     el.classList.toggle("rejected", rejected);
-    el.classList.toggle("collapsed", i >= 5);
+    el.classList.toggle("collapsed", i >= 5 && !pinnedIds.has(f.id));
     setText(el, ".sev", rejected ? "rejected" : f.severity);
     setText(el, ".sum", rejected ? (v.reason || "") : f.summary);
     if (pane.children[i] !== el) pane.insertBefore(el, pane.children[i] || null);
@@ -639,6 +693,9 @@ function render(st, mode){
     flashedTriggers = st.watch.triggers;
     const f = $("flash");
     f.classList.remove("on"); void f.offsetWidth; f.classList.add("on");
+    // Clear it explicitly: under prefers-reduced-motion there is no animation to end,
+    // so the tint would otherwise wash the board permanently.
+    setTimeout(() => f.classList.remove("on"), 600);
   }
 }
 
