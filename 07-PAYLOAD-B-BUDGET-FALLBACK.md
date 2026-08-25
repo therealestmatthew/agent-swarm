@@ -6,9 +6,20 @@
 - It's in a stack where you can't read the code fast enough to sanity-check findings live
 - The room's framing turns out to be business-facing rather than engineering-facing
 
-**Cost of the swap: one prompt file and a path.** The event schema, dashboard, dispatcher,
-verifier mechanics, runbook, and demo script are all untouched. That's the whole point of the
-architecture — the board never knew what the payload was.
+**Cost of the swap: one prompt file, a path, and your parachute.** The event schema, dashboard,
+dispatcher, verifier mechanics, runbook, and demo script are all untouched — that's the whole point
+of the architecture, the board never knew what the payload was.
+
+> **But `logs/golden.jsonl` is Payload A end to end.** It hardcodes the eight code-review lenses,
+> `ARCHITECTURE.md:21` as the seeded failure, and a headline about credentials in main. Swap at
+> T+15 and your parachute shows a repo sweep while you narrate a budget audit. Regenerating means
+> rewriting `FINDINGS`, `RETRY_FINDING`, `LENSES` and the reducer headline in `glassbox/simulate.py`
+> — twenty minutes at exactly the moment the swap was supposed to save you time.
+>
+> **So decide this before T+15, not at it.** Either commit to Payload A tonight, or build the
+> Payload B golden log tonight as well. What you cannot do is swap on the day and keep the
+> parachute. (After T+75 the run you saved to `logs/backup-live.jsonl` is the real parachute
+> anyway — but that only helps if you got that far.)
 
 ---
 
@@ -41,8 +52,9 @@ matters, because your golden log and demo narrative assume specific findings at 
 | w7 | CC-4400 Infrastructure | Technology |
 | w8 | CC-4410 Application Support | Technology |
 
-Clean slicing: every agent gets 42 rows, so nobody grinds while seven sit idle. Strip labels on the
-rack are the cost center names.
+Clean slicing: every agent gets 42 rows — except CC-4300 and CC-4400, which get 43, because the
+planted duplicate posting and the orphan account code are extra rows. Nobody grinds while seven sit
+idle. Strip labels on the rack are the cost center names.
 
 ---
 
@@ -58,6 +70,11 @@ rack are the cost center names.
 | 6 | CC-4310 · 5400 | **The honeypot.** April at 2.9× budget, then May and June at 6% | **the failure beat** — w6 |
 
 ### On the honeypot
+
+Verified against the generated file: April is 118,320 against a 40,800 budget, May and June are
+2,448 each, and the six-period net is **+759 on a 244,800 budget — 0.3%**. The trap is real and the
+adjacent periods genuinely refute the single-period claim.
+
 
 April looks like a blowout: 118,320 against a 40,800 budget. An agent reading that period in
 isolation will file "Security services overspent Q2 by 190%" with high confidence — and it's wrong.

@@ -102,9 +102,8 @@ def main() -> None:
         row["actual"] = rng.randint(24_000, 31_000)
 
     # ---- PLANT 3: duplicate posting — same amount, same account, twice. MEDIUM. ----
-    dupe = dict(index[("CC-4300", "5400", "2026-03")])
-    dupe["actual"] = index[("CC-4300", "5400", "2026-03")]["actual"]
-    rows.append(dupe)
+    # dict() already copies the actual across; the duplicate is the point.
+    rows.append(dict(index[("CC-4300", "5400", "2026-03")]))
 
     # ---- PLANT 4: credit misposting — negative actual. MEDIUM. ----
     index[("CC-4200", "5600", "2026-05")]["actual"] = -14_200

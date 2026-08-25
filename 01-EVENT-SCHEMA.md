@@ -22,7 +22,7 @@ Every event has exactly these eight fields.
 | `ts` | str | ISO 8601 UTC with milliseconds and trailing `Z`. |
 | `run_id` | str | `run_` + 4 hex. Stable for the whole run. |
 | `type` | str | Dotted, from the table below. Never invent one at runtime. |
-| `agent_id` | str | Who emitted it. `dispatch`, `verify`, `reduce`, `watch`, or `w1`…`wN`. Stable for the agent's life. |
+| `agent_id` | str | **The agent the event is about**, not necessarily the process that wrote it. `dispatch`, `verify`, `reduce`, `watch`, or `w1`…`wN`. Stable for the agent's life. |
 | `parent_id` | str \| null | Who spawned this agent. Drives the retry-nesting visual. |
 | `payload` | object | Type-specific. Never null — use `{}`. |
 
@@ -42,13 +42,18 @@ first, it makes replay exact.
 | `run.started` | dispatch | `{mission, input_ref, planned_agents}` |
 | `run.finished` | dispatch | `{status: ok\|partial\|failed, duration_ms, totals:{findings, retries, cost_usd}}` |
 
+> **Emitter is not `agent_id`.** The Emitter column says which component is *responsible* for
+> writing the event. `agent.spawned` is written by the dispatcher but *describes a worker*, so it
+> carries **the worker's id**. The renderer keys agents on `agent_id`; emitting eight spawns as
+> `"dispatch"` overwrites one record eight times and collapses the whole rack to a single strip,
+> silently. Use `EventLog.spawned()` and this is handled for you.
+
 ### Swarm
-| Type | Emitter | Payload |
-|---|---|---|
-| `agent.spawned` | dispatch | `{role: worker\|verifier\|reducer, label, model, task_summary}` |
-| `agent.status` | any | `{state: thinking\|working\|waiting\|blocked, note}` |
-| `agent.done` | any | `{status: ok\|failed, duration_ms, tokens_in, tokens_out, cost_usd}` |
-| `task.claimed` | worker | `{task_id, title, slice}` |
+| Type | Emitter | `agent_id` holds | Payload |
+|---|---|---|---|
+| `agent.spawned` | dispatch | **the new agent** | `{role: worker\|verifier\|reducer, label, model, task_summary}` |
+| `agent.status` | any | the agent | `{state: thinking\|working\|waiting\|blocked, note}` |
+| `agent.done` | any | the agent | `{status: ok\|failed, duration_ms, tokens_in, tokens_out, cost_usd}` |
 
 ### Findings
 | Type | Emitter | Payload |
@@ -105,7 +110,12 @@ The renderer assumes all of these. Violating them is the only way to break the d
 
 Matches your usual stack: `uv`, Ruff, strict mypy, Pydantic v2 frozen models.
 
-`glassbox/events.py`
+**`glassbox/events.py` in this repo is the implementation.** The listing below is an abridged copy
+for reading. It omits `drain_outbox()` — which *is* option 1 under §Concurrency, the path this
+document recommends — along with `outbox_path()`, the injectable `time_source`, and `read_log()`.
+Copy the file, never this block.
+
+`glassbox/events.py` (abridged)
 
 ```python
 """Event contract for the Glass Box board. Import-light on purpose."""
@@ -199,7 +209,10 @@ Pick option 1 unless the repo makes it awkward.
 Build this **before** the dashboard. It is your entire dev loop, and it produces the golden log.
 
 ```
-uv run python -m glassbox.simulate --agents 8 --findings 20 --retries 2 --out runs/golden
+uv run python -m glassbox.simulate --out runs/golden --fast      # instant, for the parachute
+uv run python -m glassbox.simulate --out runs/current            # real-time, ~75s
+
+# flags: --out  --fast  --seed N  --pace F  --no-second-cycle
 ```
 
 It should emit a realistic run with:
@@ -209,7 +222,9 @@ It should emit a realistic run with:
 - at least one `verify.failed` → `agent.retry` → `verify.passed` chain
 - one agent that goes `blocked` for a few seconds before recovering
 - a reducer that runs last and emits an artifact path
-- total wall-clock ~60s at 1x
+- total wall-clock ~75s at 1x for the main cycle, then an 18s pause before the watcher fires —
+  long enough to play underneath a 2:30 script, and the pause is the window in which you walk
+  over and drag the file
 
 Then: `cp runs/golden/events.jsonl logs/golden.jsonl`. That file is your parachute. Back it up
 somewhere that isn't the laptop you'll be demoing from.
@@ -218,20 +233,24 @@ somewhere that isn't the laptop you'll be demoing from.
 
 ## Test
 
-One test, and it's the one that matters:
-
-```python
-def test_render_is_pure(golden_events: list[Event]) -> None:
-    """Replaying the same log twice produces identical state."""
-    assert reduce_state(golden_events) == reduce_state(golden_events)
-
-
-def test_prefix_is_stable(golden_events: list[Event]) -> None:
-    """Feeding events one at a time equals feeding them all at once."""
-    incremental = State()
-    for event in golden_events:
-        incremental = apply(incremental, event)
-    assert incremental == reduce_state(golden_events)
+```bash
+node tests/fold.test.mjs
 ```
 
-If those pass, replay works, and your parachute is real.
+The state fold lives inside `dashboard.html`, so the tests extract it from that file at run time
+rather than keeping a second copy that can drift. Eighteen checks, in five groups:
+
+- **Log integrity** — every line parses, `seq` gap-free from 0, `ts` monotonic, `payload` never null
+- **Schema invariants** — #4 (every `agent.spawned` gets an `agent.done`), #5 (ids never reused),
+  and that `run.finished` totals reconcile with what the log actually contains
+- **Invariant #6, purity** — re-folding the same log yields identical state, and so does every prefix
+- **Transport** — mid-line truncation, a wrong `v`, and garbage lines are all survivable
+- **Restart and seek** — a second run appended to the same file resets the board instead of being
+  silently discarded, and folding below `?from=` reaches the state replay would have reached
+
+One caveat the tests pin down deliberately: **`apply()` mutates and returns its accumulator.** A
+state you are still holding gets rewritten by later events, so a past state is reached by re-folding
+from `initialState()`, never by keeping a reference. That is what a time-travel scrubber has to do,
+and it is cheap — the whole golden log folds in well under a millisecond.
+
+If these pass, replay works, and your parachute is real.

@@ -103,16 +103,20 @@ a demo you've lost control of.
 Each agent strip is 56px tall, `--rack` background, 3px left border in its state colour.
 
 ```
-│▌ w3   CC-4310 IT Services          ▓▓▓▓▓▒░░░░░░   THINKING   0:07  4 ▪ $0.02 │
- │  │    │                            │              │          │     │
- │  │    │                            │              │          │     └ findings, cost
- │  │    │                            │              │          └ elapsed (mono, ticking)
+│▌ w3   CC-4310 IT Services          ▓▓▓▓▓▒░░░░░░   THINKING     4 ▪ $0.02 │
+ │  │    │                            │              │            │
+ │  │    │                            │              │            └ findings, cost
  │  │    │                            │              └ state (display face, uppercase)
  │  │    │                            └ work trace (see below)
  │  │    └ task title (display, 22px)
  │  └ agent id (mono, dim)
  └ state border, 3px
 ```
+
+**No per-strip elapsed timer.** It would have to tick between events, and the only clock available
+to a pure fold is the log's own `ts`. A wall-clock timer inside the renderer breaks replay, which
+is the one thing worth protecting. The run clock in the rail advances on event timestamps; the work
+trace is what carries liveness between them.
 
 ### The work trace
 
@@ -139,6 +143,13 @@ genuinely parallel" cue on the screen, and it costs about 30 lines of code.
 | `done ok` | `--verified` | freezes, desaturates | settles 4px down, dims to 70% |
 | `done failed` | `--fault` | freezes red | 2-frame shake, then holds full opacity — failures stay loud |
 | `retry (child)` | `--signal` | fresh | indents 28px, draws an L-bracket up to parent, slides in |
+
+**Entry animations fire once.** The DOM is keyed by agent id and mutated in place — strips are
+created on first sight and updated after that. Rebuilding `innerHTML` on every poll restarts every
+CSS animation on every event, which at a 250ms tick means the entire rack slides in from the left
+four times a second and the reduce bar can never transition. The `slide-in` lives on a transient
+`.enter` class that is removed on `animationend`, so state changes swap the steady-state animation
+(breathe, jitter, shake) without re-triggering the arrival.
 
 Retry nesting is the loop beat. Make the bracket and the indent unmistakable from the back of the
 room — that's the moment you'll be pointing at.
@@ -194,18 +205,24 @@ const lines = (await res.text()).split("\n").filter(Boolean);
 const fresh = lines.map(JSON.parse).filter(e => e.seq > lastSeq);
 ```
 
-250ms interval. Refetching a 200KB file four times a second from localhost is free. Track `lastSeq`,
-ignore anything with `v !== 1`, and never assume the file only grows at the end — just filter on
-`seq`.
+250ms interval. Refetching a 200KB file four times a second from localhost is free. Ignore anything
+with `v !== 1`, and never assume the file only grows at the end — just filter on `seq`.
+
+**Dedupe on `seq` within a run, and watch `run_id`.** A dispatcher that restarts into the same
+file writes a new `run_id` with `seq` back at 0. Deduping on `seq` alone silently discards every
+event of the new run: the board keeps showing the old one and looks completely healthy while your
+live run produces nothing. The renderer takes the `run_id` of the newest line as the active run and
+resets state when it changes.
 
 ### Modes
 
 | URL | Behaviour |
 |---|---|
 | `dashboard.html` | Live. Polls `runs/current/events.jsonl` |
-| `?replay=logs/golden.jsonl&speed=4` | Replays a saved log, honouring inter-event `ts` gaps ÷ speed |
+| `?replay=logs/golden.jsonl` | Replays a saved log, honouring inter-event `ts` gaps. `&speed=N` divides them — but the log is paced for the script, so demo at speed 1. |
 | `?big=1` | +20% type scale for projectors |
 | `?seed=1` | Renders the golden log instantly with no animation — for screenshots |
+| `?from=<seq>` | Seek. Folds everything below `<seq>` instantly, animates from there. This is what makes "the live run died, switch to the replay tab and pick up at the same beat" actually possible — without it replay always restarts at the bloom. |
 
 Build replay mode **at the same time** as live mode, not after. It's ten lines if you do it now and
 a panic at minute 85 if you don't.
@@ -216,7 +233,9 @@ a panic at minute 85 if you don't.
 
 - Test at 1280×720 and 1920×1080. Assume the projector clips edges — 32px minimum outer padding.
 - `prefers-reduced-motion`: kill the traces and transitions, keep the state colours.
-- Preload fonts locally. No CDN dependency on venue wifi.
+- Fonts are embedded in `dashboard.html` as base64 woff2 (latin + latin-ext), not linked from a
+  CDN. ~400KB, and the board renders identically with the network unplugged — verified with every
+  external host blocked. Do not reintroduce the `<link>`.
 - No thin light-grey text. Projectors eat it. Minimum contrast is `--dim` on `--hangar`, and check
   it from six feet back before you ship.
 - Empty state: `NO RUN LOADED — start a run or open ?replay=`. An empty screen is an instruction,

@@ -1,6 +1,6 @@
 """Fake swarm. Your entire dev loop tonight, and the source of the golden log.
 
-    uv run python -m glassbox.simulate --out runs/current            # live, ~60s
+    uv run python -m glassbox.simulate --out runs/current            # live, ~75s
     uv run python -m glassbox.simulate --out runs/golden --fast      # instant, for the parachute
 
 Emits a run that exercises every visual on the board: staggered spawns, overlapping work,
@@ -20,6 +20,16 @@ from pathlib import Path
 from glassbox.events import EventLog
 
 MISSION = "Eight specialists review the same codebase simultaneously, each through one lens."
+
+# Every sleep is multiplied by this. The demo script narrates for 2:30; a run that is over
+# in 33 seconds cannot be replayed underneath it. 2.25 puts the run at ~75s, inside the
+# 45-90s window 00-MASTER-PLAN specifies, with room to replay at speed=1.
+PACE = 2.25
+
+# Virtual seconds between the brief landing and the watcher firing. Beat 5 needs long
+# enough for you to stop talking, walk to the laptop and drag the file — in replay this
+# gap is the only thing standing between the reducer and the wake-up.
+WATCH_GAP_S = 8.0
 
 LENSES: list[tuple[str, str]] = [
     ("w1", "SECRETS"),
@@ -101,12 +111,14 @@ class Clock:
     """
 
     fast: bool = False
+    pace: float = 1.0
     virtual: float = field(default_factory=time.time)
 
     def sleep(self, seconds: float) -> None:
-        self.virtual += seconds
+        scaled = seconds * self.pace
+        self.virtual += scaled
         if not self.fast:
-            time.sleep(seconds)
+            time.sleep(scaled)
 
     def stamp(self) -> str:
         # Every event nudges the clock 1ms so seq order and ts order never disagree.
@@ -118,11 +130,23 @@ class Clock:
         )
 
 
-def simulate(out: Path, fast: bool, seed: int, second_cycle: bool) -> Path:
+def simulate(out: Path, fast: bool, seed: int, second_cycle: bool, pace: float = PACE) -> Path:
     rng = random.Random(seed)
-    clock = Clock(fast=fast)
+    clock = Clock(fast=fast, pace=pace)
     log = EventLog(out, time_source=clock.stamp)
-    started = time.time()
+    started_virtual = clock.virtual
+
+    # run.finished totals must reconcile with what was actually emitted. Hardcoding them
+    # puts the counters on screen in contradiction with the log they are folded from.
+    tally = {"findings": 0, "retries": 0, "cost_usd": 0.0}
+
+    def done(agent_id: str, **kw: object) -> None:
+        tally["cost_usd"] += float(kw.get("cost_usd", 0.0))
+        log.done(agent_id, **kw)  # type: ignore[arg-type]
+
+    def finding(agent_id: str, *args: object) -> None:
+        tally["findings"] += 1
+        log.finding(agent_id, *args)  # type: ignore[arg-type]
 
     log.run_started(MISSION, planned_agents=len(LENSES), input_ref="./")
 
@@ -136,9 +160,9 @@ def simulate(out: Path, fast: bool, seed: int, second_cycle: bool) -> Path:
     queue: list[tuple[float, str, tuple[str, str, str, float, str]]] = []
     for agent_id, _lens in LENSES:
         offset = rng.uniform(1.5, 4.0)
-        for finding in FINDINGS.get(agent_id, []):
+        for planted in FINDINGS.get(agent_id, []):
             offset += rng.uniform(2.5, 6.5)
-            queue.append((offset, agent_id, finding))
+            queue.append((offset, agent_id, planted))
     queue.sort(key=lambda item: item[0])
 
     for agent_id, _lens in LENSES:
@@ -166,20 +190,20 @@ def simulate(out: Path, fast: bool, seed: int, second_cycle: bool) -> Path:
             recovered = True
 
         counters[agent_id] += 1
-        log.finding(
+        finding(
             agent_id,
-            finding_id=f"{agent_id}-{counters[agent_id]:02d}",
-            title=title,
-            severity=severity,  # type: ignore[arg-type]
-            confidence=confidence,
-            summary=summary,
-            evidence_ref=ref,
+            f"{agent_id}-{counters[agent_id]:02d}",
+            title,
+            severity,
+            confidence,
+            summary,
+            ref,
         )
 
     # --- workers finish, staggered ---
     for agent_id, _lens in LENSES:
         clock.sleep(rng.uniform(0.15, 0.5))
-        log.done(
+        done(
             agent_id,
             status="ok",
             duration_ms=int(rng.uniform(18_000, 52_000)),
@@ -207,6 +231,7 @@ def simulate(out: Path, fast: bool, seed: int, second_cycle: bool) -> Path:
             log.emit("verify.passed", "verify", {"finding_id": finding_id, "attempt": 1})
 
     clock.sleep(0.6)
+    tally["retries"] += 1
     log.emit(
         "agent.retry",
         "dispatch",
@@ -217,10 +242,10 @@ def simulate(out: Path, fast: bool, seed: int, second_cycle: bool) -> Path:
     clock.sleep(2.6)
 
     title, severity, ref, confidence, summary = RETRY_FINDING
-    log.finding("w7r1", f"{bad_id}r1", title, severity, confidence, summary, ref)  # type: ignore[arg-type]
+    finding("w7r1", f"{bad_id}r1", title, severity, confidence, summary, ref)
     log.emit("verify.passed", "verify", {"finding_id": f"{bad_id}r1", "attempt": 2})
-    log.done("w7r1", "ok", duration_ms=2_600, tokens_in=6_100, tokens_out=310, cost_usd=0.011)
-    log.done("verify", "ok", duration_ms=9_400, tokens_in=14_000, tokens_out=900, cost_usd=0.008)
+    done("w7r1", status="ok", duration_ms=2_600, tokens_in=6_100, tokens_out=310, cost_usd=0.011)
+    done("verify", status="ok", duration_ms=9_400, tokens_in=14_000, tokens_out=900, cost_usd=0.008)
 
     # --- reduce ---
     verified = len(all_ids)
@@ -238,26 +263,34 @@ def simulate(out: Path, fast: bool, seed: int, second_cycle: bool) -> Path:
             "headline": "Two credentials and one unvalidated path are live in main; fix before the next deploy.",
         },
     )
-    log.done("reduce", "ok", duration_ms=4_800, tokens_in=31_000, tokens_out=2_100, cost_usd=0.086)
+    done("reduce", status="ok", duration_ms=4_800, tokens_in=31_000, tokens_out=2_100, cost_usd=0.086)
 
     log.run_finished(
         "ok",
-        duration_ms=int((time.time() - started) * 1000),
-        totals={"findings": verified, "retries": 1, "cost_usd": 0.164},
+        # Virtual, not wall-clock: with --fast the real elapsed time is ~0, which would
+        # put a 0ms duration in a log whose timestamps span 75 seconds.
+        duration_ms=int((clock.virtual - started_virtual) * 1000),
+        totals={
+            "findings": tally["findings"],
+            "retries": tally["retries"],
+            "cost_usd": round(tally["cost_usd"], 4),
+        },
     )
 
     # --- always-on: the board goes idle, then wakes ---
     log.emit("watch.armed", "watch", {"path": "runs/inbox", "patterns": ["*.py", "*.md", "*.csv"]})
     if second_cycle:
-        clock.sleep(3.0)
+        # Long enough to stop talking, walk over, and drag the file. See WATCH_GAP_S.
+        clock.sleep(WATCH_GAP_S)
         log.emit("watch.triggered", "watch", {"path": "hotfix_auth.py", "change": "created"})
+        cycle2_started = clock.virtual
         log.run_started("Re-sweep triggered by inbox change", planned_agents=3, input_ref="hotfix_auth.py")
         for agent_id, lens in LENSES[:3]:
             log.spawned(f"{agent_id}c2", "worker", lens, model="claude-haiku-4-5")
             log.status(f"{agent_id}c2", "working", "scanning hotfix_auth.py")
             clock.sleep(rng.uniform(0.15, 0.35))
         clock.sleep(2.0)
-        log.finding(
+        finding(
             "w1c2",
             "w1c2-01",
             "New file reintroduces the hardcoded key",
@@ -265,6 +298,28 @@ def simulate(out: Path, fast: bool, seed: int, second_cycle: bool) -> Path:
             0.96,
             "Same credential as tests/fixtures/config.json:12, copied into the hotfix.",
             "hotfix_auth.py:7",
+        )
+        # Close the cycle. Every agent.spawned gets an agent.done (schema invariant 4) —
+        # without these the board ends on three strips spinning forever and the LISTENING
+        # rail never comes back, which is both a broken invariant and a weaker last frame.
+        for agent_id, _lens in LENSES[:3]:
+            clock.sleep(rng.uniform(0.2, 0.5))
+            done(
+                f"{agent_id}c2",
+                status="ok",
+                duration_ms=int(rng.uniform(6_000, 11_000)),
+                tokens_in=rng.randint(3_000, 7_000),
+                tokens_out=rng.randint(150, 500),
+                cost_usd=rng.uniform(0.002, 0.007),
+            )
+        log.run_finished(
+            "ok",
+            duration_ms=int((clock.virtual - cycle2_started) * 1000),
+            totals={
+                "findings": tally["findings"],
+                "retries": tally["retries"],
+                "cost_usd": round(tally["cost_usd"], 4),
+            },
         )
 
     return log.path
@@ -275,6 +330,8 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=Path("runs/current"))
     parser.add_argument("--fast", action="store_true", help="No real sleeps — generate instantly.")
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--pace", type=float, default=PACE,
+                        help=f"Multiplier on every sleep. Default {PACE} targets a ~75s run.")
     parser.add_argument("--no-second-cycle", action="store_true")
     args = parser.parse_args()
 
@@ -282,7 +339,10 @@ def main() -> None:
         for stale in args.out.glob("events.jsonl"):
             stale.unlink()
 
-    path = simulate(args.out, fast=args.fast, seed=args.seed, second_cycle=not args.no_second_cycle)
+    path = simulate(
+        args.out, fast=args.fast, seed=args.seed,
+        second_cycle=not args.no_second_cycle, pace=args.pace,
+    )
     count = sum(1 for _ in path.open(encoding="utf-8"))
     print(f"wrote {count} events to {path}")
 

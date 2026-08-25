@@ -242,3 +242,38 @@ in the mission line. Five minutes, and it changes the read from "brought his own
 Second, smaller: there is **no test suite**, and `QUICKSTART.md` lists "State fold is pure" under
 **Verified**. I ran it — the re-fold property holds, the prefix property in `01` does not. Assert
 less, or run it.
+
+---
+
+## Status — fixes applied
+
+Everything in §1 and §2 is done, verified, and committed. `node tests/fold.test.mjs` is the check.
+
+| # | Fix | Where | Verified by |
+|---|---|---|---|
+| KS-1 | `agent.spawned` carries the worker's id, not `"dispatch"` | `04` cheatsheet, `01` event table, `03` dispatcher | Fold test: 8 spawns → 8 strips |
+| KS-2 | Run paced to ~75s (+18s before the watcher fires); `?from=<seq>` seek added | `simulate.py`, `dashboard.html`, `05`, `04`, QUICKSTART | Log span 88.4s; `?from=70` renders 11 strips at seq 75 |
+| KS-3 | Live board dedupes within a run and resets on `run_id` change | `dashboard.html` `runLive()` | Fold test: second run fully accepted, board rebuilds |
+| KS-4 | The swap's real cost stated; decide before T+15 | `07` | — |
+| KS-5 | The fan-out answer written into Beat 2 and the Q&A sheet | `05` | — |
+| — | Keyed DOM: entry animations fire once instead of on every poll | `dashboard.html`, `02` | Headless: 1 element carrying `.enter` mid-replay, strip identity stable |
+| — | `run.finished` totals computed from what was emitted | `simulate.py` | Fold test: totals reconcile |
+| — | Every second-cycle agent emits `agent.done` (invariant #4) | `simulate.py` | Fold test: no orphans |
+| — | `duration_ms` from the virtual clock, not wall clock | `simulate.py` | 61283ms, was 0 under `--fast` |
+| — | `log.note` renders; `task.claimed` deleted from the schema | `dashboard.html`, `01`, `03` | — |
+| — | Elapsed-timer spec dropped; the dead "ticking clock" comment removed | `02`, `dashboard.html` | — |
+| — | Fonts embedded as base64 woff2 — no network at all | `dashboard.html`, `02`, QUICKSTART | Headless with every external host blocked |
+| — | Sequential-repo contingency; T+10 "instrument their repo" step | `04` | — |
+| — | Seeded failure disclosed in Beat 3 rather than on request | `06` | — |
+| — | 42-row claim corrected; no-op line removed from the generator | `07`, `generate_budget.py` | CSVs byte-identical after the change |
+| — | Test suite written, extracted from `dashboard.html` so it can't drift | `tests/fold.test.mjs`, `01` §Test | 18/18 |
+
+**Not applied, and why.**
+
+- **§3's cuts of working features** — the cost ledger and the `blocked` state. Both now behave
+  correctly (the ledger reconciles with the log), so the stated reason for cutting them is gone.
+  Deleting working visuals is your call about your own time, not a defect fix.
+- **§4, overlapping slices so the agents disagree.** This is a design decision about what the demo
+  argues, not a repair. It changes the slice maps in `06`/`07`, the worker prompts, and the golden
+  log's narrative. It is still the highest-value change available and it is still small — but it
+  should be your call, tonight, with the payload decision.

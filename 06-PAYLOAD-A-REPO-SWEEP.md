@@ -149,10 +149,11 @@ Two backups, in order:
 2. **Hand-inject.** Append one `finding.written` with a deliberately bogus `evidence_ref` to the
    worker outbox before verification runs. Ten seconds of work, guarantees the beat.
 
-Be straight about this if anyone asks: the verification mechanism is real and running, you seeded an
-input that reliably exercises it inside a ninety-second window. That's a completely normal thing to
-do in a demo and nobody sensible will blink. What you must not do is *claim* it happened
-spontaneously.
+**Say it in Beat 3, unprompted — do not wait to be asked.** One clause is enough: *"we seeded a
+document we knew would trip it, because hoping a model makes a checkable mistake inside ninety
+seconds isn't a plan."* The verification mechanism is real and running; you guaranteed it gets
+exercised. Disclosed upfront that reads as method. Extracted under questioning it reads as damage
+control, and the difference is entirely about who says it first.
 
 ---
 

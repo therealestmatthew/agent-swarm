@@ -20,6 +20,10 @@ the rest of the room, categorically different reaction.
 | `03-AGENT-CONTRACTS.md` | Dispatcher / worker / verifier / reducer prompts | Tonight if time |
 | `04-TOMORROW-RUNBOOK.md` | Minute-by-minute for the 90 minutes | Tomorrow, open on second screen |
 | `05-DEMO-SCRIPT.md` | The 3-minute beat sheet + fallbacks | Tomorrow, memorize |
+| `06-PAYLOAD-A-REPO-SWEEP.md` | Primary payload: eight lenses over the starter repo | When you pick the payload |
+| `07-PAYLOAD-B-BUDGET-FALLBACK.md` | Fallback payload: budget variance hunt | Decide **before** T+15 — see its §Cost of the swap |
+| `08-ADVERSARIAL-REVIEW-PROMPT.md` | The review prompt | Already run |
+| `09-REVIEW-FINDINGS.md` | What the review found and what got fixed | Read before you build |
 
 ---
 
@@ -65,11 +69,20 @@ Whatever the starter repo's agents do, you add `emit(...)` at four or five point
 construction. If they hand you TypeScript instead of Python, the emitter is nine lines in any
 language — the contract is the file format, not the library.
 
-**3. The demo cannot fail.**
-The dashboard is a **pure function of the event list**. That means replay is free: point it at last
-night's golden log at 4x speed and it renders identically. If the live run dies at minute 88, you
-present the replay and the audience cannot tell. Build the golden log tonight; it is your parachute
-and your dev fixture at the same time.
+**3. The demo has a parachute.**
+The dashboard is a **pure function of the event list**: fold the same log and you reach the same
+state, every time. So replay is free — point it at a saved log and it renders what happened. If the
+live run dies at minute 88 you present the replay, and with `?from=<seq>` you resume at the beat you
+were on rather than restarting at the bloom.
+
+Two honest qualifications, because overclaiming this is how you get caught:
+
+- **Same state, not the same frames.** Live batches events into a 250ms poll; replay steps per
+  animation frame. The end state is identical and the board looks the same; the intermediate frames
+  are not literally identical, so don't say "pixel-identical" to a room of engineers.
+- **The golden log is a dev fixture that doubles as an early parachute.** Once you have run the
+  real thing, `logs/backup-live.jsonl` is the parachute, because it shows *your payload's* findings.
+  The synthetic log shows Payload A's, whatever you actually demoed.
 
 > **Hold this line all day:** nothing renders from live agent state. Everything renders from the
 > log. The moment you let the dashboard call into agent internals, you lose replay, you lose
@@ -121,8 +134,10 @@ becomes a 6-minute demo and gets cut off before the closing beat.
 |---|---|
 | Starter repo is a framework you don't know | Emitter is a side-effect call. You never fight the framework, you decorate it. |
 | Parallel agents are slower than expected | Cap at 6–8 workers on tiny task slices. Runtime should be ~45–90s, which is also the right demo length. |
-| Live run fails on stage | Replay mode. `?replay=logs/golden.jsonl&speed=4` |
+| Live run fails on stage | Replay mode, at speed 1, seeked to your beat: `?replay=logs/backup-live.jsonl&from=<seq>` |
 | Log write contention across parallel processes | Line-buffered append mode + one `write()` per event. See schema doc, §Concurrency. |
+| A restarted run appends to a live log | New `run_id`, `seq` back at 0. The board resets on `run_id` change rather than silently discarding every new event. |
+| Venue wifi is gone | Fonts are embedded in `dashboard.html`; the board makes no network requests at all. |
 | Dashboard looks janky on the venue projector | Design for a dark room and a low-gamma projector: high contrast, big type, no thin light-grey text. Test at 50% browser zoom. |
 | You run out of time on the payload | The payload is the *least* important decision. Swap in a trivially seeded dataset and spend the time on the board. |
 
@@ -138,6 +153,10 @@ Criteria for choosing it (next conversation):
 
 - **Naturally parallel.** The work must genuinely split into 6–8 independent slices. If a human
   would do it sequentially, the swarm looks like theatre.
+- **Better: partly overlapping.** Fully disjoint slices make the swarm eight independent jobs that
+  happen to run at once, and invite "why not one big call?". Two slices that overlap on the same
+  evidence can reach *different* conclusions, and the verifier adjudicating that is something a
+  single call cannot show. See `09-REVIEW-FINDINGS.md` §4.
 - **Recognizable stakes.** The audience should understand the problem in one sentence, without
   domain background.
 - **Findings have severity.** The board is much more alive when some cards come back urgent.

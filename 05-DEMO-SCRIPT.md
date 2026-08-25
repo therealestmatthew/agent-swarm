@@ -23,18 +23,23 @@ Then hit enter.
 
 ---
 
-## Beat 2 · The bloom (45s) — **say nothing**
+## Beat 2 · The bloom (25s) — **say nothing for the first ten**
 
 Strips slide into the rack, one after another. Traces start moving at different rhythms. Findings
 begin stacking in the right pane.
 
-**Stay quiet for at least ten seconds.** This is the hardest instruction in this document and the
-most important one. The silence is what makes the room actually look at the screen. If you narrate
-over the bloom, it becomes a slide with a voiceover.
+**Stay quiet for ten seconds.** This is the hardest instruction in this document and the most
+important one. The silence is what makes the room actually look at the screen. If you narrate over
+the bloom, it becomes a slide with a voiceover.
 
-When you do speak, name only what's on screen:
+Then talk continuously through the rest of the beat. Ten seconds of silence reads as confidence;
+forty-five seconds of one sentence over a moving screen is dead air — and dead air is exactly where
+a skeptic decides this is a screensaver.
 
-> "Eight agents. Each owns one slice. Nobody's waiting on anybody."
+When you speak, name what's on screen, then answer the fan-out question before it's asked:
+
+> "Eight agents, each owning one slice, nobody waiting on anybody. And they don't share a context —
+> so the secrets agent can't get half-distracted by a concurrency bug and quietly stop looking."
 
 ---
 
@@ -92,11 +97,14 @@ additional word makes it weaker.
 | Beat | Target | Cumulative |
 |---|---|---|
 | Frame | 0:20 | 0:20 |
-| Bloom | 0:45 | 1:05 |
-| Failure | 0:30 | 1:35 |
-| Collapse | 0:30 | 2:05 |
-| Wake-up | 0:25 | 2:30 |
-| Buffer | 0:30 | 3:00 |
+| Bloom | 0:25 | 0:45 |
+| Failure | 0:30 | 1:15 |
+| Collapse | 0:30 | 1:45 |
+| Wake-up | 0:25 | 2:10 |
+| Buffer | 0:50 | 3:00 |
+
+The run is paced to ~75 seconds with an 18-second pause before the watcher fires, so the beats
+have somewhere to sit. Beat 5's pause is the window in which you walk over and drag the file.
 
 The buffer is real. Live runs vary. If you're at 2:50 when the reducer finishes, cut Beat 5's
 setup line and just do the drag.
@@ -107,7 +115,7 @@ setup line and just do the drag.
 
 | What happens | What you do |
 |---|---|
-| Run dies mid-demo | "Here's the run from ten minutes ago." Switch tabs. Continue at the same beat. Do not debug on stage, ever. |
+| Run dies mid-demo | "Here's the run from ten minutes ago." Switch to the replay tab, which is **already loaded with `&from=<seq>` at the beat you were on** — it folds everything before that instantly and animates from there. Do not debug on stage, ever. |
 | Nothing turns red | Skip Beat 3 entirely. Go straight to the collapse. Nobody knows what you planned. |
 | Runs long | Cut Beat 3. It's the most compressible. |
 | Watcher doesn't fire | "It's also watching that folder — that's the always-on piece." Move on. Never repeat a failed live action. |
@@ -134,6 +142,13 @@ anywhere near a real process.
 Ordering. Eight parallel writers, millisecond timestamp collisions. Solved it by funnelling through
 a single sequence allocator so the renderer gets a total order it can trust — which is also what
 makes replay exact.
+
+**"What did eight agents get you that one big call wouldn't?"**
+Separate contexts. One call that has already found a hardcoded key starts pattern-matching on
+secrets and stops looking as hard for anything else. Eight independent contexts can't contaminate
+each other, each one's confidence is calibrated against its own lens, and one agent failing costs
+you one lens instead of the run. *(This is the question most likely to actually land. Have it
+ready.)*
 
 **"What would you build next?"**
 Time-travel scrubber on the log — drag back to any `seq` and see the board's exact state at that

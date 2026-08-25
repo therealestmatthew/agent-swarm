@@ -6,7 +6,7 @@ makes these portable onto whatever the starter repo hands you.
 | Role | Count | Emits | Cut if short on time? |
 |---|---|---|---|
 | Dispatcher | 1 | `run.*`, `agent.spawned`, `agent.retry` | No — it's the spine |
-| Worker | 6–8 | `task.claimed`, `agent.status`, `finding.written`, `agent.done` | No — it's the swarm |
+| Worker | 6–8 | `agent.status`, `finding.written`, `agent.done` | No — it's the swarm |
 | Verifier | 1 | `verify.*` | Yes — cut the loop beat with it |
 | Reducer | 1 | `reduce.*` | No — it's the payoff |
 | Watcher | 1 | `watch.*` | Yes — cut the closing beat with it |
@@ -38,7 +38,8 @@ Owns the run. Single writer to the log if you took option 1 in the schema doc.
 ```
 1. emit run.started {mission, input_ref, planned_agents}
 2. read input → split into N slices
-3. for each slice: emit agent.spawned, launch worker    ← stagger 120–400ms
+3. for each slice: emit agent.spawned (agent_id = the WORKER, not "dispatch"), launch worker
+                                                            ← stagger 120–400ms
 4. drain worker outboxes → append to events.jsonl, assigning seq
 5. on verify.failed with budget remaining:
      emit agent.retry {of_agent_id, attempt, reason, budget_remaining}
