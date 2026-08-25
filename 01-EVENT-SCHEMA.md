@@ -108,7 +108,12 @@ The renderer assumes all of these. Violating them is the only way to break the d
 
 ## Reference implementation
 
-Matches your usual stack: `uv`, Ruff, strict mypy, Pydantic v2 frozen models.
+Matches your usual stack: `uv`, Ruff, strict mypy, Pydantic v2 frozen models — **but requires none
+of them.** `Event` is a frozen validating pydantic model when pydantic v2 is importable and a frozen
+stdlib dataclass when it isn't, selected at import. Same fields, same frozen semantics, same
+rejection of unknown keys, byte-identical output — verified across v2, v1, and a bare interpreter.
+So the module drops into a repo pinned to pydantic 1.x, or one with no third-party deps at all,
+without an install step or a PEP-668 argument on someone else's laptop.
 
 **`glassbox/events.py` in this repo is the implementation.** The listing below is an abridged copy
 for reading. It omits `drain_outbox()` — which *is* option 1 under §Concurrency, the path this
@@ -209,9 +214,10 @@ Pick option 1 unless the repo makes it awkward.
 Build this **before** the dashboard. It is your entire dev loop, and it produces the golden log.
 
 ```
-uv run python -m glassbox.simulate --out runs/golden --fast      # instant, for the parachute
-uv run python -m glassbox.simulate --out runs/current            # real-time, ~75s
+python3 -m glassbox.simulate --out runs/golden --fast      # instant, for the parachute
+python3 -m glassbox.simulate --out runs/current            # real-time, ~75s
 
+# or, via uv:  uv run python -m glassbox.simulate ...
 # flags: --out  --fast  --seed N  --pace F  --no-second-cycle
 ```
 

@@ -1,0 +1,24 @@
+# Glass Box has no required dependencies — glassbox/events.py falls back to a stdlib
+# dataclass when pydantic is absent, so `python3 -m glassbox.simulate` runs on a bare
+# interpreter. This file exists so the documented `uv run ...` commands resolve, and so
+# pydantic validation is one flag away when you want it.
+
+[project]
+name = "glassbox"
+version = "0.1.0"
+description = "A live mission-control board that makes an agent swarm visible while it runs."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+# uv run --extra validate python -m glassbox.simulate ...
+validate = ["pydantic>=2"]
+
+[tool.uv]
+# Run from the source tree rather than building and installing it. Keeps `uv run` from
+# needing a build backend — which on venue wifi is a network round trip you don't want.
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

@@ -1,8 +1,10 @@
 # Quickstart
 
-```bash
-pip install pydantic          # or: uv add pydantic
+**No install step.** There are no required dependencies — `glassbox/events.py` falls back to a
+stdlib dataclass when pydantic isn't importable, so this runs on any Python 3.10+ as it sits. Run
+it from the repo root (`python3 -m glassbox.simulate` imports the `glassbox` package by path).
 
+```bash
 # 1. Generate the golden log (instant, but paced like a real 88-second run)
 python3 -m glassbox.simulate --out runs/golden --fast
 cp runs/golden/events.jsonl logs/golden.jsonl
@@ -23,6 +25,29 @@ python3 -m http.server 8080
 
 **Replay at speed 1.** The log is paced to play underneath the 3-minute script; `&speed=4` puts the
 entire run on screen in 22 seconds, before you finish Beat 1.
+
+### If you'd rather use uv
+
+`pyproject.toml` declares the project with no dependencies, so both of these work on a clean
+machine:
+
+```bash
+uv run python -m glassbox.simulate --out runs/golden --fast              # stdlib fallback
+uv run --extra validate python -m glassbox.simulate --out runs/golden --fast   # + pydantic v2
+```
+
+`--extra validate` turns the event envelope back into a frozen, validating pydantic model. The
+bytes written are identical either way — verified across pydantic v2, pydantic v1, and no pydantic
+at all. Use it while building; you don't need it to demo.
+
+### If the board is empty
+
+| What you see | Cause |
+|---|---|
+| `ModuleNotFoundError: No module named 'glassbox'` | Run from the repo root, not from `glassbox/`. |
+| `error: externally-managed-environment` from pip | You don't need pip. Skip the install; see above. |
+| Board stuck on **NO RUN LOADED** | `dashboard.html` fetches over HTTP — `file://` is blocked by CORS. Serve the directory. |
+| Log-not-found in replay | The path is relative to the server root. Serve from the repo root so `logs/golden.jsonl` resolves. |
 
 For a live run, in a second terminal:
 

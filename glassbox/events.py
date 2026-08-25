@@ -1,9 +1,14 @@
 """Event contract for the Glass Box board.
 
 Import-light on purpose: this module gets dropped into an unknown starter repo at T+0 and
-must not drag dependencies with it. Pydantic is the only import beyond the stdlib, and if
-the starter repo doesn't have it, delete the model and keep the dict — the contract is the
-file format, not the library.
+must not drag dependencies with it. **It has no required dependencies.** If pydantic v2 is
+importable the event is a frozen validating model; otherwise it degrades to a stdlib frozen
+dataclass with the same surface. Either way the bytes on disk are identical, because the
+contract is the file format, not the library.
+
+That matters at T+0 in three ways: `python3 -m glassbox.simulate` runs on a bare interpreter
+with nothing installed, a starter repo pinned to pydantic v1 cannot break it, and you never
+have to argue with a PEP-668 "externally-managed-environment" on someone else's laptop.
 """
 
 from __future__ import annotations
@@ -12,12 +17,18 @@ import json
 import os
 import threading
 import uuid
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from collections.abc import Callable
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+try:                                     # pydantic v2 gives validation; nothing else needs it
+    from pydantic import BaseModel, ConfigDict, Field
+
+    HAVE_PYDANTIC_V2 = hasattr(BaseModel, "model_dump")
+except ImportError:                      # bare interpreter, or pydantic v1
+    HAVE_PYDANTIC_V2 = False
 
 AgentRole = Literal["worker", "verifier", "reducer"]
 AgentState = Literal["thinking", "working", "waiting", "blocked"]
@@ -26,22 +37,56 @@ Severity = Literal["high", "medium", "low"]
 SCHEMA_VERSION = 1
 
 
-class Event(BaseModel):
-    """One line in events.jsonl. Immutable once constructed."""
+# The envelope, in the order 01-EVENT-SCHEMA.md specifies. to_line() reads these off the
+# instance by name, so both implementations below serialise byte-identically.
+FIELDS = ("v", "seq", "ts", "run_id", "type", "agent_id", "parent_id", "payload")
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
 
-    v: Literal[1] = SCHEMA_VERSION
-    seq: int
-    ts: str
-    run_id: str
-    type: str
-    agent_id: str
-    parent_id: str | None = None
-    payload: dict[str, Any] = Field(default_factory=dict)
+def _to_line(event: Any) -> str:
+    data = {name: getattr(event, name) for name in FIELDS}
+    return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
-    def to_line(self) -> str:
-        return json.dumps(self.model_dump(), ensure_ascii=False, separators=(",", ":"))
+
+if HAVE_PYDANTIC_V2:
+
+    class Event(BaseModel):  # type: ignore[no-redef]
+        """One line in events.jsonl. Immutable once constructed."""
+
+        model_config = ConfigDict(extra="forbid", frozen=True)
+
+        v: Literal[1] = SCHEMA_VERSION
+        seq: int
+        ts: str
+        run_id: str
+        type: str
+        agent_id: str
+        parent_id: str | None = None
+        payload: dict[str, Any] = Field(default_factory=dict)
+
+        def to_line(self) -> str:
+            return _to_line(self)
+
+else:
+
+    @dataclass(frozen=True)
+    class Event:  # type: ignore[no-redef]
+        """One line in events.jsonl. Immutable once constructed.
+
+        Stdlib fallback. Same fields, same output; unknown keys raise TypeError, which is
+        what ``extra="forbid"`` does on the pydantic path, so ``read_log`` behaves the same.
+        """
+
+        seq: int
+        ts: str
+        run_id: str
+        type: str
+        agent_id: str
+        parent_id: str | None = None
+        payload: dict[str, Any] = field(default_factory=dict)
+        v: int = SCHEMA_VERSION
+
+        def to_line(self) -> str:
+            return _to_line(self)
 
 
 def _now() -> str:

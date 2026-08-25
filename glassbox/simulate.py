@@ -1,7 +1,9 @@
 """Fake swarm. Your entire dev loop tonight, and the source of the golden log.
 
-    uv run python -m glassbox.simulate --out runs/current            # live, ~75s
-    uv run python -m glassbox.simulate --out runs/golden --fast      # instant, for the parachute
+    python3 -m glassbox.simulate --out runs/current            # live, ~75s
+    python3 -m glassbox.simulate --out runs/golden --fast      # instant, for the parachute
+
+No dependencies required; run it from the repo root. `uv run python -m ...` works too.
 
 Emits a run that exercises every visual on the board: staggered spawns, overlapping work,
 out-of-order findings, one blocked agent, one verification failure that retries and passes,
