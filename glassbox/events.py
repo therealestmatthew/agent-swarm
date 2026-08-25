@@ -158,6 +158,11 @@ class EventLog:
         Call this on a ~100ms tick from the dispatcher. Tracks how many lines it has already
         consumed per file, so it is safe to call repeatedly while workers are still writing.
         Partially-written trailing lines are left for the next tick.
+
+        A worker can write anything, so every line is skipped rather than raised on, and the
+        consumed count is persisted in a ``finally``. Both matter: with an unguarded ``emit()``
+        and the count as the last statement, a single malformed line would re-emit every line
+        before it with fresh ``seq`` on every tick, forever, and never deliver anything after it.
         """
         drained: list[Event] = []
         for path in sorted(self.outbox_dir.glob("*.jsonl")):
@@ -170,25 +175,27 @@ class EventLog:
             # A trailing element that isn't followed by "\n" is a partial write. Only take
             # complete lines: everything before the final split element.
             complete = lines[:-1]
-            for raw in complete[already:]:
-                if not raw.strip():
+            try:
+                for raw in complete[already:]:
                     already += 1
-                    continue
-                try:
-                    record = json.loads(raw)
-                except json.JSONDecodeError:
-                    already += 1
-                    continue
-                drained.append(
-                    self.emit(
-                        type=record.get("type", "log.note"),
-                        agent_id=record.get("agent_id", agent_id),
-                        payload=record.get("payload", {}),
-                        parent_id=record.get("parent_id"),
-                    )
-                )
-                already += 1
-            self._drained[agent_id] = already
+                    if not raw.strip():
+                        continue
+                    try:
+                        record = json.loads(raw)
+                        drained.append(
+                            self.emit(
+                                type=record.get("type", "log.note"),
+                                agent_id=record.get("agent_id", agent_id),
+                                payload=record.get("payload", {}),
+                                parent_id=record.get("parent_id"),
+                            )
+                        )
+                    except Exception:
+                        # Malformed JSON, or a record the Event contract rejects. Drop the
+                        # line and keep draining — one bad worker must not stall the run.
+                        continue
+            finally:
+                self._drained[agent_id] = already
         return drained
 
     # -- convenience ----------------------------------------------------------

@@ -272,8 +272,9 @@ body{
 /* ══ Config ═══════════════════════════════════════════════════════════════ */
 const qs = new URLSearchParams(location.search);
 const REPLAY = qs.get("replay");
-const SPEED = parseFloat(qs.get("speed") || "1");
+const SPEED = Math.max(0.1, parseFloat(qs.get("speed")) || 1);   // NaN or 0 would blank the board
 const SEED_MODE = qs.has("seed");
+const HAS_FROM = qs.has("from");
 const FROM = parseInt(qs.get("from") || "0", 10);   // replay seek: fold below this seq instantly
 const LOG_URL = qs.get("log") || "runs/current/events.jsonl";
 const POLL_MS = 250;
@@ -350,8 +351,10 @@ function apply(st, ev){
       const a = st.agents.get(ev.agent_id);
       if (a){
         a.state = p.status === "failed" ? "failed" : "ok";
-        a.cost = p.cost_usd || 0;
-        st.cost += p.cost_usd || 0;
+        // Coerce both: a JSON string would concatenate, and .toFixed() then throws out
+        // of the render — which in replay kills the rAF chain permanently.
+        a.cost = Number(p.cost_usd) || 0;
+        st.cost += a.cost;
       }
       touch(st, ev.agent_id, ev);
       break;
@@ -361,7 +364,9 @@ function apply(st, ev){
       const a = st.agents.get(ev.agent_id);
       if (a) a.findings++;
       st.findings.push({
-        id: p.finding_id, agent: ev.agent_id, title: p.title || "",
+        // Fall back to seq: without an id every id-less finding collapses onto one
+        // DOM node, and one verdict keyed on undefined would apply to all of them.
+        id: p.finding_id ?? ("seq:" + ev.seq), agent: ev.agent_id, title: p.title || "",
         severity: p.severity || "low", confidence: p.confidence,
         summary: p.summary || "", ref: p.evidence_ref || "", seq: ev.seq,
       });
@@ -371,12 +376,12 @@ function apply(st, ev){
 
     case "verify.passed":
       st.verdicts.set(p.finding_id, {status:"passed", attempt:p.attempt});
-      touch(st, "verify", ev);
+      touch(st, ev.agent_id, ev);
       break;
 
     case "verify.failed":
       st.verdicts.set(p.finding_id, {status:"failed", attempt:p.attempt, reason:p.reason||""});
-      touch(st, "verify", ev);
+      touch(st, ev.agent_id, ev);
       break;
 
     case "agent.retry":
@@ -390,18 +395,18 @@ function apply(st, ev){
 
     case "reduce.started":
       st.reduce = {...st.reduce, active:true, pct:8, stage:"starting"};
-      touch(st, "reduce", ev);
+      touch(st, ev.agent_id, ev);
       break;
 
     case "reduce.progress":
       st.reduce = {...st.reduce, active:true, pct:p.pct||st.reduce.pct, stage:p.stage||""};
-      touch(st, "reduce", ev);
+      touch(st, ev.agent_id, ev);
       break;
 
     case "reduce.finished":
       st.reduce = {active:false, pct:100, stage:"done",
                    headline:p.headline||"", artifact:p.artifact_path||""};
-      touch(st, "reduce", ev);
+      touch(st, ev.agent_id, ev);
       break;
 
     case "watch.armed":
@@ -559,7 +564,8 @@ function renderFindings(st){
                    + `<span class="conf"></span></div><div class="title"></div>`
                    + `<div class="sum"></div><div class="ref"></div>`;
       el.querySelector(".src").textContent = f.agent;
-      el.querySelector(".conf").textContent = f.confidence != null ? f.confidence.toFixed(2) : "";
+      el.querySelector(".conf").textContent =
+        Number.isFinite(f.confidence) ? f.confidence.toFixed(2) : "";
       el.querySelector(".title").textContent = f.title;
       el.querySelector(".ref").textContent = f.ref;
       findingEls.set(f.id, el);
@@ -661,6 +667,7 @@ async function runLive(){
   let st = initialState();
   let seen = new Set();
   let activeRun = null;
+  let activeRunStart = -1;
   render(st, "live");
   setInterval(async () => {
     let text;
@@ -673,18 +680,26 @@ async function runLive(){
     const parsed = parseLines(text);
     if (!parsed.length) return;
 
-    // The newest line names the run that owns the board. A dispatcher that restarts
-    // into the same file writes a new run_id with seq back at 0 — dedupe on seq alone
-    // would silently discard every event of the new run and the board would sit there
-    // showing the old one, looking perfectly healthy. Reset instead.
-    const latest = parsed[parsed.length - 1].run_id;
-    if (latest !== activeRun){
-      activeRun = latest;
+    // Find where the newest run begins. A restart shows up as seq stepping backwards:
+    // a fresh EventLog also changes run_id, but a *pinned* run_id — which EventLog
+    // accepts, and which 04's T+10 step encourages — keeps the id and only sends seq
+    // back to 0. Testing the last line's seq is not enough, because on a quiet poll it
+    // already equals lastSeq and the board would reset on every tick.
+    let runStart = 0;
+    for (let k = 1; k < parsed.length; k++) if (parsed[k].seq <= parsed[k - 1].seq) runStart = k;
+    const current = parsed.slice(runStart);
+    const runId = current[current.length - 1].run_id;
+
+    // Without this the old seq dedupe discards the new run's events as already-seen and
+    // grafts its later ones onto the old state — a board blending two runs while looking
+    // perfectly healthy, which is worse than the freeze it replaced.
+    if (runId !== activeRun || runStart !== activeRunStart){
+      activeRun = runId; activeRunStart = runStart;
       st = initialState(); seen = new Set(); resetRender();
     }
 
-    const fresh = parsed
-      .filter(e => e.run_id === activeRun && !seen.has(e.seq))
+    const fresh = current
+      .filter(e => !seen.has(e.seq))
       .sort((a,b) => a.seq - b.seq);
     if (!fresh.length) return;
     for (const ev of fresh){ seen.add(ev.seq); st = apply(st, ev); }
@@ -708,17 +723,20 @@ async function runReplay(){
   }
   let st = initialState();
 
+  // Seek first, so ?seed=1 and ?from= compose. Everything below ?from= is folded
+  // instantly and the rest animates from there — that is what makes "the live run
+  // died, switch to the replay tab and pick up at the same beat" possible, and it
+  // is also how you screenshot a specific beat rather than the final frame.
+  let i = 0;
+  while (i < events.length && events[i].seq < FROM) st = apply(st, events[i++]);
+
   if (SEED_MODE){                       // instant, no animation — for screenshots
-    for (const ev of events) st = apply(st, ev);
+    // With ?from= this is a still of that beat, so stop at the seek point. Without it,
+    // fold everything and show the final frame.
+    if (!HAS_FROM) for (; i < events.length; i++) st = apply(st, events[i]);
     render(st, "replay");
     return;
   }
-
-  // Seek. Everything below ?from= is folded instantly, the rest animates from there.
-  // This is what makes "the live run died — switch to the replay tab and pick up at
-  // the same beat" actually possible; without it replay always restarts at the bloom.
-  let i = 0;
-  while (i < events.length && events[i].seq < FROM) st = apply(st, events[i++]);
   if (i >= events.length){ render(st, "replay"); return; }
 
   const t0 = Date.parse(events[i].ts);
@@ -726,12 +744,19 @@ async function runReplay(){
   render(st, "replay");
 
   function step(){
-    const virtual = (performance.now() - started) * SPEED;
-    let advanced = false;
-    while (i < events.length && (Date.parse(events[i].ts) - t0) <= virtual){
-      st = apply(st, events[i++]); advanced = true;
+    // Guarded: a throw here used to escape before the trailing requestAnimationFrame,
+    // killing the chain for good. One malformed event should cost one frame, not the
+    // rest of the demo.
+    try {
+      const virtual = (performance.now() - started) * SPEED;
+      let advanced = false;
+      while (i < events.length && (Date.parse(events[i].ts) - t0) <= virtual){
+        st = apply(st, events[i++]); advanced = true;
+      }
+      if (advanced) render(st, "replay");
+    } catch (err) {
+      console.error("render step failed", err);
     }
-    if (advanced) render(st, "replay");
     if (i < events.length) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);

@@ -165,7 +165,11 @@ function syncUI(){
   if (playBtn.textContent !== want) playBtn.textContent = want;
 }
 
-function virtualNow(){ return baseVirtual + (performance.now() - started) * speed; }
+// Frozen while paused. Otherwise every control that rebases — the speed buttons
+// included — would capture the wall-clock time spent paused and skip that far ahead.
+function virtualNow(){
+  return playing ? baseVirtual + (performance.now() - started) * speed : baseVirtual;
+}
 
 function rebase(v){ baseVirtual = v; started = performance.now(); }
 
@@ -193,8 +197,9 @@ function tick(){
 }
 
 playBtn.addEventListener("click", () => {
-  if (idx >= LAST){ foldTo(0); playing = true; }
-  else { playing = !playing; if (playing) rebase(virtualNow()); }
+  if (idx >= LAST){ foldTo(0); playing = true; started = performance.now(); }
+  else if (playing){ rebase(virtualNow()); playing = false; }   // freeze the clock where it is
+  else { playing = true; started = performance.now(); }         // resume from there, not from then
   syncUI();
 });
 
