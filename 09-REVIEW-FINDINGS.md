@@ -245,9 +245,100 @@ less, or run it.
 
 ---
 
+## 7. Unstated dependencies on the starter repo
+
+Answering `08` §3, which the first pass of this review skipped. Everything marked **verified** was
+executed against the code in this repo; the one item marked *reasoned* could not be tested here.
+
+### Tier 1 — costs more than fifteen minutes if wrong
+
+**1. Pydantic v2. Verified, and it fails in the worst possible shape.**
+Under pydantic 1.10.26, `glassbox/events.py` imports cleanly, `Event(...)` constructs cleanly
+(`ConfigDict` and `frozen=True` are silently ignored by v1), and then the **first `emit()` dies**:
+
+```
+AttributeError: 'Event' object has no attribute 'model_dump'
+```
+
+So a starter repo pinned to pydantic 1.x gives you a green import at T+5 and an exception at T+12,
+which is exactly when you are least able to read a traceback calmly. Two lines make it version-proof:
+
+```python
+def to_line(self) -> str:
+    data = self.model_dump() if hasattr(self, "model_dump") else self.dict()   # v2 / v1
+    return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+```
+
+Cheaper still if the repo fights you: delete the model and keep a plain dict. The contract is the
+file format, not the library — `01` already says so, so take it seriously when it costs you nothing.
+
+**2. Python 3.10+.** *(Reasoned — no 3.9 available here to test.)* `parent_id: str | None`
+(`events.py:40`, `:62`) is a string annotation under `from __future__ import annotations`, but
+pydantic evaluates it at runtime, and `str | None` is a TypeError before 3.10. A repo pinned to 3.9
+means rewriting the annotations to `Optional[str]` or switching interpreter.
+
+**3. You can edit the code that spawns the work.** The entire integration is five `emit()` calls at
+the repo's own call sites. If the parallelism lives somewhere you cannot reach — inside an SDK's
+task runner, a vendored package, a hosted service — there is no call site to decorate. Fallback is
+the same as for a sequential repo: run your own dispatcher beside it and let the repo be the payload.
+
+**4. The repo's agents actually run in parallel.** See §5. This is the one that is invisible until
+you look and expensive the moment you try to fix it.
+
+**5. You can run a static HTTP server on the demo machine, and serve the run directory.**
+**Verified:** `dashboard.html` opened over `file://` renders "Log not found" — the fetch is blocked
+by CORS, exactly as QUICKSTART says. So a machine where you cannot run `python -m http.server` or
+bind a port has no live board at all.
+
+> **The parachute survives this one.** `build/glassbox-mobile.html` inlines the log and therefore
+> needs no server: **verified rendering over `file://`** with the board playing. If the venue machine
+> is locked down, that file on a USB stick is still a working demo.
+
+**6. The run directory sits under the served root.** If the repo writes runs to an absolute path
+outside where you serve from, the poll 404s silently (`runLive` returns on `!res.ok`) and the board
+sits on the empty state looking fine. Symlink it or serve from a common parent.
+
+**7. API quota for eight concurrent workers, at the venue, at T+40.** The risk register has "rate
+limits → drop to 6 workers", which treats this as a tuning knob. It is a scheduling risk: thirty
+teams on one event key, and your run is the one with the highest concurrency in the room. Know
+before you start whether the key is yours or shared.
+
+### Tier 2 — under fifteen minutes, but they will bite
+
+**8. The inbox drop is a desktop GUI gesture.** If you develop in a devcontainer, Codespace, or a
+remote VM, the watcher watches a filesystem your desktop cannot drag into, and Beat 5 — the closer,
+the last thing the room sees — silently becomes impossible. Either run the whole thing locally, or
+rehearse a visible `cp` in the terminal instead and accept that it lands softer.
+
+**9. Threads versus processes.** Cheap only because both paths already exist (`EventLog` in-process,
+or `drain_outbox`). Answer it during recon, not at T+40.
+
+**10. Enough code to review** for Payload A. `06` handles it: under ~30 files, drop to six lenses.
+
+**11. A browser from roughly 2022 or later.** Feature floor audited: no optional chaining, one `??`,
+no `Array.at()`, plus `dvh` units in the mobile layer (Chrome 108 / Safari 15.4). Any current laptop
+browser is fine; this is only a risk if you present from something you did not choose.
+
+**12. Node, for `tests/fold.test.mjs`.** That dependency is mine, not the plan's. No node means no
+test run; the board itself is unaffected.
+
+**13. Filesystem write access and `os.fsync`.** Fine everywhere except a read-only container.
+
+### Not dependencies, despite looking like them
+
+Worth knowing so you do not spend recon time on them: the repo's **language** (the contract is the
+file format; a TypeScript emitter is nine lines), its **framework or orchestrator** (you decorate,
+never fight), and the **network** — the board now makes zero external requests, fonts included,
+verified with every host blocked.
+
+---
+
 ## Status — fixes applied
 
 Everything in §1 and §2 is done, verified, and committed. `node tests/fold.test.mjs` is the check.
+§7 is an enumeration, not a defect list — the one patch it recommends (pydantic v1 compatibility)
+is **not applied**, because it adds a code path to the file most likely to be dropped into an
+unknown repo and that should be your call.
 
 | # | Fix | Where | Verified by |
 |---|---|---|---|
