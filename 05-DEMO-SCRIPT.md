@@ -162,7 +162,9 @@ you one lens instead of the run. *(This is the question most likely to actually 
 ready.)*
 
 **"What would you build next?"**
-Time-travel scrubber on the log — drag back to any `seq` and see the board's exact state at that
-moment. The architecture already supports it; it's a slider and a re-fold.
+Don't offer the scrubber here — it's already built. `build/glassbox-mobile.html` has a working
+one: drag to any `seq` and the board re-folds to its exact state at that moment. Hand them the
+phone. Then answer for real: agents that overlap on the same evidence and disagree, with the
+verifier adjudicating — see `09-REVIEW-FINDINGS.md` §4.
 
 Keep every answer under fifteen seconds. Short answers read as confidence.

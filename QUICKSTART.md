@@ -70,7 +70,10 @@ Then open `dashboard.html` with no query string — it polls `runs/current/event
 | `glassbox/simulate.py` | Fake swarm. Your dev loop, and the golden log's source. |
 | `dashboard.html` | The board. Single file, no build step, no dependencies, fonts embedded. |
 | `tests/fold.test.mjs` | 18 assertions, extracted from `dashboard.html` so they can't drift. |
-| `09-REVIEW-FINDINGS.md` | Adversarial review of the plan, and what got fixed. |
+| `tools/beats.py` | Prints the `&from=<seq>` seek URL for every demo beat in a log. |
+| `tools/save-parachute.sh` | Saves a real run as `logs/backup-live.jsonl` and reprints the beats. |
+| `tools/emit.ts`, `emit.mjs` | The emitter, paste-able, for a repo that isn't Python. |
+| `09`, `10` | The two review passes, and what each one fixed. |
 | `fallback/` | Budget dataset + deterministic generator |
 | `logs/golden.jsonl` | The parachute. Back this up somewhere that isn't the demo laptop. |
 

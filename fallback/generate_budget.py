@@ -3,12 +3,15 @@
 Deterministic — same seed, same file, every time. That matters: your golden log and your
 demo narrative both assume specific findings exist at specific rows.
 
-    uv run python generate_budget.py
+    python3 fallback/generate_budget.py
 
-Writes:
-    budget_actuals.csv   ~200 rows, Program -> Cost Center -> Account -> Period
+Writes, next to this file:
+    budget_actuals.csv   338 rows, Program -> Cost Center -> Account -> Period
     account_master.csv   valid account codes (the join that makes findings checkable)
-    PLANTED.md           what's in there and which lens should catch it
+
+What is planted, and which agent should catch it, is the table in
+07-PAYLOAD-B-BUDGET-FALLBACK.md — kept there rather than in a generated file so there is
+one copy to keep true.
 """
 
 from __future__ import annotations

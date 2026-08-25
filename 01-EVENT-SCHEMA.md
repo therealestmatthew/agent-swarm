@@ -184,7 +184,10 @@ class EventLog:
                 payload=payload or {},
             )
             self._seq += 1
-            line = json.dumps(event.model_dump(), ensure_ascii=False, separators=(",", ":"))
+            # Reads fields by name so this works on pydantic v2, v1, and the dataclass
+            # fallback alike. event.model_dump() here would break on v1 — see §7 of
+            # 09-REVIEW-FINDINGS.md, where that is the top-ranked dependency risk.
+            line = event.to_line()
             with self.path.open("a", encoding="utf-8") as fh:
                 fh.write(line + "\n")
                 fh.flush()

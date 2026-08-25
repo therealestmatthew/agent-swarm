@@ -219,9 +219,10 @@ resets state when it changes.
 | URL | Behaviour |
 |---|---|
 | `dashboard.html` | Live. Polls `runs/current/events.jsonl` |
+| `?log=<path>` | Live, against a different log. **Use this when the starter repo writes its run directory somewhere else** — you point the board at the repo rather than editing either. |
 | `?replay=logs/golden.jsonl` | Replays a saved log, honouring inter-event `ts` gaps. `&speed=N` divides them — but the log is paced for the script, so demo at speed 1. |
 | `?big=1` | +20% type scale for projectors |
-| `?seed=1` | Renders the golden log instantly with no animation — for screenshots |
+| `?seed=1` | Renders instantly with no animation — for screenshots. Combines with `?from=`: on its own it shows the final frame, with `&from=<seq>` it shows that beat. |
 | `?from=<seq>` | Seek. Folds everything below `<seq>` instantly, animates from there. This is what makes "the live run died, switch to the replay tab and pick up at the same beat" actually possible — without it replay always restarts at the bloom. |
 
 Build replay mode **at the same time** as live mode, not after. It's ten lines if you do it now and
