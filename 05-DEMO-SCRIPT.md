@@ -96,17 +96,26 @@ additional word makes it weaker.
 
 ## Timing
 
-| Beat | Target | Cumulative |
-|---|---|---|
-| Frame | 0:20 | 0:20 |
-| Bloom | 0:25 | 0:45 |
-| Failure | 0:30 | 1:15 |
-| Collapse | 0:30 | 1:45 |
-| Wake-up | 0:25 | 2:10 |
-| Buffer | 0:50 | 3:00 |
+| Beat | Target | Cumulative | What the board does |
+|---|---|---|---|
+| Frame | 0:20 | 0:20 | empty — you hit enter at 0:20 |
+| Bloom | 0:25 | 0:45 | first finding lands **0:27** |
+| Failure | 0:30 | 1:15 | rejection **1:08** |
+| Collapse | 0:30 | 1:45 | brief headline **1:31** |
+| Wake-up | 0:25 | 2:10 | watcher fires **1:56** |
+| Buffer | 0:50 | 3:00 | log ends 2:09 |
 
-The run is paced to ~75 seconds with an 18-second pause before the watcher fires, so the beats
-have somewhere to sit. Beat 5's pause is the window in which you walk over and drag the file.
+**These are measured, not aspirational** — derived from `logs/golden.jsonl` by
+`python3 tools/beats.py`, and the run is paced to fit them. Note the offset: the log's `t=0` is
+script time **0:20**, because Beat 1 is narration over an empty board before you hit enter.
+
+The 25 seconds between the brief and the wake-up is deliberate and is not dead air — the board is
+in its LISTENING idle state with the scanline running. That gap is the window in which you stop
+talking, walk over, and drag the file. It is the one interval that does *not* scale with `PACE`,
+because it is measured in human time.
+
+**Re-derive this table after any real run.** `tools/save-parachute.sh` does both: saves the log and
+prints the new numbers.
 
 The buffer is real. Live runs vary. If you're at 2:50 when the reducer finishes, cut Beat 5's
 setup line and just do the drag.

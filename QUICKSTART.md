@@ -5,7 +5,7 @@ stdlib dataclass when pydantic isn't importable, so this runs on any Python 3.10
 it from the repo root (`python3 -m glassbox.simulate` imports the `glassbox` package by path).
 
 ```bash
-# 1. Generate the golden log (instant, but paced like a real 88-second run)
+# 1. Generate the golden log (instant, but paced like a real 110-second run)
 python3 -m glassbox.simulate --out runs/golden --fast
 cp runs/golden/events.jsonl logs/golden.jsonl
 
@@ -52,7 +52,7 @@ at all. Use it while building; you don't need it to demo.
 For a live run, in a second terminal:
 
 ```bash
-python3 -m glassbox.simulate --out runs/current      # real-time, ~88s
+python3 -m glassbox.simulate --out runs/current      # real-time, ~110s
 ```
 
 Then open `dashboard.html` with no query string — it polls `runs/current/events.jsonl` every 250ms.
@@ -79,6 +79,7 @@ Then open `dashboard.html` with no query string — it polls `runs/current/event
 Run `node tests/fold.test.mjs` — these are assertions, not claims:
 
 - 96 events, `seq` gap-free, timestamps monotonic, `payload` never null
+- Every beat in `05-DEMO-SCRIPT.md` lands inside its window — verified with `tools/beats.py`
 - State fold is pure — re-folding the same log yields identical state, and so does every prefix
 - Every `agent.spawned` gets an `agent.done`; `run.finished` totals reconcile with the log
 - 14 agents (8 lenses + verifier + reducer + 1 retry child + 3 second-cycle), 17 findings,

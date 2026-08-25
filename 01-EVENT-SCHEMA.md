@@ -215,7 +215,7 @@ Build this **before** the dashboard. It is your entire dev loop, and it produces
 
 ```
 python3 -m glassbox.simulate --out runs/golden --fast      # instant, for the parachute
-python3 -m glassbox.simulate --out runs/current            # real-time, ~75s
+python3 -m glassbox.simulate --out runs/current            # real-time, ~110s
 
 # or, via uv:  uv run python -m glassbox.simulate ...
 # flags: --out  --fast  --seed N  --pace F  --no-second-cycle
@@ -228,9 +228,10 @@ It should emit a realistic run with:
 - at least one `verify.failed` → `agent.retry` → `verify.passed` chain
 - one agent that goes `blocked` for a few seconds before recovering
 - a reducer that runs last and emits an artifact path
-- total wall-clock ~75s at 1x for the main cycle, then an 18s pause before the watcher fires —
-  long enough to play underneath a 2:30 script, and the pause is the window in which you walk
-  over and drag the file
+- total wall-clock ~70s at 1x for the main cycle, then a 25s pause before the watcher fires, for
+  ~110s end to end — long enough to play underneath the 3-minute script, with the pause as the
+  window in which you walk over and drag the file. `05`'s beat table is derived from this log by
+  `tools/beats.py`, not the other way round
 
 Then: `cp runs/golden/events.jsonl logs/golden.jsonl`. That file is your parachute. Back it up
 somewhere that isn't the laptop you'll be demoing from.

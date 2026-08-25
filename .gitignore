@@ -5,3 +5,7 @@ __pycache__/
 *.py[cod]
 .venv/
 .DS_Store
+
+# The parachute is produced on the day from a REAL run (tools/save-parachute.sh).
+# A synthetic copy committed here would be a file that looks like the demo and isn't.
+logs/backup-live*.jsonl

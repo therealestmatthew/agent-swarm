@@ -1,6 +1,6 @@
 """Fake swarm. Your entire dev loop tonight, and the source of the golden log.
 
-    python3 -m glassbox.simulate --out runs/current            # live, ~75s
+    python3 -m glassbox.simulate --out runs/current            # live, ~110s
     python3 -m glassbox.simulate --out runs/golden --fast      # instant, for the parachute
 
 No dependencies required; run it from the repo root. `uv run python -m ...` works too.
@@ -23,15 +23,19 @@ from glassbox.events import EventLog
 
 MISSION = "Eight specialists review the same codebase simultaneously, each through one lens."
 
-# Every sleep is multiplied by this. The demo script narrates for 2:30; a run that is over
-# in 33 seconds cannot be replayed underneath it. 2.25 puts the run at ~75s, inside the
-# 45-90s window 00-MASTER-PLAN specifies, with room to replay at speed=1.
-PACE = 2.25
+# Every sleep is multiplied by this. The run has to play underneath 05-DEMO-SCRIPT.md,
+# whose beats are measured from the top of the demo — but the log starts when you hit
+# enter at the end of Beat 1, so log time t is script time t + 0:20. At 3.2 the beats
+# land where 05 says they should; see the table in that file, which is derived from a
+# real run rather than the other way round.
+PACE = 3.2
 
-# Virtual seconds between the brief landing and the watcher firing. Beat 5 needs long
-# enough for you to stop talking, walk to the laptop and drag the file — in replay this
-# gap is the only thing standing between the reducer and the wake-up.
-WATCH_GAP_S = 8.0
+# Seconds between the brief landing and the watcher firing — deliberately NOT scaled by
+# PACE, because this one is measured in human time: long enough to stop talking, walk to
+# the laptop and drag the file in. In replay it is the only thing standing between the
+# reducer and the wake-up. The board is not dead here; it is in the LISTENING idle state
+# with the scanline running, which is the point.
+WATCH_GAP_S = 25.0
 
 LENSES: list[tuple[str, str]] = [
     ("w1", "SECRETS"),
@@ -109,7 +113,7 @@ class Clock:
 
     Either way it advances a virtual timeline that becomes the events' ``ts``. That is what
     lets ``--fast`` generate the golden log in a second while replay still paces it like a
-    real 60-second run.
+    real ~110-second run.
     """
 
     fast: bool = False
@@ -117,10 +121,16 @@ class Clock:
     virtual: float = field(default_factory=time.time)
 
     def sleep(self, seconds: float) -> None:
-        scaled = seconds * self.pace
-        self.virtual += scaled
+        self._advance(seconds * self.pace)
+
+    def sleep_unscaled(self, seconds: float) -> None:
+        """Sleep a wall-clock duration that PACE must not stretch. See WATCH_GAP_S."""
+        self._advance(seconds)
+
+    def _advance(self, seconds: float) -> None:
+        self.virtual += seconds
         if not self.fast:
-            time.sleep(scaled)
+            time.sleep(seconds)
 
     def stamp(self) -> str:
         # Every event nudges the clock 1ms so seq order and ts order never disagree.
@@ -159,11 +169,17 @@ def simulate(out: Path, fast: bool, seed: int, second_cycle: bool, pace: float =
         clock.sleep(rng.uniform(0.12, 0.40))
 
     # --- overlapping work. Findings arrive interleaved across agents. ---
+    # The first finding for an agent lands at its ramp; only *subsequent* findings add a
+    # gap. Previously the ramp and the first gap both applied, so the earliest finding in
+    # the whole run arrived ~11s after the last strip bloomed — a dead stretch sitting in
+    # the middle of Beat 2 where nothing moved at all, not even a trace bar, because
+    # traces only advance on events. Dead air is where the "it's a screensaver" read forms.
     queue: list[tuple[float, str, tuple[str, str, str, float, str]]] = []
     for agent_id, _lens in LENSES:
-        offset = rng.uniform(1.5, 4.0)
-        for planted in FINDINGS.get(agent_id, []):
-            offset += rng.uniform(2.5, 6.5)
+        offset = rng.uniform(0.5, 2.6)
+        for n, planted in enumerate(FINDINGS.get(agent_id, [])):
+            if n:
+                offset += rng.uniform(2.5, 6.5)
             queue.append((offset, agent_id, planted))
     queue.sort(key=lambda item: item[0])
 
@@ -283,7 +299,7 @@ def simulate(out: Path, fast: bool, seed: int, second_cycle: bool, pace: float =
     log.emit("watch.armed", "watch", {"path": "runs/inbox", "patterns": ["*.py", "*.md", "*.csv"]})
     if second_cycle:
         # Long enough to stop talking, walk over, and drag the file. See WATCH_GAP_S.
-        clock.sleep(WATCH_GAP_S)
+        clock.sleep_unscaled(WATCH_GAP_S)
         log.emit("watch.triggered", "watch", {"path": "hotfix_auth.py", "change": "created"})
         cycle2_started = clock.virtual
         log.run_started("Re-sweep triggered by inbox change", planned_agents=3, input_ref="hotfix_auth.py")
