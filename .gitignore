@@ -5,6 +5,3 @@ __pycache__/
 *.py[cod]
 .venv/
 .DS_Store
-
-# Generated preview build — reproduce with tools/build-mobile-preview.py
-build/
