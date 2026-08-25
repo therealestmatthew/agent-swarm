@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glass Box</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens ─────────────────────────────────────────────────────────────── */
+:root{
+  --hangar:#101A2B; --rack:#18263D; --rack-hi:#1F3050; --rule:#2C3E5C;
+  --chalk:#E8EDF5; --dim:#8296B3;
+  --signal:#FFB020; --verified:#4ED2A0; --fault:#FF5C5C; --urgent:#FF8A3D;
+
+  --display:'Saira Condensed',Impact,sans-serif;
+  --body:'IBM Plex Sans',system-ui,sans-serif;
+  --data:'IBM Plex Mono',ui-monospace,monospace;
+
+  --fs-label:11px; --fs-data:13px; --fs-body:15px; --fs-strip:22px; --fs-board:34px;
+  --pad:32px;
+}
+html.big{ --fs-label:13px; --fs-data:16px; --fs-body:18px; --fs-strip:27px; --fs-board:42px; }
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--hangar); color:var(--chalk);
+  font-family:var(--body); font-size:var(--fs-body);
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── Frame ──────────────────────────────────────────────────────────────── */
+#board{
+  height:100vh; display:grid;
+  grid-template-rows:auto auto 1fr auto;
+  padding:var(--pad); gap:0;
+}
+
+/* Rail */
+.rail{display:flex;align-items:baseline;gap:16px;padding-bottom:14px}
+.mark{
+  font-family:var(--display);font-weight:700;font-size:var(--fs-board);
+  letter-spacing:.05em;text-transform:uppercase;line-height:1;
+}
+.mark em{font-style:normal;color:var(--signal)}
+.mission{
+  font-family:var(--body);font-size:var(--fs-data);color:var(--dim);
+  flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.clock{font-family:var(--data);font-size:var(--fs-strip);font-variant-numeric:tabular-nums}
+.live{
+  font-family:var(--display);font-weight:600;font-size:var(--fs-label);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  display:flex;align-items:center;gap:8px;
+}
+.live .dot{width:9px;height:9px;border-radius:50%;background:var(--dim)}
+.live[data-mode="live"] .dot{background:var(--signal);box-shadow:0 0 12px var(--signal)}
+.live[data-mode="live"]{color:var(--signal)}
+.live[data-mode="idle"] .dot{background:var(--signal);animation:breathe 2.4s ease-in-out infinite}
+.live[data-mode="replay"] .dot{background:var(--verified)}
+.live[data-mode="replay"]{color:var(--verified)}
+
+/* Counters */
+.counters{
+  display:flex;gap:26px;padding:10px 0 16px;border-top:1px solid var(--rule);
+  border-bottom:1px solid var(--rule);margin-bottom:18px;
+}
+.counter{display:flex;align-items:baseline;gap:7px}
+.counter b{
+  font-family:var(--data);font-weight:600;font-size:var(--fs-data);
+  font-variant-numeric:tabular-nums;color:var(--chalk);
+}
+.counter span{
+  font-family:var(--display);font-weight:600;font-size:var(--fs-label);
+  letter-spacing:.12em;text-transform:uppercase;color:var(--dim);
+}
+.counter.hot b{color:var(--signal)}
+
+/* Panes */
+.panes{display:grid;grid-template-columns:60fr 40fr;gap:24px;min-height:0}
+.pane{display:flex;flex-direction:column;min-height:0;position:relative}
+.pane h2{
+  font-family:var(--display);font-weight:600;font-size:var(--fs-label);
+  letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+  padding-bottom:10px;
+}
+.scroll{overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
+.scroll::-webkit-scrollbar{width:6px}
+.scroll::-webkit-scrollbar-thumb{background:var(--rule)}
+
+/* ── Strip ──────────────────────────────────────────────────────────────── */
+.strip{
+  position:relative;display:flex;align-items:center;gap:16px;
+  height:56px;padding:0 16px 0 19px;margin-bottom:6px;
+  background:var(--rack);border-left:3px solid var(--dim);
+  animation:slide-in .22s cubic-bezier(.2,.8,.2,1) both;
+}
+.strip.child{margin-left:28px}
+.strip.child::before{
+  content:"";position:absolute;left:-20px;top:-9px;width:14px;height:31px;
+  border-left:1px solid var(--rule);border-bottom:1px solid var(--rule);
+}
+.strip .id{
+  font-family:var(--data);font-size:var(--fs-label);color:var(--dim);
+  width:46px;flex:none;
+}
+.strip .label{
+  font-family:var(--display);font-weight:600;font-size:var(--fs-strip);
+  letter-spacing:.03em;text-transform:uppercase;
+  flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.strip .state{
+  font-family:var(--display);font-weight:600;font-size:var(--fs-label);
+  letter-spacing:.14em;text-transform:uppercase;width:82px;flex:none;text-align:right;
+}
+.strip .meta{
+  font-family:var(--data);font-size:var(--fs-label);color:var(--dim);
+  width:96px;flex:none;text-align:right;font-variant-numeric:tabular-nums;
+}
+.trace{display:flex;align-items:flex-end;gap:2px;height:26px;width:150px;flex:none}
+.trace i{width:3px;background:var(--dim);opacity:.35;display:block}
+
+.strip[data-state="thinking"],.strip[data-state="working"],.strip[data-state="spawning"]{border-left-color:var(--signal)}
+.strip[data-state="thinking"] .state,.strip[data-state="working"] .state,.strip[data-state="spawning"] .state{color:var(--signal)}
+.strip[data-state="thinking"]{animation:slide-in .22s cubic-bezier(.2,.8,.2,1) both,breathe 2s ease-in-out infinite .22s}
+.strip[data-state="blocked"]{border-left-color:var(--urgent);animation:slide-in .22s both,jitter 3s ease-in-out infinite .22s}
+.strip[data-state="blocked"] .state{color:var(--urgent)}
+.strip[data-state="ok"]{border-left-color:var(--verified);opacity:.72;background:transparent}
+.strip[data-state="ok"] .state{color:var(--verified)}
+.strip[data-state="ok"] .trace i{opacity:.18}
+.strip[data-state="failed"]{border-left-color:var(--fault);animation:slide-in .22s both,shake .3s ease-in-out 1 .22s}
+.strip[data-state="failed"] .state{color:var(--fault)}
+.strip[data-state="failed"] .trace i{background:var(--fault);opacity:.5}
+
+/* ── Findings ───────────────────────────────────────────────────────────── */
+.finding{
+  border-left:2px solid var(--rule);padding:9px 0 9px 13px;margin-bottom:9px;
+  animation:slide-right .18s ease-out both;
+}
+.finding[data-sev="high"]{border-left-color:var(--urgent)}
+.finding[data-sev="medium"]{border-left-color:var(--signal)}
+.finding.fresh[data-sev="high"]{animation:slide-right .18s ease-out both,flare .9s ease-out .18s}
+.finding .top{display:flex;align-items:baseline;gap:9px;margin-bottom:4px}
+.finding .sev{
+  font-family:var(--display);font-weight:700;font-size:var(--fs-label);
+  letter-spacing:.14em;text-transform:uppercase;
+}
+.finding[data-sev="high"] .sev{color:var(--urgent)}
+.finding[data-sev="medium"] .sev{color:var(--signal)}
+.finding[data-sev="low"] .sev{color:var(--dim)}
+.finding .src{font-family:var(--data);font-size:var(--fs-label);color:var(--dim)}
+.finding .conf{margin-left:auto;font-family:var(--data);font-size:var(--fs-label);color:var(--dim);font-variant-numeric:tabular-nums}
+.finding .title{font-size:var(--fs-body);font-weight:500;line-height:1.3}
+.finding .sum{
+  font-size:var(--fs-data);color:var(--dim);line-height:1.4;margin-top:3px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.finding .ref{font-family:var(--data);font-size:var(--fs-label);color:var(--dim);opacity:.7;margin-top:3px}
+.finding.rejected{opacity:.45}
+.finding.rejected .title{text-decoration:line-through;text-decoration-color:var(--fault)}
+.finding.rejected .sev{color:var(--fault)}
+.finding.collapsed .sum,.finding.collapsed .ref{display:none}
+.finding.collapsed{padding-top:5px;padding-bottom:5px;margin-bottom:5px}
+
+/* ── Bottom rail ────────────────────────────────────────────────────────── */
+.foot{
+  margin-top:18px;padding-top:14px;border-top:1px solid var(--rule);
+  display:flex;align-items:center;gap:18px;min-height:58px;
+}
+.foot .tag{
+  font-family:var(--display);font-weight:600;font-size:var(--fs-label);
+  letter-spacing:.16em;text-transform:uppercase;color:var(--dim);flex:none;
+}
+.foot .headline{font-size:var(--fs-strip);font-family:var(--body);font-weight:500;line-height:1.25}
+.foot .listening{font-family:var(--data);font-size:var(--fs-data);color:var(--signal)}
+.bar{height:6px;flex:1;background:var(--rack);position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--signal);transition:width .5s ease}
+
+/* Idle scanline */
+#scan{
+  position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:linear-gradient(90deg,transparent 0%,var(--signal) 50%,transparent 100%);
+  mix-blend-mode:screen;
+}
+#scan.on{opacity:.08;animation:sweep 6s linear infinite}
+#flash{position:fixed;inset:0;background:var(--signal);opacity:0;pointer-events:none}
+#flash.on{animation:flash .5s ease-out}
+
+/* Empty */
+.empty{
+  font-family:var(--display);font-weight:600;font-size:var(--fs-strip);
+  letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:40px 0;
+}
+.empty small{display:block;font-family:var(--data);font-size:var(--fs-data);
+  letter-spacing:0;text-transform:none;margin-top:10px;opacity:.7}
+
+/* ── Motion ─────────────────────────────────────────────────────────────── */
+@keyframes slide-in{from{opacity:0;transform:translateX(-22px)}to{opacity:1;transform:none}}
+@keyframes slide-right{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+@keyframes breathe{0%,100%{border-left-color:var(--signal)}50%{border-left-color:#7A5510}}
+@keyframes jitter{0%,100%{transform:translateX(0)}48%{transform:translateX(0)}50%{transform:translateX(1px)}52%{transform:translateX(-1px)}54%{transform:translateX(0)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@keyframes flare{from{background:rgba(255,138,61,.22)}to{background:transparent}}
+@keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+@keyframes flash{0%{opacity:0}20%{opacity:.12}100%{opacity:0}}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div id="board">
+  <div class="rail">
+    <div class="mark">Glass<em>Box</em></div>
+    <div class="mission" id="mission">no run loaded</div>
+    <div class="clock" id="clock">00:00</div>
+    <div class="live" id="live" data-mode="off"><span class="dot"></span><span id="livetext">standby</span></div>
+  </div>
+
+  <div class="counters" id="counters"></div>
+
+  <div class="panes">
+    <div class="pane">
+      <h2>Rack</h2>
+      <div class="scroll" id="rack"></div>
+      <div id="scan"></div>
+    </div>
+    <div class="pane">
+      <h2>Findings</h2>
+      <div class="scroll" id="findings"></div>
+    </div>
+  </div>
+
+  <div class="foot" id="foot"></div>
+</div>
+<div id="flash"></div>
+
+<script>
+"use strict";
+
+/* ══ Config ═══════════════════════════════════════════════════════════════ */
+const qs = new URLSearchParams(location.search);
+const REPLAY = qs.get("replay");
+const SPEED = parseFloat(qs.get("speed") || "1");
+const SEED_MODE = qs.has("seed");
+const LOG_URL = qs.get("log") || "runs/current/events.jsonl";
+const POLL_MS = 250;
+const TRACE_BARS = 30;
+if (qs.has("big")) document.documentElement.classList.add("big");
+
+/* ══ State — a pure fold over the event list ══════════════════════════════
+   apply() must stay pure: no fetch, no Date.now(), no unseeded randomness.
+   That purity is the only reason replay renders identically to live.        */
+
+function initialState(){
+  return {
+    lastSeq:-1, mission:"", startTs:null, lastTs:null, runStatus:null,
+    agents:new Map(),      // id -> {id,label,role,state,parent,findings,cost,trace[],order}
+    order:0,
+    findings:[],           // newest last
+    verdicts:new Map(),    // finding_id -> {status, reason, attempt}
+    retries:0, cost:0,
+    reduce:{active:false,pct:0,stage:"",headline:"",artifact:""},
+    watch:{armed:false,path:"",triggers:0,lastTrigger:null},
+  };
+}
+
+function traceBar(ev){
+  // Deterministic pseudo-height from the event — signal-looking, identical on replay.
+  let h = 0;
+  const s = ev.type + ":" + ev.seq;
+  for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) & 0xffff;
+  const base = {"finding.written":16,"agent.status":8,"verify.failed":22,"verify.passed":12}[ev.type] || 6;
+  return Math.min(26, base + (h % 11));
+}
+
+function touch(st, id, ev){
+  const a = st.agents.get(id);
+  if (!a) return;
+  a.trace = a.trace.concat(traceBar(ev)).slice(-TRACE_BARS);
+}
+
+function apply(st, ev){
+  if (ev.v !== 1) return st;
+  st.lastSeq = ev.seq;
+  st.lastTs = ev.ts;
+  if (st.startTs === null) st.startTs = ev.ts;
+  const p = ev.payload || {};
+
+  switch(ev.type){
+    case "run.started":
+      st.mission = p.mission || st.mission;
+      st.runStatus = "running";
+      break;
+
+    case "run.finished":
+      st.runStatus = p.status || "ok";
+      break;
+
+    case "agent.spawned":
+      st.agents.set(ev.agent_id, {
+        id: ev.agent_id, label: p.label || ev.agent_id, role: p.role || "worker",
+        model: p.model || "", state: "spawning", parent: ev.parent_id || null,
+        findings: 0, cost: 0, trace: [], order: st.order++,
+      });
+      touch(st, ev.agent_id, ev);
+      break;
+
+    case "agent.status": {
+      const a = st.agents.get(ev.agent_id);
+      if (a){ a.state = p.state || a.state; a.note = p.note || ""; }
+      touch(st, ev.agent_id, ev);
+      break;
+    }
+
+    case "agent.done": {
+      const a = st.agents.get(ev.agent_id);
+      if (a){
+        a.state = p.status === "failed" ? "failed" : "ok";
+        a.cost = p.cost_usd || 0;
+        st.cost += p.cost_usd || 0;
+      }
+      touch(st, ev.agent_id, ev);
+      break;
+    }
+
+    case "task.claimed": {
+      const a = st.agents.get(ev.agent_id);
+      if (a && p.title) a.label = p.title;
+      touch(st, ev.agent_id, ev);
+      break;
+    }
+
+    case "finding.written": {
+      const a = st.agents.get(ev.agent_id);
+      if (a) a.findings++;
+      st.findings.push({
+        id: p.finding_id, agent: ev.agent_id, title: p.title || "",
+        severity: p.severity || "low", confidence: p.confidence,
+        summary: p.summary || "", ref: p.evidence_ref || "", seq: ev.seq,
+      });
+      touch(st, ev.agent_id, ev);
+      break;
+    }
+
+    case "verify.passed":
+      st.verdicts.set(p.finding_id, {status:"passed", attempt:p.attempt});
+      touch(st, "verify", ev);
+      break;
+
+    case "verify.failed":
+      st.verdicts.set(p.finding_id, {status:"failed", attempt:p.attempt, reason:p.reason||""});
+      touch(st, "verify", ev);
+      break;
+
+    case "agent.retry":
+      st.retries++;
+      break;
+
+    case "reduce.started":
+      st.reduce = {...st.reduce, active:true, pct:8, stage:"starting"};
+      touch(st, "reduce", ev);
+      break;
+
+    case "reduce.progress":
+      st.reduce = {...st.reduce, active:true, pct:p.pct||st.reduce.pct, stage:p.stage||""};
+      touch(st, "reduce", ev);
+      break;
+
+    case "reduce.finished":
+      st.reduce = {active:false, pct:100, stage:"done",
+                   headline:p.headline||"", artifact:p.artifact_path||""};
+      touch(st, "reduce", ev);
+      break;
+
+    case "watch.armed":
+      st.watch = {...st.watch, armed:true, path:p.path||""};
+      break;
+
+    case "watch.triggered":
+      st.watch = {...st.watch, triggered:true, triggers:st.watch.triggers+1, lastTrigger:p.path||""};
+      break;
+  }
+  return st;
+}
+
+/* ══ Render ═══════════════════════════════════════════════════════════════ */
+
+const $ = (id) => document.getElementById(id);
+let flashedTriggers = 0;
+let renderedFindings = 0;
+
+function fmtClock(st){
+  if (!st.startTs || !st.lastTs) return "00:00";
+  const ms = Date.parse(st.lastTs) - Date.parse(st.startTs);
+  const s = Math.max(0, Math.floor(ms/1000));
+  return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+}
+
+function activeCount(st){
+  let n = 0;
+  for (const a of st.agents.values())
+    if (a.state==="working"||a.state==="thinking"||a.state==="spawning"||a.state==="blocked") n++;
+  return n;
+}
+
+function stateLabel(a){
+  return {spawning:"spawn", thinking:"think", working:"work", waiting:"wait",
+          blocked:"block", ok:"done", failed:"fail"}[a.state] || a.state;
+}
+
+function renderCounters(st){
+  const active = activeCount(st);
+  const rejected = [...st.verdicts.values()].filter(v=>v.status==="failed").length;
+  const items = [
+    ["agents", st.agents.size, false],
+    ["active", active, active>0],
+    ["findings", st.findings.length, false],
+    ["rejected", rejected, rejected>0],
+    ["retries", st.retries, st.retries>0],
+    ["cost", "$" + st.cost.toFixed(3), false],
+    ["seq", st.lastSeq < 0 ? "—" : st.lastSeq, false],
+  ];
+  $("counters").innerHTML = items.map(([k,v,hot]) =>
+    `<div class="counter${hot?" hot":""}"><b>${v}</b><span>${k}</span></div>`).join("");
+}
+
+function renderRack(st){
+  const rack = $("rack");
+  if (st.agents.size === 0){
+    rack.innerHTML = `<div class="empty">No run loaded<small>Start a run, or open ?replay=logs/golden.jsonl&speed=4</small></div>`;
+    return;
+  }
+  // Parents first, each followed by its children — that's the amended-strip visual.
+  const all = [...st.agents.values()].sort((a,b)=>a.order-b.order);
+  const roots = all.filter(a=>!a.parent);
+  const rows = [];
+  for (const r of roots){
+    rows.push([r,false]);
+    for (const c of all) if (c.parent === r.id) rows.push([c,true]);
+  }
+  for (const a of all) if (a.parent && !st.agents.has(a.parent)) rows.push([a,false]);
+
+  rack.innerHTML = rows.map(([a,child]) => {
+    const bars = a.trace.map((h,i)=>{
+      const fromEnd = a.trace.length - 1 - i;
+      const live = a.state!=="ok" && a.state!=="failed" && fromEnd < 3;
+      const op = live ? 1 : Math.max(.18, .8 - fromEnd*0.035);
+      const col = live ? "var(--signal)" : "var(--dim)";
+      return `<i style="height:${h}px;background:${col};opacity:${op.toFixed(2)}"></i>`;
+    }).join("");
+    return `<div class="strip${child?" child":""}" data-state="${a.state}">
+      <span class="id">${a.id}</span>
+      <span class="label">${esc(a.label)}</span>
+      <span class="trace">${bars}</span>
+      <span class="state">${stateLabel(a)}</span>
+      <span class="meta">${a.findings} ▪ $${a.cost.toFixed(3)}</span>
+    </div>`;
+  }).join("");
+}
+
+function renderFindings(st){
+  const el = $("findings");
+  if (st.findings.length === 0){
+    el.innerHTML = `<div class="empty" style="font-size:var(--fs-data);letter-spacing:0;text-transform:none">Waiting for findings.</div>`;
+    return;
+  }
+  const list = [...st.findings].reverse();
+  el.innerHTML = list.map((f,i)=>{
+    const v = st.verdicts.get(f.id);
+    const rejected = v && v.status === "failed";
+    const fresh = f.seq > renderedFindings;
+    const collapsed = i >= 5;
+    return `<div class="finding${rejected?" rejected":""}${fresh?" fresh":""}${collapsed?" collapsed":""}" data-sev="${f.severity}">
+      <div class="top">
+        <span class="sev">${rejected ? "rejected" : f.severity}</span>
+        <span class="src">${f.agent}</span>
+        <span class="conf">${f.confidence!=null?f.confidence.toFixed(2):""}</span>
+      </div>
+      <div class="title">${esc(f.title)}</div>
+      <div class="sum">${rejected ? esc(v.reason) : esc(f.summary)}</div>
+      <div class="ref">${esc(f.ref)}</div>
+    </div>`;
+  }).join("");
+  renderedFindings = st.lastSeq;
+}
+
+function renderFoot(st){
+  const foot = $("foot");
+  const idle = activeCount(st) === 0;
+  if (st.reduce.headline && idle){
+    foot.innerHTML = `<span class="tag">Brief</span>
+      <span class="headline">${esc(st.reduce.headline)}</span>
+      <span class="tag">${esc(st.reduce.artifact)}</span>`;
+  } else if (st.reduce.active){
+    foot.innerHTML = `<span class="tag">Reduce</span>
+      <span class="bar"><i style="width:${st.reduce.pct}%"></i></span>
+      <span class="tag">${esc(st.reduce.stage)}</span>`;
+  } else if (idle && st.watch.armed){
+    foot.innerHTML = `<span class="tag">Always on</span>
+      <span class="listening">listening · ${esc(st.watch.path)} · ${st.watch.triggers} trigger${st.watch.triggers===1?"":"s"} · armed</span>`;
+  } else if (st.agents.size){
+    foot.innerHTML = `<span class="tag">Swarm</span>
+      <span class="bar"><i style="width:${Math.round(100*(st.agents.size-activeCount(st))/st.agents.size)}%"></i></span>
+      <span class="tag">${activeCount(st)} working</span>`;
+  } else {
+    foot.innerHTML = `<span class="tag">Standby</span>`;
+  }
+}
+
+function render(st, mode){
+  $("mission").textContent = st.mission || "no run loaded";
+  $("clock").textContent = fmtClock(st);
+  renderCounters(st);
+  renderRack(st);
+  renderFindings(st);
+  renderFoot(st);
+
+  const idle = activeCount(st) === 0 && st.agents.size > 0;
+  const live = $("live");
+  live.dataset.mode = mode === "replay" ? "replay" : (idle && st.watch.armed ? "idle" : (st.agents.size ? "live" : "off"));
+  $("livetext").textContent = mode === "replay" ? "replay"
+    : (idle && st.watch.armed ? "listening" : (st.agents.size ? "live" : "standby"));
+  $("scan").classList.toggle("on", idle && st.watch.armed);
+
+  if (st.watch.triggers > flashedTriggers){
+    flashedTriggers = st.watch.triggers;
+    const f = $("flash");
+    f.classList.remove("on"); void f.offsetWidth; f.classList.add("on");
+  }
+}
+
+function esc(s){
+  return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+}
+
+/* ══ Transport ════════════════════════════════════════════════════════════ */
+
+function parseLines(text){
+  const out = [];
+  const lines = text.split("\n");
+  // A trailing element with no newline after it may be a partial write — skip it.
+  for (let i = 0; i < lines.length - 1; i++){
+    const raw = lines[i].trim();
+    if (!raw) continue;
+    try {
+      const ev = JSON.parse(raw);
+      if (ev && ev.v === 1 && typeof ev.seq === "number") out.push(ev);
+    } catch { /* half-written line; it'll be complete next poll */ }
+  }
+  return out;
+}
+
+async function runLive(){
+  let st = initialState();
+  const seen = new Set();
+  render(st, "live");
+  setInterval(async () => {
+    let text;
+    try {
+      const res = await fetch(LOG_URL + "?t=" + Date.now(), {cache:"no-store"});
+      if (!res.ok) return;
+      text = await res.text();
+    } catch { return; }
+    const fresh = parseLines(text)
+      .filter(e => !seen.has(e.seq))
+      .sort((a,b) => a.seq - b.seq);
+    if (!fresh.length) return;
+    for (const ev of fresh){ seen.add(ev.seq); st = apply(st, ev); }
+    render(st, "live");
+  }, POLL_MS);
+}
+
+async function runReplay(){
+  let text;
+  try {
+    const res = await fetch(REPLAY + "?t=" + Date.now(), {cache:"no-store"});
+    text = await res.text();
+  } catch {
+    $("rack").innerHTML = `<div class="empty">Log not found<small>${esc(REPLAY)}</small></div>`;
+    return;
+  }
+  const events = parseLines(text).sort((a,b)=>a.seq-b.seq);
+  if (!events.length){
+    $("rack").innerHTML = `<div class="empty">Log is empty<small>${esc(REPLAY)}</small></div>`;
+    return;
+  }
+  let st = initialState();
+
+  if (SEED_MODE){                       // instant, no animation — for screenshots
+    for (const ev of events) st = apply(st, ev);
+    render(st, "replay");
+    return;
+  }
+
+  const t0 = Date.parse(events[0].ts);
+  let i = 0;
+  const started = performance.now();
+  function step(){
+    const virtual = (performance.now() - started) * SPEED;
+    let advanced = false;
+    while (i < events.length && (Date.parse(events[i].ts) - t0) <= virtual){
+      st = apply(st, events[i++]); advanced = true;
+    }
+    if (advanced) render(st, "replay");
+    if (i < events.length) requestAnimationFrame(step);
+  }
+  render(st, "replay");
+  requestAnimationFrame(step);
+}
+
+// Keep the clock ticking between events so the board never looks frozen.
+if (REPLAY) runReplay(); else runLive();
+</script>
+</body>
+</html>

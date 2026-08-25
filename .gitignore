@@ -1,0 +1,7 @@
+# Run output — regenerate with `python3 -m glassbox.simulate`
+runs/
+
+__pycache__/
+*.py[cod]
+.venv/
+.DS_Store

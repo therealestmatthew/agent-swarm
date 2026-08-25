@@ -1,0 +1,8 @@
+account,account_name,category
+5100,Salaries — Regular,Personnel
+5150,Salaries — Overtime,Personnel
+5200,Benefits,Personnel
+5400,Professional Services,Non-Personnel
+5600,Supplies,Non-Personnel
+5700,Equipment,Non-Personnel
+5800,Facilities & Utilities,Non-Personnel
