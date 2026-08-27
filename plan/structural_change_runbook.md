@@ -1,6 +1,6 @@
 # Structural Change Runbook
 
-**Referenced by:** `agentic-sdlc-design-v0.3.md` §4.2, §4.6, §8
+**Referenced by:** `agentic-sdlc-design-v0.5.md` §4.2, §4.6, §8
 
 ## Purpose
 
@@ -40,4 +40,4 @@ A task enters this SOP instead of the standard Phase 4 swarm flow (or exits mid-
 - **Additive-intent-count threshold** for auto-detecting a disguised structural change (§1, fourth trigger) — not yet set. Too low and legitimate multi-route features trigger unnecessary SOP runs; too high and a structural change slips through as a long sequence of individually-reasonable intents.
 - **Partial-pause granularity** — step 1 assumes the Orchestrator can cleanly identify which in-flight branches touch the affected file(s). This depends on task metadata being accurate at assignment time; worth confirming this holds once the SOP has run in practice.
 
-Tracked alongside the core design doc's own open questions (`agentic-sdlc-design-v0.3.md` §8): repeated triggering of this SOP against the same file or subsystem may itself be a signal worth feeding back into governance — e.g., a file that keeps needing structural intervention might need a heavier redesign rather than another round of this procedure.
+Tracked alongside the core design doc's own open questions (`agentic-sdlc-design-v0.5.md` §8): repeated triggering of this SOP against the same file or subsystem may itself be a signal worth feeding back into governance — e.g., a file that keeps needing structural intervention might need a heavier redesign rather than another round of this procedure.

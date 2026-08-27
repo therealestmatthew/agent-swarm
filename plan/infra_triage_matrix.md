@@ -1,6 +1,6 @@
 # Infrastructure Triage Matrix
 
-**Referenced by:** `agentic-sdlc-design-v0.3.md` §6 (Test Investigator & Flake Handling)
+**Referenced by:** `agentic-sdlc-design-v0.5.md` §6 (Test Investigator & Flake Handling)
 
 ## Purpose
 
@@ -45,7 +45,7 @@ class FailureSignature(BaseModel, frozen=True):
     # latency threshold during this test's execution window
 ```
 
-**Note on `dom_state_diff_from_baseline`:** the exact capture point and comparison method (what constitutes "baseline," and whether it's a fresh browser profile per test or a per-suite snapshot) is not yet finalized — tracked as an open question in the core design doc, §8.
+**Note on `dom_state_diff_from_baseline`:** the exact capture point and comparison method are finalized in `test_harness_architecture.md` §1 — full teardown/rebuild per test, captured immediately after context creation against a canonical empty state. This note previously called it unfinalized and pointed at the core design doc's open questions; that was stale as of v0.4, which resolved it (see `agentic-sdlc-design-v0.5.md` §12).
 
 ---
 

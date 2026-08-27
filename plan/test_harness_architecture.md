@@ -1,10 +1,10 @@
 # Test Harness Architecture
 
-**Referenced by:** `agentic-sdlc-design-v0.4.md` §6 (Test Investigator & Failure Triage) · `infra_triage_matrix.md` §1 (`FailureSignature.dom_state_diff_from_baseline`) · `agent_interface_contracts.py`
+**Referenced by:** `agentic-sdlc-design-v0.5.md` §6 (Test Investigator & Failure Triage) · §9.1 (`mutation.diff_scoped`) · `infra_triage_matrix.md` §1 (`FailureSignature.dom_state_diff_from_baseline`) · `agent_interface_contracts.py`
 
 ## Purpose
 
-This file owns the mechanics of the verification layer that the core design document only references: how a clean test environment is guaranteed, and what standard test doubles must meet so a passing test actually means something.
+This file owns the mechanics of the verification layer that the core design document only references: how a clean test environment is guaranteed, what standard test doubles must meet so a passing test actually means something, and how a test that passes for the wrong reason gets caught.
 
 ---
 
@@ -64,3 +64,18 @@ Protocol definitions for shared dependencies are produced at **Contract Freeze**
 
 ### 2.4 Fixture data
 Where a fake needs to return structured data — not just satisfy a call signature — that data is constructed from the same Pydantic models in `agent_interface_contracts.py` that the real code uses, not parallel dict literals or ad hoc dataclasses. A fixture built from the shared schema can't silently drift from what the real code actually produces; a hand-rolled one can.
+
+---
+
+## 3. Diff-Scoped Mutation Testing
+
+*Reinstated from `agentic-sdlc-design-v0.1.md` §7, absent v0.2 through v0.4 — see `plan/versions/REGRESSION.md`.*
+
+### 3.1 What Protocol fakes don't catch
+§2 makes a mock's *shape* honest: a fake can't silently accept a call the real dependency wouldn't. It says nothing about a test's *assertions*. A test that calls the real code with the real shape and then asserts `result >= expected` where the spec means `result > expected` type-checks perfectly and passes forever, on both the correct implementation and a subtly wrong one. Weakening an assertion is a different attack from mocking away behavior, and it needs a different guard.
+
+### 3.2 The gate
+`mutation.diff_scoped` (design doc §9.1): run `mutmut` per task branch, scoped to files the task actually changed — never the whole repo. A pure, hermetic unit suite (this project's stated target environment) makes this affordable at diff scope where it would be too slow to run on every commit at repo scope. A surviving mutant (a code mutation that doesn't make any test fail) on a changed file is a blocking Verification-phase finding: it means some line in the diff has no test that actually exercises its behavior, only its shape.
+
+### 3.3 Why diff-scoped, not repo-wide
+Scoping to the diff is what makes this a per-task gate rather than a nightly job — it runs inside the same Verification phase as `tests.baseline_delta` and reports on the same timescale a Task Dev agent can act on. Repo-wide mutation testing on every change would reintroduce the runtime cost this design otherwise avoids by keeping the Task Author/Task Dev split and Protocol fakes cheap.

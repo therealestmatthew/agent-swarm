@@ -1,6 +1,6 @@
 # Context Retrieval Strategy
 
-**Referenced by:** `agentic-sdlc-design-v0.4.md` §3 (Phase 1) · Agent Roster (Context Gatherer)
+**Referenced by:** `agentic-sdlc-design-v0.5.md` §3 (Phase 1) · Agent Roster (Context Gatherer)
 
 ## Purpose
 

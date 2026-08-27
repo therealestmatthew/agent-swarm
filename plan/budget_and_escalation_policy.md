@@ -1,6 +1,6 @@
 # Budget & Escalation Policy
 
-**Referenced by:** `agentic-sdlc-design-v0.4.md` §7 (Circuit Breakers) · Principle 7
+**Referenced by:** `agentic-sdlc-design-v0.5.md` §7 (Circuit Breakers) · Principle 7
 
 ## Purpose
 

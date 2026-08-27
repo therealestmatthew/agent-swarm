@@ -18,19 +18,23 @@ changes.
 
 | Path | What it is |
 |---|---|
-| `plan/agentic-sdlc-design-v0.4.md` | The orchestration blueprint — principles, agent roster, the eight phases. **Read first.** |
+| `plan/agentic-sdlc-design-v0.5.md` | The orchestration blueprint — principles, agent roster, the eight phases. **Read first.** |
 | `plan/agent_interface_contracts.py` | Every schema exchanged between agents. Single source of truth. |
 | `plan/infra_triage_matrix.md` | The deterministic failure-classification rules engine |
-| `plan/test_harness_architecture.md` | Baseline capture and Protocol-fake test double standards |
+| `plan/test_harness_architecture.md` | Baseline capture, Protocol-fake test double standards, diff-scoped mutation testing |
 | `plan/context_retrieval_strategy.md` | Context Gatherer search heuristics and token budgets |
 | `plan/budget_and_escalation_policy.md` | Loop ceilings, the escalation ladder, cost ceilings |
 | `plan/structural_change_runbook.md` | Human-gated SOP for non-additive shared-file changes |
-| `plan/agentic_sdlc_glossary.csv` | Term definitions used across the set |
+| `plan/execution_isolation.md` | Why disjoint write ownership alone doesn't isolate reads; one worktree per task |
+| `plan/calibration_and_measurement.md` | Verdict ledger, Shadow Mode promotion criteria, agent-spec versioning |
+| `plan/agentic_sdlc_glossary.csv` | Term definitions used across the set — 49 terms, with Category and Tags columns |
+| `plan/versions/` | Superseded design versions (v0.1–v0.4) and `REGRESSION.md`, the analysis behind v0.5 |
 | `archive/glass-box/` | The hackathon project this grew out of. Frozen — see its README. |
 
-v0.4 deliberately split mechanics out of the blueprint into companion files. Keep that split: if a
+The blueprint deliberately splits mechanics out into companion files. Keep that split: if a
 threshold, schema, or capture rule is being written into the core document, it belongs in a
-companion instead.
+companion instead. v0.5 added two companions (`execution_isolation.md`,
+`calibration_and_measurement.md`) for exactly this reason rather than growing §1's principle text.
 
 ## Principles that shape every decision
 
@@ -72,7 +76,7 @@ wins unless the proposal argues explicitly for changing it.
 
 ## Open questions
 
-Tracked in `plan/agentic-sdlc-design-v0.4.md` §8, and live:
+Tracked in `plan/agentic-sdlc-design-v0.5.md` §12, and live:
 
 - **Enterprise invariant arbitration** — who arbitrates when two repos disagree about whether an
   `enterprise_wide` invariant still holds. Carried unresolved since v0.3.
@@ -80,12 +84,22 @@ Tracked in `plan/agentic-sdlc-design-v0.4.md` §8, and live:
   promotion data.
 - **Structural Change SOP cadence** — repeated triggering against one file may itself be a
   governance signal.
-- **Modular file versioning** — do the companion files version independently of the blueprint?
+- **Modular file versioning** — now seven companion files, not five. Do they version independently
+  of the blueprint?
+- **Five more, carried forward from v0.1 and dropped without resolution at v0.2** (task granularity,
+  concurrency ceiling, Plan Writer dialogue depth, run manifest location, secrets posture) — see
+  §12 for the full restatement of each.
 
-Known drift to resolve: `plan/infra_triage_matrix.md:3` and `plan/structural_change_runbook.md:3`
-and `:43` still reference `agentic-sdlc-design-v0.3.md`, which isn't in the set. Also
-`infra_triage_matrix.md` §1 says the baseline capture method is unfinalized, but
-`test_harness_architecture.md` §1 finalized it — that note is stale.
+Both items previously tracked here as drift were resolved in v0.5: the stale `v0.3.md` references in
+`infra_triage_matrix.md` and `structural_change_runbook.md` now point at `v0.5.md`, and
+`infra_triage_matrix.md`'s stale "not yet finalized" note on baseline capture now correctly points at
+`test_harness_architecture.md` §1.
+
+**v0.5 is a reinstatement pass, not new design.** `plan/versions/REGRESSION.md` found that v0.2's
+changelog documented six additions and zero removals, though roughly half of v0.1's content didn't
+survive. Five of the nine gaps it found are now reinstated (validator asymmetry, permissions over
+prompts, the Run Manifest, execution isolation, calibration) — read that file before assuming
+anything is missing from the live set by design rather than by accident.
 
 ## Deliberately out of scope, for now
 
