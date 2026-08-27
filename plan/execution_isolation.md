@@ -63,13 +63,48 @@ reads and writes only inside that tree for the duration of the task.
 6. The worktree is torn down after its branch merges or its task is abandoned. Nothing about
    worktree teardown is itself a gate — the merge (`merge.no_conflict`, design doc §9.1) is.
 
-## 5. Containers are not required — yet
+## 5. The isolation unit is derived, not discovered
 
-For a pure unit suite with no external dependencies (databases, bound ports, real network calls), a
-worktree is sufficient isolation. **Revisit this the moment any of that changes:** if a task's tests
-start binding a port, hitting a real service, or running a migration, the isolation unit needs to
-become a container, not just a worktree, because two agents' processes can otherwise collide on a
-resource a worktree doesn't scope (a listening socket, a database file).
+This section previously read *"containers are not required — yet ... revisit the moment a task's
+tests start binding a port, hitting a real service, or running a migration."* That is a correct
+instinct expressed as an escape condition someone has to notice — and the whole posture of this
+design is that a constraint which binds should be a fact about a run rather than a discovery at
+runtime. It is also, for any browser-driven repo, already true on day one: a WebDriver reset spawns
+a process, binds a port, and needs a profile directory no sibling task may share.
+
+### 5.1 The derivation
+
+Each `ResetStrategy` a repo declares (`test_harness_architecture.md` §1.3) names the host resources
+one execution needs. Core reads those and derives the **minimum** isolation unit:
+
+| Any declared strategy requires | Minimum isolation unit | Why |
+|---|---|---|
+| `none` — in-process only | Worktree | Nothing escapes the tree |
+| `process` — spawns a process | Worktree | A child process that touches nothing shared is scoped by the tree it runs in |
+| `port` — binds a listening socket | **Container** | Two tasks' sockets collide on one host; a worktree does not scope a port |
+| `filesystem_exclusive` — needs an unshared path | **Container** | A profile directory or database file is not scoped by a worktree |
+| `external_service` — reaches a real service | **Container** | Blast radius and credential scope both need a boundary a worktree has not got |
+
+### 5.2 Derived is a floor, not an assignment
+
+`RepoDeclaration.isolation_unit` stays declared, and Core raises it to the derived minimum rather
+than replacing it. A repo may always declare a **stronger** unit than its resources require — for
+credential scoping, for blast radius, for reproducibility — and Core does not argue.
+
+What it may not do is declare a weaker one. **Declaring `worktree` while declaring a strategy that
+requires a port, an exclusive path, or an external service is incoherent**, and Core rejects it at
+contract validation with `HaltReason.ADAPTER_INVALID` — the same treatment as claiming
+`Capability.MUTATION_TESTING` with no hermetic tier (`test_harness_architecture.md` §3.7). A repo
+may honestly need a container; it may not claim it does not while declaring the reasons it does.
+
+### 5.3 What this costs, stated
+
+Containers are not free, and the derivation makes the bill legible rather than smaller. A container
+per task multiplies the per-unit resource footprint, which divides straight into the concurrency
+ceiling (`core_adapter_boundary.md` §3.6): browser containers are hundreds of megabytes each before
+a single test runs, so swarm width for a browser-tier repo is bound by memory long before it is
+bound by API rate limits. That is the answer to design doc §12's concurrency-ceiling question for
+this class of repo, and it falls out of the same declaration rather than needing a separate one.
 
 ## 6. Merge order is planned, not emergent
 
@@ -78,3 +113,98 @@ reason worktree teardown order matters. The sequence is: interface contract comm
 their planned dependency order, then the Integrator's shared-file commit last. An emergent merge
 order — whichever worktree happens to finish first — reintroduces exactly the race worktrees exist
 to remove, just at the merge step instead of the edit step.
+
+## 7. Shared-file materialization
+
+*Resolves the contradiction recorded as D1 in `implementation_roadmap.md`: design doc §4.2 applied an
+intent "synchronously before the agent continues," while §6 above commits shared files last. Both
+could not be true, and no materialization path was specified anywhere in the set.*
+
+### 7.1 What the question actually is
+
+Not "how does an agent learn that an intent was applied" — that is a messaging problem with many
+good answers. The question is: **when a Task Dev's interpreter imports the package to run the suite,
+what does that import resolve to on disk?** §1 above is the reason: verification is repo-scoped even
+when editing is file-scoped. Any answer that informs the agent without changing the bytes under the
+interpreter leaves the agent writing code against a route its own test run cannot import.
+
+### 7.2 Mechanism: canonical branch, read-only overlay
+
+1. **Single writer.** The Shared-File Intent Service is the sole writer of a canonical
+   `shared/` branch containing registered shared files and nothing else. Every application is
+   serialized through one lock; collision arbitration (design doc §4.5) happens here, before any
+   write.
+2. **Worktrees do not track shared files.** At worktree creation, Core marks every registered
+   shared file `git update-index --skip-worktree` in that worktree's index, and the path sits
+   outside the agent's write scope at the filesystem layer. The agent cannot commit the file, and
+   cannot edit it — Principle 12, a permission rather than an instruction, and checkable as a
+   precondition before the swarm spawns.
+3. **Applied intents are re-materialized into every live worktree.** On successful application, Core
+   writes the new file content into each running worktree's working directory. `skip-worktree` keeps
+   git silent about it: the interpreter sees current content, `git status` stays clean, and the diff
+   the task eventually produces contains none of it. The write is a temp-file-plus-`rename`, which
+   is atomic on POSIX — a concurrent test run reads the old content or the new one, never half of
+   either.
+4. **Integration order is unchanged.** Task branches merge first, carrying no shared-file changes —
+   which makes `merge.no_conflict` (design doc §9.1) an honest gate rather than one that has been
+   quietly exempted. The Integrator then fast-forwards `shared/` as the final commit. It is a
+   fast-forward, never a merge: the service was the only writer, so there is nothing to reconcile.
+
+This is what §4.2's "applied synchronously before the agent continues" was always describing. It is
+now a mechanism rather than an assertion.
+
+### 7.3 The read-view guarantee, restated precisely
+
+§3 above promises an agent "never a sibling task's in-progress edit." Re-materialization does change
+a file underneath a running agent, so the guarantee needs stating exactly rather than loosely:
+
+> A worktree is isolated from sibling tasks' **in-progress work**. It is not isolated from
+> **governed shared state**, and should not be.
+
+An applied intent is not an in-progress edit. It has already been through collision arbitration and
+deterministic application; it is the agreed content of a file both tasks depend on. Isolating an
+agent from it would mean the agent codes against a shared file it knows to be stale, and discovers
+the divergence at integration — which is the failure mode §4 exists to remove.
+
+### 7.4 Reviewability: the synthesized diff
+
+The cost of this mechanism, stated plainly: a task's PR diff contains no shared-file content, so a
+reviewer cannot see what was added to a router or registry on that task's behalf. In a design whose
+posture is that nothing is invisible, that is a regression, and it needs compensating for rather
+than accepting.
+
+Core synthesizes a **shared-file delta view** for every PR from the intent log: each hunk of the
+`shared/` fast-forward commit attributed to the intent that produced it and the task that submitted
+it. The reviewer sees "task-7 · `AddRoute(path=/reports)` · +4 lines" against real diff hunks,
+rather than one anonymous blob commit at the end of the branch. The intent log already carries
+everything this needs — submitter, op, payload, applied anchor — because Smart Mutex Rejection and
+the conflict counters require it.
+
+### 7.5 Transport is a separate decision
+
+How an agent *submits* an intent and *learns the outcome* is orthogonal to all of the above, and is
+deliberately pluggable. §7.2 fixes where bytes live; it says nothing about the wire.
+
+An MCP server is a good fit for that transport, and better than a file-based or queue-based
+protocol, for three reasons: submission and Smart Mutex Rejection are natively request/response with
+a typed result, so a rejection with blocking context lands directly in the agent's context instead
+of having to be discovered; making the tool call the *only* path to a registered shared file turns
+§4.2's rule into a permission (Principle 12) rather than an instruction; and the synthesized delta
+of §7.4 exposes cleanly as a read-only resource.
+
+Three constraints on any such transport, each a real failure mode rather than a preference:
+
+- **One shared service, not one per agent.** The mutex in §7.2 is only a mutex if every worktree's
+  agent talks to the same long-lived process. A server instance spawned per agent session — the
+  default shape for most MCP deployments — yields N writers and no arbitration at all, while
+  appearing to work until two agents collide.
+- **Blocking context is structured data, never prose.** A rejection tells one agent what another
+  agent claimed. Free-form text there is an injection channel between agents; the payload is the
+  op, the colliding keys, and the owning task id, rendered by the receiving side.
+- **Reads stay local.** Because §7.2 puts current content on disk, a transport outage blocks new
+  submissions but does not break a running suite. A design that served shared-file *reads* over the
+  wire would make service availability a dependency of every test run.
+
+The intent service is therefore built as a library with a lock, with transport as an adapter over
+it. That keeps the Stage 2 conformance work free of a protocol dependency it does not need — and
+Stages 1 and 2 have no LLM agents in the loop to talk to a tool server in the first place.

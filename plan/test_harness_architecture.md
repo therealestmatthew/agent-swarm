@@ -20,32 +20,72 @@ This file owns the mechanics of the verification layer that the core design docu
 ### 1.1 The problem this solves
 `FailureSignature.dom_state_diff_from_baseline` (see `agent_interface_contracts.py`) is only trustworthy if "baseline" is unambiguous and the mechanism that produces it can't itself leak state. This section defines both.
 
-### 1.2 Capture rule: full teardown/rebuild, not surgical clearing
-For DOM-heavy automation (Selenium/Playwright): **every test gets a freshly constructed browser context.** No context reuse across tests, even for performance — surgically clearing cookies/localStorage in place is explicitly disallowed as the sole isolation mechanism.
+### 1.2 Capture rule: construct fresh, never clean in place
+
+**The universal rule:** every test gets a **freshly constructed instance** of whatever holds its
+state. Reusing an instance and clearing it is explicitly disallowed as the sole isolation mechanism,
+at any scope.
+
+**Why, and why it generalizes:** clearing routines only reach what they explicitly enumerate. In a
+browser, service workers, cache storage, IndexedDB, open native dialogs, and in-flight download
+state routinely fall outside that enumeration and persist silently. The same shape recurs everywhere
+— a reused Python process leaks module globals, import side effects, and monkeypatches; a reused
+database connection leaks session settings and transaction state; a reused temp directory leaks
+files. A leaky clearing mechanism doesn't just cause occasional flakiness: it undermines the
+clean-state signal the triage matrix depends on, and `infra_triage_matrix.md`'s rule ordering
+(state-leakage checked *before* timing) collapses if that signal can be wrong.
+
+**What is *not* universal is the mechanism.** This section previously mandated:
 
 ```
-Mandate:
-  before each test:  browser.new_context()   (or framework equivalent)
-  after each test:   context.close()
-  never:             clear cookies/storage on a reused context and call it clean
+before each test:  browser.new_context()
+after each test:   context.close()
 ```
 
-**Why:** cookie- and storage-clearing routines only reach what they explicitly enumerate. Service workers, cache storage, IndexedDB, open native dialogs, and in-flight download state routinely fall outside that enumeration and persist silently between tests. A leaky clearing mechanism doesn't just cause occasional flakiness — it undermines the signal `dom_state_diff_from_baseline` exists to produce, and `infra_triage_matrix.md`'s rule ordering (state-leakage checked *before* timing) depends on that signal being trustworthy. If the field can be wrong, the whole ordering rationale collapses.
+That is Playwright's API, hard-coded into a document that governs every repo. **Selenium has no
+`new_context()`.** Its nearest honest equivalent is a fresh WebDriver process with a fresh
+`--user-data-dir`; `delete_all_cookies()` plus a `localStorage.clear()` is precisely the in-place
+clearing this rule forbids, and a new session against a reused browser process still shares the
+profile, the cache, and any registered service worker. The rule survives; the mechanism was one
+framework's, and one framework's price:
 
-**Cost tradeoff, stated explicitly:** full teardown/rebuild costs more wall-clock time per test than in-place clearing. This is accepted deliberately — the alternative degrades a load-bearing signal in the triage system, and a flake-detection mechanism that can't trust its own inputs is worse than a slower one that can.
+| Mechanism | Cost per test | Genuinely clean? |
+|---|---|---|
+| Playwright `browser.new_context()` | milliseconds | Yes |
+| Selenium: clear cookies + storage in place | ~0 | **No** — forbidden as sole mechanism |
+| Selenium: new session, reused browser process | tens of ms | **No** — shares profile, cache, service workers |
+| Selenium: new driver process + fresh `--user-data-dir` | ~1–3 **seconds** | Yes |
 
-### 1.3 What "baseline" is, and when it's captured
-Baseline is a canonical empty state, defined once:
+§1.2 previously stated the cost tradeoff as "accepted deliberately." That acceptance was priced for
+milliseconds. At seconds per test it is a different decision — a 500-test browser suite spends
+minutes on browser startup alone — and it interacts directly with the wall-clock ceiling
+(`budget_and_escalation_policy.md` §3) and the concurrency derivation
+(`core_adapter_boundary.md` §3.6). Pretending the two cost the same is how a design accepts a
+tradeoff it never actually made.
 
-- Zero cookies
-- Empty `localStorage` / `sessionStorage`
-- No open modals or native dialogs
-- Default configured viewport
-- No pending network requests
+### 1.3 Reset strategies are declared, not assumed
 
-It is captured **immediately after context creation, before the test's first action.** `dom_state_diff_from_baseline` is the comparison of actual state at that t=0 moment against this canonical empty state — never against the previous test's end state, which (per §1.2) shouldn't exist anyway since contexts aren't reused.
+The mechanism is therefore adapter data: `ResetStrategy` in `agent_interface_contracts.py`, named
+per tier by `TestTier.reset_strategy_id`. A strategy declares what it recreates, what the host must
+give it (`ResetResource`), what it costs, and what its clean-state check actually inspects.
 
-### 1.4 What's actually compared
+`typical_cost_ms` is load-bearing rather than documentation. Core feeds it into the wall-clock
+estimate and the concurrency ceiling, so a two-second reset is a budget fact the pipeline reasons
+with rather than a footnote someone reads later.
+
+`requires` is what makes the isolation unit derivable rather than a judgment call — see
+`execution_isolation.md` §5, which is the other half of this decision.
+
+### 1.4 What "baseline" is, and when it's captured
+
+Baseline is the **declared clean state** — which, once hydration exists, means the declared
+*post-hydration* state, not canonical emptiness (`core_adapter_boundary.md` §4). It is captured
+**immediately after instance construction and hydration, before the test's first action**. The
+clean-state signal is the comparison of actual state at that t=0 moment against the declaration —
+never against the previous test's end state, which per §1.2 should not exist.
+
+The reference browser adapter's checks, which is what this table always was:
+
 | Check | Flags as diff if |
 |---|---|
 | Cookie count/keys | Nonzero |
@@ -54,7 +94,38 @@ It is captured **immediately after context creation, before the test's first act
 | Active WebSocket / pending fetch count | Nonzero |
 | Viewport dimensions | Differ from configured default |
 
-Any single nonzero mismatch sets `dom_state_diff_from_baseline = True`.
+A backend adapter's list is different in every row and identical in shape: open connections, temp
+files, registered signal handlers, module-registry delta. Any single mismatch sets the strategy's
+clean-state signal `True`, which is what `dom_state_diff_from_baseline` — and its successors in
+`FailureSignature.signals` — report.
+
+### 1.5 Verifying that the reset actually worked
+
+§1.2 asserted that full teardown produces a clean slate. Nothing checked. That is a load-bearing
+assertion about a mechanism, in a design whose stated rule is not to assert what has not been run —
+and the evidence needed to check it already exists, unused for this purpose.
+
+**A clean-state diff at t=0 means the reset did not work.** Per-test, that is a state-leakage
+failure and `infra_triage_matrix.md` rule 1 already routes it. In *aggregate over a strategy*, it is
+something else: evidence about the mechanism rather than about any one test. A strategy whose
+diff rate exceeds `GovernancePolicy.max_baseline_diff_rate` is not isolating, whatever it claims.
+
+Core therefore audits each strategy against its own diff rate and, above the threshold, **demotes
+the tier to the strictest strategy the repo declares**, recording the demotion in
+`RunManifest.policy_adjustments`.
+
+The asymmetry is deliberate:
+
+- **Tightening is automatic.** Moving to a stricter reset costs wall-clock time and nothing else.
+- **Loosening is a human gate.** Moving to a cheaper reset trades correctness for speed, and it is
+  self-rewarding for whoever proposes it (`core_adapter_boundary.md` §3.1) — so it is never
+  something the pipeline does to itself.
+
+This is the same shape as the cumulative conflict counter driving shared-file promotion (design doc
+§4.6): evidence accumulates against a threshold, and crossing it changes governance rather than
+being noted and forgotten. It also closes the loophole that would otherwise open the moment resets
+became declarable — an adapter could declare a cheap reset, gain a fast suite, and push the cost
+onto triage quality where it would look like flakiness rather than like a declaration.
 
 ---
 
@@ -82,7 +153,106 @@ Where a fake needs to return structured data — not just satisfy a call signatu
 §2 makes a mock's *shape* honest: a fake can't silently accept a call the real dependency wouldn't. It says nothing about a test's *assertions*. A test that calls the real code with the real shape and then asserts `result >= expected` where the spec means `result > expected` type-checks perfectly and passes forever, on both the correct implementation and a subtly wrong one. Weakening an assertion is a different attack from mocking away behavior, and it needs a different guard.
 
 ### 3.2 The gate
-`mutation.diff_scoped` (design doc §9.1): run `mutmut` per task branch, scoped to files the task actually changed — never the whole repo. A pure, hermetic unit suite (this project's stated target environment) makes this affordable at diff scope where it would be too slow to run on every commit at repo scope. A surviving mutant (a code mutation that doesn't make any test fail) on a changed file is a blocking Verification-phase finding: it means some line in the diff has no test that actually exercises its behavior, only its shape.
+`mutation.diff_scoped` (design doc §9.1): run `mutmut` per task branch, scoped to the lines the task actually changed — never the whole repo, and (per §3.4) never the whole of a file the task only partly touched. A surviving mutant — a code mutation that makes no test fail — on an in-scope line is a blocking Verification-phase finding: some line in the diff has a test that exercises its shape but not its behavior.
+
+*This section originally scoped the gate to "files the task changed" and justified its affordability with "a pure, hermetic unit suite (this project's stated target environment)." Both were too loose to implement against, and the second silently assumed the whole repo was hermetic. §3.4 onward is the predicate that replaces them (D5 in `implementation_roadmap.md`).*
 
 ### 3.3 Why diff-scoped, not repo-wide
 Scoping to the diff is what makes this a per-task gate rather than a nightly job — it runs inside the same Verification phase as `tests.baseline_delta` and reports on the same timescale a Task Dev agent can act on. Repo-wide mutation testing on every change would reintroduce the runtime cost this design otherwise avoids by keeping the Task Author/Task Dev split and Protocol fakes cheap.
+
+### 3.4 The scope predicate
+
+The unit of scope is the **changed line**, not the changed file. A task that edits line 12 of a
+500-line module has not made lines 13–500 its responsibility, and blocking its PR on a surviving
+mutant at line 400 would be exactly the "widening the PR" the rest of this design forbids — it
+reports someone else's untested code as this task's failure. Scope is the union of the diff's added
+and modified lines in the task's write scope, excluding `tests/**` (mutating a test asserts nothing,
+and it is Test Author's scope anyway).
+
+Within that set, each line is classified against the **hermetic** tiers declared in
+`RepoDeclaration.test_tiers` — `hermetic` being a verified claim, not a trusted one
+(`core_adapter_boundary.md` §3.1):
+
+| Line is | Verdict | Handled by |
+|---|---|---|
+| Covered by at least one hermetic tier | **In scope.** A surviving mutant is blocking | `mutation.diff_scoped` |
+| Covered only by non-hermetic tiers | Out of mutation scope, **not unexamined** | §3.6 |
+| Covered by no tier at all | Never reaches mutation | `tests.diff_covered` (§3.5) |
+
+### 3.5 Coverage first, mutation second
+
+A line with no test coverage produces a surviving mutant *by construction* — nothing fails because
+nothing runs it. So a naive predicate makes mutation testing double as a coverage check, and pays
+for the privilege at (mutants × full suite runtime) to learn what one coverage run reports in
+seconds. On a diff touching untested code that is the dominant cost in the Verification phase, and
+it charges it against the Budget Enforcer's ceiling (`budget_and_escalation_policy.md` §4) for no
+additional signal.
+
+A cheap gate therefore runs first:
+
+> **`tests.diff_covered`** — every in-scope changed line is covered by at least one tier. Blocking.
+> Measured against hermetic tiers for the mutation decision, and against all tiers for the
+> coverage decision, so the two questions do not get conflated.
+
+Only lines that survive it enter the mutation run, where mutation answers the question it is
+actually good at: *the covering test exists — is it real, or is it a tautology?* This ordering is
+the same deterministic-before-expensive discipline as `infra_triage_matrix.md`'s rules-before-LLM:
+run the cheap decisive check first and hand the expensive one only the residue.
+
+### 3.6 Lines covered only by a non-hermetic tier
+
+This is where the gate would fail open, and it is not a corner case — it is the common case for the
+kind of repo this pipeline exists to govern. Browser-driven DOM extraction logic is frequently
+exercised *only* by browser tests, which means the code the project cares most about would be the
+code no mutation gate ever touches, silently.
+
+So "out of mutation scope" must not resolve to "passed." The gate returns
+`GateApplicability.NOT_APPLICABLE` for those lines with the reason attached, which surfaces in the
+PR as *not applicable — no hermetic coverage for these lines*, never as a green check. What happens
+next is `GovernancePolicy`'s call, not the repo's:
+
+- **Refuse** — the lines must gain hermetic coverage before the task can merge. Strong, and it
+  applies steady pressure toward testable decomposition.
+- **Degrade and record** — the task merges with the shortfall named in the PR and recorded in
+  `RunManifest.policy_adjustments`.
+
+Both are visible. Neither is a silent pass.
+
+### 3.7 A repo with no hermetic tier at all
+
+If `RepoDeclaration.test_tiers` contains no hermetic tier, every changed line falls into §3.6 and
+the gate applies nowhere. Rather than inventing an escape for this, it reuses the machinery that
+already exists: `mutation.diff_scoped` is simply an **absent capability**, and
+`GovernancePolicy.absent_capability_policy` decides between refusing the run and degrading it
+visibly (`core_adapter_boundary.md` §3.5).
+
+That makes one contract combination incoherent, and Core rejects it at validation rather than
+discovering it in Phase 6: **declaring `Capability.MUTATION_TESTING` while declaring no hermetic
+tier** is a contradiction, and yields `HaltReason.ADAPTER_INVALID`. A repo may honestly have no
+hermetic tier; it may not claim a capability its own declaration rules out.
+
+### 3.8 Equivalent mutants, timeouts, and the cost ceiling
+
+Three ways this gate misbehaves if left unspecified:
+
+**Equivalent mutants.** Some mutations are semantically identical to the original — `x * 1` for
+`x`, a reordering with no observable effect. No test can kill them, so a blocking finding on one is
+both unfair and unfixable, and an agent told to fix it will burn its whole loop ceiling against a
+target that does not exist. These need the same treatment as a known flaky test: an
+**equivalent-mutant registry**, structured exactly like the Flake Registry, where an entry is
+**signed by a human**. An agent may propose an equivalence; it may never record one — this is a
+test-suppression decision, and design doc §9.3 already puts every one of those behind a person.
+
+**Timeouts.** A mutant that makes the suite hang is counted as **killed**, not surviving. The
+mutation changed observable behavior; that the observation is "it never terminates" does not make
+the test weak.
+
+**Cost.** Mutation cost is (mutants × suite runtime), and a large diff multiplies both.
+`GovernancePolicy` therefore carries a **max-mutants-per-task ceiling**. Exceeding it is not handled
+by silently sampling — that would report a partial run as a full one, which is the failure this
+whole document exists to prevent. It halts the gate and reports the overflow, and it should be read
+as a **task-size signal**: a diff generating more mutants than the ceiling is a diff the Task
+Decomposer drew too large. That is the same signal as the additive-intent threshold
+(`structural_change_runbook.md` §4) and task granularity (design doc §12) — three ceilings that are
+three views of one knob, which is why D13 records that resolving any of them alone will produce
+numbers that contradict the other two.

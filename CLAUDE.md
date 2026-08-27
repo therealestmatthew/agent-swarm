@@ -27,14 +27,16 @@ changes.
 |---|---|
 | `plan/agentic-sdlc-design-v0.5.md` | The orchestration blueprint — principles, agent roster, the eight phases. **Read first.** |
 | `plan/agent_interface_contracts.py` | Every schema exchanged between agents. Single source of truth. |
+| `plan/implementation_roadmap.md` | Design → build sequence: backlog critique, cross-file defects found, and the six stages. **Read second.** |
+| `plan/core_adapter_boundary.md` | The universal Core vs. the per-repo Adapter Layer — the `RepoDeclaration`/`GovernancePolicy` contract split and its governance, capability negotiation, hydration, credentials |
 | `plan/infra_triage_matrix.md` | The deterministic failure-classification rules engine |
 | `plan/test_harness_architecture.md` | Baseline capture, Protocol-fake test double standards, diff-scoped mutation testing |
 | `plan/context_retrieval_strategy.md` | Context Gatherer search heuristics and token budgets |
 | `plan/budget_and_escalation_policy.md` | Loop ceilings, the escalation ladder, cost ceilings |
 | `plan/structural_change_runbook.md` | Human-gated SOP for non-additive shared-file changes |
-| `plan/execution_isolation.md` | Why disjoint write ownership alone doesn't isolate reads; one worktree per task |
+| `plan/execution_isolation.md` | Why disjoint write ownership alone doesn't isolate reads; one worktree per task; shared-file materialization (§7) |
 | `plan/calibration_and_measurement.md` | Verdict ledger, Shadow Mode promotion criteria, agent-spec versioning |
-| `plan/agentic_sdlc_glossary.csv` | Term definitions used across the set — 58 terms, with Category and Tags columns |
+| `plan/agentic_sdlc_glossary.csv` | Term definitions used across the set — 64 terms, with Category and Tags columns |
 | `plan/versions/` | Superseded design versions (v0.1–v0.4) and `REGRESSION.md`, the analysis behind v0.5 |
 | `archive/glass-box/` | The hackathon project this grew out of. Frozen — see its README. |
 | `AGENTIC_ARCHITECTURE_MANIFEST.md` | Every tracked file in the repo, one row each — description, summary, purpose. A snapshot: re-check it against `git ls-files` after any file is added or removed. |
@@ -102,11 +104,21 @@ Tracked in `plan/agentic-sdlc-design-v0.5.md` §12, and live:
   promotion data.
 - **Structural Change SOP cadence** — repeated triggering against one file may itself be a
   governance signal.
-- **Modular file versioning** — now 7 companion files, not five. Do they version independently
+- **Modular file versioning** — now 8 companion files, not five. Do they version independently
   of the blueprint?
-- **Five more, carried forward from v0.1 and dropped without resolution at v0.2** (task granularity,
-  concurrency ceiling, Plan Writer dialogue depth, run manifest location, secrets posture) — see
-  §12 for the full restatement of each.
+- **Four more, carried forward from v0.1 and dropped without resolution at v0.2** (task granularity,
+  Plan Writer dialogue depth, run manifest location, secrets posture) — see §12 for the full
+  restatement of each. The fifth, **concurrency ceiling**, is answered in
+  `plan/core_adapter_boundary.md` §3.6: a repo declares its per-isolation-unit resource footprint,
+  Core clamps it against policy and divides, then takes the minimum against the API rate limit and
+  review throughput — so which constraint binds is a fact about a run rather than a discovery when
+  the machine starts swapping.
+
+`plan/implementation_roadmap.md` §3 carries the live register of findings against this set —
+including the ones already resolved into it (the Core/Adapter split, the declaration/policy
+contract, shared-file materialization, the intent-outcome schema, the budget enforcement split) and
+the ones still open, with §8.3 naming which file each will change when it is decided. Read it before
+opening a new question against the design, in case it is already recorded there.
 
 Both items previously tracked here as drift were resolved in v0.5: the stale `v0.3.md` references in
 `infra_triage_matrix.md` and `structural_change_runbook.md` now point at `v0.5.md`, and

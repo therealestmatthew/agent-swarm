@@ -37,6 +37,7 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 | File | Owns |
 |---|---|
 | `agent_interface_contracts.py` | Every schema in the system — additive intents, `InvariantScope`, `FailureSignature`, `GateResult` — single source of truth |
+| `core_adapter_boundary.md` | **New.** What the universal Core owns vs. what a target repo declares for itself — the `RepoDeclaration`/`GovernancePolicy` adapter contract, capability negotiation, hydration, and credential injection |
 | `test_harness_architecture.md` | Baseline capture mechanics for `dom_state_diff_from_baseline`; Protocol-fake test double standards; diff-scoped mutation testing (§3) |
 | `execution_isolation.md` | **New.** One git worktree per task — why disjoint write ownership alone doesn't isolate reads |
 | `calibration_and_measurement.md` | **New.** Verdict ledger, Shadow Mode promotion thresholds, agent-spec versioning |
@@ -55,7 +56,7 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 4. **Disjoint write ownership.** Within the parallel swarm, each Task Dev agent owns a mutually exclusive set of files (`src/**` scoped per task). Explicit carve-out for shared files (§4) and an explicit escape hatch for changes too large to be additive (`structural_change_runbook.md`).
 5. **Human gates at irreversible or judgment-heavy points.** Plan Approval, Contract Freeze, QA→Prod promotion, shared-file registration/promotion, invariant deprecation, and structural architecture changes all require human sign-off.
 6. **Model escalation on repeated failure.** Agents that fail review repeatedly are re-run on a stronger model rather than retried indefinitely (exact ladder: `budget_and_escalation_policy.md`).
-7. **Budget and circuit-breaking.** A standing Budget Accountant agent monitors spend across all agent activity and can trigger a ceiling halt; the same philosophy governs individual loop-back edges (exact thresholds: `budget_and_escalation_policy.md`).
+7. **Budget and circuit-breaking.** Enforcement and forecasting are separated. A **deterministic Budget Enforcer** checks every phase transition against `GovernancePolicy.budget_ceilings` and refuses the transition on breach; a **Budget Accountant** agent forecasts spend trend advisorily and gates nothing. A circuit breaker that is itself an LLM can be slow, wrong, or unavailable at exactly the moment a runaway swarm is burning fastest — so nothing that must fire is left to judgment. The same philosophy governs individual loop-back edges (exact thresholds and the enforcement point: `budget_and_escalation_policy.md`).
 8. **Merge conflicts are decomposition errors.** A merge conflict is evidence the Task Decomposer drew task boundaries incorrectly — never punted to the PR Reviewer. Repeated conflicts on the same seam escalate as a boundary failure, not an infinite retry loop.
 9. **Shared state is governed, not merged.** Files that are legitimately shared across tasks are modified only through a closed vocabulary of typed, additive operations applied by a deterministic service (§4; schemas in `agent_interface_contracts.py`).
 10. **Deterministic classification before LLM judgment.** Wherever a failure or event can be classified from structured signals alone, it is. An LLM is only invoked for the residue that doesn't cleanly match a deterministic rule. Governs both the Shared-File Intent Service (§4) and failure triage (§6, `infra_triage_matrix.md`).
@@ -89,9 +90,10 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 | Security Reviewer (diff-time) | Validator | Diff-time security pass |
 | Log Monitor | Utility | Always-on observation in production |
 | Error Analyzer | Validator | Pattern-matches log findings; triggers rollback initialization on critical findings |
-| Budget Accountant | Utility | Monitors spend across all agents; ceiling-halt circuit breaker (`budget_and_escalation_policy.md`) |
+| Budget Enforcer | Deterministic | Middleware in the dispatch path; checks each transition against `GovernancePolicy.budget_ceilings` and refuses on breach. Never an LLM (`budget_and_escalation_policy.md` §4) |
+| Budget Accountant | Utility (advisory) | Forecasts spend trend across all agents and raises advisory findings; **gates nothing** — separated from enforcement so a slow or wrong forecast cannot fail open |
 
-Every Validator agent returns a `GateResult` (`agent_interface_contracts.py`) — a standardized pass/fail verdict with blocking vs. advisory findings and an evidence reference, so the Core Orchestrator can route on a consistent shape regardless of which Validator produced it.
+Every Validator agent returns a `GateResult` (`agent_interface_contracts.py`) — a standardized verdict with blocking vs. advisory findings and an evidence reference, so the Core Orchestrator can route on a consistent shape regardless of which Validator produced it. A verdict carries an **applicability** alongside its pass/fail, because a gate that can be scoped out of a given diff needs a way to say "I did not run" that is neither a green check nor a block on work it never examined.
 
 ---
 
@@ -106,7 +108,7 @@ Context Gatherer pulls targeted context into a separate context window (`context
 The Task Decomposer produces disjoint tasks with interface maps and ownership assignments. A human Contract Freeze gate reviews the interface contracts — including any Protocol definitions for shared dependencies (`test_harness_architecture.md` §2.3) and any anticipated shared-file changes — and flags tasks that need the Structural Change SOP instead of the standard swarm flow. The Test Author then writes failing tests (`tests/**` only) ahead of any implementation.
 
 ### Phase 4 — Parallel Swarm & Shared-File Governance
-Task Dev agents work disjoint `src/**` slices in parallel. Code Reviewer runs in shadow mode on each branch, escalating to a stronger model after repeated failed reviews (bounded, §7). Any change to a registered shared file is emitted as a typed intent (§4), applied synchronously before the agent continues. A task that turns out to need a structural, non-additive change exits the swarm via `structural_change_runbook.md`.
+Task Dev agents work disjoint `src/**` slices in parallel. Code Reviewer runs in shadow mode on each branch, escalating to a stronger model after repeated failed reviews (bounded, §7). Any change to a registered shared file is emitted as a typed intent (§4), applied by the Shared-File Intent Service and re-materialized into every live worktree before the agent continues (§4.7; mechanics in `execution_isolation.md` §7). A task that turns out to need a structural, non-additive change exits the swarm via `structural_change_runbook.md`.
 
 ### Phase 5 — Integration (Clean Merge)
 The Integrator merges completed branches. Because shared-file changes were resolved in Phase 4, this phase only resolves genuine git-level conflicts on disjoint code. A conflict is treated per Principle 8: bounded retries, then escalation to the Decomposer as a boundary failure. The Integrator also increments the lifetime conflict counter for any ungoverned file involved (§4.6).
@@ -138,6 +140,20 @@ A colliding intent is rejected back to the submitting agent with the blocking co
 
 ### 4.6 Self-expanding governance
 Promotion is driven by a **cumulative, lifetime conflict counter per file** — not a per-phase count. Every git-level conflict the Integrator resolves on an ungoverned file increments that file's counter; three lifetime conflicts (`>2`) queue it for promotion. The counter decays by 1 per clean integration phase, floored at 0 — distinguishing chronic friction from an isolated heavy refactor that happened to touch the file three times in one phase. **Promotion still requires human confirmation**, identical to initial registration — the counter is evidence for a proposal, not an automatic action.
+
+### 4.7 Materialization
+
+A registered shared file is never tracked in a task's worktree. The Intent Service is the sole
+writer of a canonical `shared/` branch; applied content is re-materialized into every live
+worktree's working directory, where the interpreter sees it and git does not; the Integrator
+fast-forwards that branch as the final commit. This is what "applied synchronously" in §4.2 means
+concretely, and it is why §9.1's `merge.no_conflict` gate is honest rather than quietly exempted for
+these files — task branches carry no shared-file changes to conflict over.
+
+Because the shared-file content is then absent from every task's diff, Core synthesizes a
+per-PR **shared-file delta view** from the intent log, attributing each hunk to the intent and the
+task that produced it. Full mechanics, the restated read-view guarantee, and the constraints on
+intent transport: `execution_isolation.md` §7.
 
 ---
 
@@ -177,8 +193,9 @@ isolates the *writes* within the parallel swarm. It does nothing for the *reads*
 Task Dev agent runs the suite, the interpreter imports the whole package, including a file another
 agent is halfway through rewriting. Verification is repo-scoped even when editing is file-scoped.
 
-Full mechanics — one worktree per task, lifecycle, and when to add containers — live in
-`execution_isolation.md`.
+Full mechanics live in `execution_isolation.md`: one worktree per task and its lifecycle (§1–4),
+the isolation unit **derived** from a repo's declared reset-resource needs rather than discovered
+when two tasks collide (§5), and shared-file materialization (§7).
 
 ---
 
@@ -196,11 +213,12 @@ one place instead of reconstructed from scattered phase prose.
 |---|---|---|---|
 | `ownership.disjoint` | Contract Freeze | Yes | Asserted before the swarm spawns |
 | `intent.no_collision` | Parallel Swarm | Yes | Smart Mutex Rejection (§4.5); rejection returns blocking context, not a halt |
-| `mutation.diff_scoped` | Verification | Yes | Surviving mutants on changed files only — see `test_harness_architecture.md` §3 |
+| `tests.diff_covered` | Verification | Yes | Every changed line covered by at least one tier; runs **before** mutation, since an uncovered line's mutant survives by construction (`test_harness_architecture.md` §3.5) |
+| `mutation.diff_scoped` | Verification | Yes, where applicable | Surviving mutants on changed **lines** covered by a **hermetic** tier — see `test_harness_architecture.md` §3.4. Lines covered only non-hermetically return `NOT_APPLICABLE`, never a green check (§3.6) |
 | `merge.no_conflict` | Integration | Yes | The No-Conflict Gate (Agent Roster, Integrator row); a conflict here is a Boundary Failure (Principle 8), never resolved in place |
 | `tests.baseline_delta` | Verification | Yes | Baseline Guard; the anti-deletion check (`agentic_sdlc_glossary.csv`, Baseline Delta) |
 | `triage.deterministic` | Verification | Yes (routing only) | `infra_triage_matrix.md`'s rules engine; only non-matches reach the Test Investigator |
-| `budget.within_ceiling` | Every transition | Yes | Budget Accountant; halts the run, never silently |
+| `budget.within_ceiling` | Every transition | Yes | Budget **Enforcer** — deterministic middleware, not the Accountant agent; halts the run, never silently |
 
 ### 9.2 Agent gates
 
@@ -238,7 +256,8 @@ the cheapest path to green is not always the honest one.
 | Attack | Guard |
 |---|---|
 | Delete or skip a failing test | `tests.baseline_delta` (§9.1) — any reduction in test count, skip count, or coverage is a blocking gate failure, not a review comment |
-| Weaken an assertion (`>` quietly becomes `>=`) | `mutation.diff_scoped` (§9.1) — a test that still passes under mutation is theater |
+| Declare a mutant "equivalent" to retire a blocking finding | The equivalent-mutant registry is human-signed (`test_harness_architecture.md` §3.8); an agent may propose an equivalence, never record one |
+| Weaken an assertion (`>` quietly becomes `>=`) | `mutation.diff_scoped` (§9.1) — a test that still passes under mutation is theater. Scoped per line to hermetic coverage, so it cannot be evaded by moving code behind a non-hermetic tier: that path returns `NOT_APPLICABLE` and takes the policy branch, not a pass (`test_harness_architecture.md` §3.6) |
 | Write a test the implementation trivially satisfies | Test Author has a disjoint write scope from Task Dev (Principle 12) |
 | Mock away the behavior under test | Protocol fakes checked by strict mypy (`test_harness_architecture.md` §2); an `Any`-shaped mock is invisible to the type checker |
 | Silence a type error to reach green | CI Cleanup's diff-shape check forbids `cast(Any, ...)`, `# type: ignore`, and bare `except: pass` |
@@ -266,7 +285,7 @@ Verdict ledger schema, promotion thresholds, and agent-spec versioning: `calibra
 - **Enterprise invariant arbitration.** If two repos' Context Gatherers generate opposing signals about whether an `enterprise_wide` invariant still holds, who arbitrates — a designated owner per enterprise invariant, or does every conflict go to the same human review queue as deprecation? *(Carried forward from v0.3 — still unresolved.)*
 - **Decay tuning.** The §4.6 decay rule (−1 per clean integration phase, floored at 0) is a reasonable starting point but untested — worth revisiting once there's real promotion data on false-positive/false-negative rates.
 - **Structural Change SOP cadence.** Repeated triggering of `structural_change_runbook.md` against the same file or subsystem may itself be a signal worth feeding back into governance — a file that keeps needing structural intervention might need a heavier redesign rather than another round of the SOP.
-- **Modular file versioning.** Now that mechanics live in 7 companion files, do they carry
+- **Modular file versioning.** Now that mechanics live in 8 companion files, do they carry
   independent version numbers, or do they always track the core document's version? Matters once one
   companion file needs to change without the others. *(The question grows more pressing this version:
   two companions were just added.)*
@@ -276,8 +295,12 @@ tracked in any subsequent Open Questions section:**
 
 - **Task granularity.** What is one task — a file, a module, a vertical slice? Sets swarm width and
   conflict rate; v0.1 called this "the parameter most likely to be wrong on the first attempt."
-- **Concurrency ceiling.** Set by API rate limits, review throughput, or machine resources —
-  whichever binds first should be explicit rather than discovered at runtime.
+- ~~**Concurrency ceiling.**~~ *Resolved — see `core_adapter_boundary.md` §3.6.* A repo declares
+  its per-isolation-unit resource footprint (policy-bounded, since understating it buys concurrency
+  at co-tenants' expense); Core clamps, divides, and takes the minimum against
+  `GovernancePolicy.concurrency_cap`, API rate limits, and review throughput. Which constraint binds
+  is now explicit per run rather than discovered at runtime, which is exactly what this question
+  asked for.
 - **Plan Writer dialogue depth.** How much user interaction before a plan counts as "drafted"? Too
   little and the review loop does work the human could have done in one sentence.
 - **Run manifest location.** Repo-local (e.g. `.runs/`) or out of tree? In-tree gives free versioning
