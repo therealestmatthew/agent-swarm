@@ -28,16 +28,16 @@ generated: true
 
 | Doc type | Count |
 |---|---|
-| companion | 7 |
 | blueprint | 6 |
+| companion | 6 |
 | guide | 2 |
+| runbook | 2 |
 | payload-spec | 2 |
 | review-findings | 2 |
 | manifest | 1 |
 | schema | 1 |
 | design-spec | 1 |
 | agent-contracts | 1 |
-| runbook | 1 |
 | demo-script | 1 |
 | review-prompt | 1 |
 | archive-notice | 1 |
@@ -68,7 +68,7 @@ generated: true
 | `plan/context_retrieval_strategy.md` | Context Retrieval Strategy | live | agentic-sdlc | companion |  |  |
 | `plan/execution_isolation.md` | Execution Isolation | live | agentic-sdlc | companion |  |  |
 | `plan/infra_triage_matrix.md` | Infrastructure Triage Matrix | live | agentic-sdlc | companion |  |  |
-| `plan/structural_change_runbook.md` | Structural Change Runbook | live | agentic-sdlc | companion |  |  |
+| `plan/structural_change_runbook.md` | Structural Change Runbook | live | agentic-sdlc | runbook |  |  |
 | `plan/test_harness_architecture.md` | Test Harness Architecture | live | agentic-sdlc | companion |  |  |
 | `plan/versions/REGRESSION.md` | v0.1 → v0.4 Regression Analysis | live | agentic-sdlc | analysis |  |  |
 | `plan/versions/agentic-sdlc-design-v0.1.md` | Agentic SDLC Orchestration — Design Proposal | superseded | agentic-sdlc | blueprint | 0.1 | plan/versions/agentic-sdlc-design-v0.2.md |

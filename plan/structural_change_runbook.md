@@ -2,7 +2,7 @@
 title: Structural Change Runbook
 status: live
 part_of: agentic-sdlc
-doc_type: companion
+doc_type: runbook
 ---
 
 # Structural Change Runbook
