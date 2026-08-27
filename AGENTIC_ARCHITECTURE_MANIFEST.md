@@ -27,6 +27,22 @@ same discipline `plan/versions/REGRESSION.md` exists to enforce for the design c
 | `CLAUDE.md` | Instructions file for an AI agent working in this repo | States the project's goal, the seven design principles, working agreements (schemas live in one place, thresholds stay labelled illustrative), open questions, and a file-location table | Onboards a future agent (or person) cold — the one file that must never drift out of sync with what's actually true of the repo |
 | `.gitignore` | Git ignore rules | Excludes `__pycache__/`, build artifacts, and `archive/glass-box/`'s regenerable run output and demo parachute | Keeps generated/derived files out of version control without needing per-directory rules |
 | `AGENTIC_ARCHITECTURE_MANIFEST.md` | This file | Full file-by-file inventory of the repository | The single index a newcomer (or an agent with no session memory) reads to know what exists before reading anything else |
+| `FRONTMATTER_MANIFEST.md` | Generated Markdown, front matter present | Every tracked doc's `title`/`status`/`part_of`/`doc_type`/`version` in one table, plus per-status/per-type summary counts | Machine-checkable proof every doc has valid front matter — regenerated on every commit, never hand-edited |
+
+---
+
+## `scripts/` and `.githooks/` — Repo Tooling
+
+Keeps this manifest, `FRONTMATTER_MANIFEST.md`, and every count-bearing sentence in the live docs
+honest without relying on anyone remembering to update them by hand.
+
+| File | Description | Summary | Purpose |
+|---|---|---|---|
+| `scripts/frontmatter.py` | Python module, stdlib only | Minimal front-matter parser/serializer for this repo's actual schema — not a general YAML library, the same "contract is the file format" tradeoff `archive/glass-box/glassbox/events.py` made | Shared by the other two scripts so front matter is read and written exactly one way |
+| `scripts/check_frontmatter.py` | Python CLI | Backfills missing front matter (title from the H1, status/part_of/doc_type from a curated table plus path-based rules, `superseded_by` recomputed from the actual version chain every run), then writes `FRONTMATTER_MANIFEST.md` | Guarantees every doc is self-describing; fails loudly on a doc with no H1 rather than guessing a title |
+| `scripts/sync_counts.py` | Python CLI | A registry of every live count assertion in `plan/` and root docs (glossary terms/categories, tracked file count, principle/section/agent-roster counts, companion file count) and how to recompute each one, with a regex per place it's asserted in prose | Deterministically rewrites a drifted number in place — this is what caught the manifest's own "48 tracked files" going stale the moment it was committed |
+| `scripts/install-hooks.sh` | Bash script | Sets `core.hooksPath` to `.githooks` and makes the hook executable | One command to activate the hook after cloning, since `.git/hooks/` isn't tracked and can't ship with the repo directly |
+| `.githooks/pre-commit` | Bash hook, tracked | Runs both Python scripts on every commit across the whole repo, re-stages whatever they fix, aborts the commit with a specific message if either hits something no rule can fix deterministically | The enforcement point — without it, both scripts are just tools someone has to remember to run |
 
 ---
 
