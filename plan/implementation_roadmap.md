@@ -65,7 +65,7 @@ New items introduced by this roadmap, with the item they attach to:
 | ID | Item | Why it is missing-critical | Attaches to |
 |---|---|---|---|
 | R1 | Adapter contract: `RepoDeclaration` + `GovernancePolicy` | The declaration/policy pair that makes "any repo" checkable rather than aspirational, without letting the beneficiary set its own limits | New — Core |
-| R2 | Shared-file materialization model across worktrees | §4 and `execution_isolation.md` describe incompatible mechanics (D1) | Blocks backlog #1 |
+| R2 | Shared-file materialization model across worktrees | §4 and `execution_isolation.md` described incompatible mechanics (D1) — **resolved**; what remains is the precondition gate and the synthesized delta view | Blocks backlog #1 |
 | R3 | Core Orchestrator skeleton: state machine, event log, manifest persistence, dispatcher | The governor, absent from the backlog entirely | Subsumes backlog #8 |
 | R4 | Agent Spec format and registry | Supersedes "prompts" — prompt is 1 of 6 fields | Supersedes backlog #3 |
 | R5 | Test tiers + `mutation.diff_scoped` scope predicate | A blocking gate that is unsatisfiable on non-hermetic tiers (D5); now adapter-declared | Blocks backlog #5 |
@@ -93,7 +93,7 @@ design set is where they get fixed.
 
 | ID | Where | Defect | Severity |
 |---|---|---|---|
-| D1 | `v0.5` §4.2 vs. `execution_isolation.md` §6 | §4 says an intent is "applied synchronously before the agent continues." `execution_isolation.md` gives every Task Dev its own worktree with its own `HEAD`, and says "the Integrator's shared-file commit last." Both cannot be true. Either the service writes into every live worktree — destroying the stable read view §3 of that file promises — or the agent never sees its own applied intent and "synchronous" is a fiction whose collisions resurface at merge, which is precisely what §4 exists to prevent. **No materialization path is specified anywhere in the set.** Squarely Core, and still the top blocker. | **Load-bearing** |
+| D1 | `v0.5` §4.2 vs. `execution_isolation.md` §6; **resolved in this pass** | §4 applied an intent "synchronously before the agent continues" while §6 committed shared files last, with no materialization path specified anywhere. **Resolved as canonical branch + read-only overlay** (`execution_isolation.md` §7): the Intent Service is sole writer of a `shared/` branch; registered files are `skip-worktree` in every task index and outside every agent's write scope; applied content is re-materialized into live worktrees by atomic rename, so the interpreter sees it and git does not; the Integrator fast-forwards at the end. The read-view guarantee is restated precisely — a worktree is isolated from sibling *in-progress work*, not from *governed shared state*. The reviewability cost is paid by a synthesized per-PR shared-file delta view (§7.4). | Resolved |
 | D2 | `agent_interface_contracts.py` §4.2 intents | *Restated under the Core/Adapter model.* The defect is not that the vocabulary is web-shaped — it is that a **repo-specific vocabulary is sitting in the universal contracts file**, presented as the system's intent vocabulary rather than as one adapter's. `AddExport`/`AddRoute`/`AddProviderBinding` describe an Express/Nest/FastAPI codebase and describe nothing about a Selenium extraction tool, a data pipeline, or a CLI. **Resolution: they move out of Core into a reference web adapter**, and Core keeps only `IntentOpSpec` — the shape of a declaration. This is now a Stage 0 relocation, not a CPMI-access blocker. | **Load-bearing** |
 | D14 | New, arising from the adapter interface | An adapter contract naming test commands, bootstrap commands, and transformer entry points is **arbitrary code execution declared by the repo being operated on** — and if the same file also says which gates block, the repo grades itself. Two mechanisms close it. **Structural:** the contract splits into a repo-side `RepoDeclaration` (facts, self-punishing if false) and a control-plane `GovernancePolicy` (blocking gates, secret grants, ceilings, degradation policy — self-rewarding if false, so the beneficiary does not set them), with the discriminating test in `core_adapter_boundary.md` §3.1 and two intermediate classes for fields that are self-rewarding but genuinely repo-specific: policy-bounded (clamp and record) and verified (`TestTier.hermetic` is checked, not trusted). **Procedural:** the declaration is a registered shared file outside every agent's write scope, human-gated on change, and both artifacts are digest-pinned into the `RunManifest` (§3.4). | **Load-bearing** |
 | D15 | `infra_triage_matrix.md` | Written as *the* rules engine, with rules naming DOM state directly. A backend repo has no DOM. What is universal is the **evaluator** (ordered, first-match-wins, deliberate fallthrough to the LLM); the **rows are adapter data**. The file is reclassified from the engine to the reference rule set for a browser-automation adapter — which is what it has always actually been. | High |
@@ -125,7 +125,7 @@ Nothing here needs a running system, and everything downstream is blocked on it.
 | Task | Notes |
 |---|---|
 | **S0-1** Ratify the Core/Adapter boundary | `core_adapter_boundary.md`, including its three leak points: collision predicates (§2.1), telemetry schema (§2.2), triage rules as data (§2.3). Each is a decision, not a detail. |
-| **S0-2** Resolve D1: shared-file materialization | Core, and still the single decision that determines what the intent service *is*. Recommended shape: the service is the sole writer of a canonical shared-file branch; worktrees materialize its output read-only and never commit it; the Integrator's shared-file commit is a fast-forward of that branch, not a merge. Independent of any adapter. |
+| **S0-2** ~~Resolve D1~~ **Write up D1's resolution** | Decided: canonical `shared/` branch, `skip-worktree` overlay, atomic re-materialization, fast-forward at integration, synthesized delta view for reviewability (`execution_isolation.md` §7). Remaining Stage 0 work is the precondition gate — assert every registered shared file is `skip-worktree` and out of write scope *before* the swarm spawns — and the delta view's exact shape. |
 | **S0-3** Adapter contract v0 (**R1**) | `RepoDeclaration` + `GovernancePolicy` in `agent_interface_contracts.py` — the schema home, same as `RunManifest`. Two artifacts, two trust levels, two change cadences. Each versions **independently of the blueprint**, because target repos upgrade on their own cadence; this is the concrete case backlog #13 has to answer. |
 | **S0-4** Adapter governance (**R17**, closes D14) | Apply the §3.1 test field by field and settle the four classes (declaration, policy, policy-bounded, verified). Then the procedural rules: declaration is a registered shared file outside every agent's write scope; a change to it is a lightweight human gate (maintainer PR review), a change to policy is a governance gate; both digest-pinned. Precedence: hard conflicts refuse, bounded conflicts clamp-and-record. Write this before any code reads a contract. |
 | **S0-5** Capability declaration + absent-capability policy (**R18**) | Capabilities declared by the repo, never inferred; the *response* to an absent one (`refuse` or `degrade`-and-record) is policy, precisely so the repo that benefits from degrading is not the one that chooses it. No third option in which a capability is absent and nobody is told (Principle 7). |
@@ -178,12 +178,12 @@ obligation of *every* transformer, with no libcst or ts-morph behavior confoundi
 
 | Task | Notes |
 |---|---|
-| **S2-1** Intent service Core | The lock, serialization, the rejection protocol, the blocking-context envelope, conflict counters. Collision arbitration by exact match on adapter-declared `collision_keys` and nothing else (`core_adapter_boundary.md` §2.1). |
+| **S2-1** Intent service Core, **as a library with a lock** | The lock, serialization, `IntentOutcome`/`IntentRejection`, conflict counters, and the §7.2 materialization path. Collision arbitration by exact match on adapter-declared `collision_keys` and nothing else. **Transport stays out of Stage 2**: Stages 1–2 have no LLM agents to talk to a tool server, and a protocol dependency here would drag into the conformance kit. |
 | **S2-2** Transformer interface + dummy implementation (**#1**, reframed) | Interface: `structural_map(file)` and `apply(file, intent) -> (text, anchor)`. Success is **contract conformance**, not a working edit: idempotent under replay, formatter round-trip stable, all-or-nothing, loud rejection on unmapped structure. Those four are what the conformance kit asserts. |
 | **S2-3** Adapter conformance kit (**R10**) | The executable definition of the interface. Prose describes the boundary; the kit decides it. A Core change that breaks an adapter breaks the kit first. |
 | **S2-4** Second reference adapter (**R19**) | Deliberately unlike the first: different declared vocabulary, different signal set, container rather than worktree, hydration present rather than absent. **This is the falsification test.** One adapter cannot distinguish abstraction from indirection, and two similar adapters prove nothing that one proves. |
 | **S2-5** Triage evaluator over declared signals (resolves D8) | Core evaluator; rules as adapter data. Ship the reference rule set with the missing *passes-alone, fails-in-suite* rule added — as a reference row, not core code. |
-| **S2-6** Deterministic-core conformance suite | Golden cases for every evaluator path, every gate evaluation, every rejection shape. Includes cases asserting that ambiguous signatures fall through to the LLM **deliberately** rather than by omission. |
+| **S2-6** Deterministic-core conformance suite | Golden cases for every evaluator path, every gate evaluation, every rejection shape. Includes cases asserting that ambiguous signatures fall through to the LLM **deliberately** rather than by omission, and a concurrency case proving two simultaneous colliding submissions produce exactly one `applied` and one `rejection`. |
 
 **Exit criterion:** two dissimilar reference adapters pass the same unmodified conformance kit; a
 deliberately colliding pair of intents is rejected with usable blocking context under both; and
@@ -200,7 +200,8 @@ Start where the oracle is deterministic.
 
 | Task | Notes |
 |---|---|
-| **S3-1** CPMI adapter, hermetic tier only | Manifest, vocabulary, signals, triage rules, `libcst` transformer against the conformance kit. Browser tier deferred to Stage 4. |
+| **S3-1** CPMI adapter, hermetic tier only | Declaration, vocabulary, signals, triage rules, `libcst` transformer against the conformance kit. Browser tier deferred to Stage 4. |
+| **S3-1a** Intent transport (MCP server over the Stage 2 library) | The first stage with real LLM agents, so the first stage a transport has anything to talk to. **One shared long-lived server, not one per agent session** — the per-session default gives N writers and no mutex, and looks fine until two agents collide. Reads stay on disk per §7.2, so an outage blocks submissions without breaking test runs. |
 | **S3-2** Test Author agent spec + Baseline Guard + mutation gate | Ground truth is a test suite, not an opinion. Falsifiable on day one. |
 | **S3-3** Task Dev / Code Reviewer in Shadow Mode | Per `calibration_and_measurement.md` §2 — shadow is the default onboarding path. |
 | **S3-4** Verdict ledger | Stands up the measurement substrate every Stage 6 item is blocked on. |
@@ -286,8 +287,10 @@ under the gate as written.
 
 Raised one at a time, in the order they block work.
 
-1. **D1 — shared-file materialization.** Core, unresolved since v1.0, and the top blocker on Stage 2.
-   The recommendation in S0-2 is one of at least three viable shapes.
+1. ~~**D1 — shared-file materialization.**~~ **Decided:** canonical branch with a read-only
+   `skip-worktree` overlay, plus a synthesized delta view to pay back the reviewability cost. Intent
+   transport (MCP) is a separate, later, pluggable decision — it answers how an agent submits, not
+   what the interpreter imports.
 2. ~~**D14 — where the adapter contract lives and who owns it.**~~ **Decided:** split into a repo-side
    `RepoDeclaration` and a control-plane `GovernancePolicy`, with the self-punishing/self-rewarding
    test (`core_adapter_boundary.md` §3.1) deciding field placement. D17 resolved as a side effect.

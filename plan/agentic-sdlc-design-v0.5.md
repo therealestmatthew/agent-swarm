@@ -107,7 +107,7 @@ Context Gatherer pulls targeted context into a separate context window (`context
 The Task Decomposer produces disjoint tasks with interface maps and ownership assignments. A human Contract Freeze gate reviews the interface contracts — including any Protocol definitions for shared dependencies (`test_harness_architecture.md` §2.3) and any anticipated shared-file changes — and flags tasks that need the Structural Change SOP instead of the standard swarm flow. The Test Author then writes failing tests (`tests/**` only) ahead of any implementation.
 
 ### Phase 4 — Parallel Swarm & Shared-File Governance
-Task Dev agents work disjoint `src/**` slices in parallel. Code Reviewer runs in shadow mode on each branch, escalating to a stronger model after repeated failed reviews (bounded, §7). Any change to a registered shared file is emitted as a typed intent (§4), applied synchronously before the agent continues. A task that turns out to need a structural, non-additive change exits the swarm via `structural_change_runbook.md`.
+Task Dev agents work disjoint `src/**` slices in parallel. Code Reviewer runs in shadow mode on each branch, escalating to a stronger model after repeated failed reviews (bounded, §7). Any change to a registered shared file is emitted as a typed intent (§4), applied by the Shared-File Intent Service and re-materialized into every live worktree before the agent continues (§4.7; mechanics in `execution_isolation.md` §7). A task that turns out to need a structural, non-additive change exits the swarm via `structural_change_runbook.md`.
 
 ### Phase 5 — Integration (Clean Merge)
 The Integrator merges completed branches. Because shared-file changes were resolved in Phase 4, this phase only resolves genuine git-level conflicts on disjoint code. A conflict is treated per Principle 8: bounded retries, then escalation to the Decomposer as a boundary failure. The Integrator also increments the lifetime conflict counter for any ungoverned file involved (§4.6).
@@ -139,6 +139,20 @@ A colliding intent is rejected back to the submitting agent with the blocking co
 
 ### 4.6 Self-expanding governance
 Promotion is driven by a **cumulative, lifetime conflict counter per file** — not a per-phase count. Every git-level conflict the Integrator resolves on an ungoverned file increments that file's counter; three lifetime conflicts (`>2`) queue it for promotion. The counter decays by 1 per clean integration phase, floored at 0 — distinguishing chronic friction from an isolated heavy refactor that happened to touch the file three times in one phase. **Promotion still requires human confirmation**, identical to initial registration — the counter is evidence for a proposal, not an automatic action.
+
+### 4.7 Materialization
+
+A registered shared file is never tracked in a task's worktree. The Intent Service is the sole
+writer of a canonical `shared/` branch; applied content is re-materialized into every live
+worktree's working directory, where the interpreter sees it and git does not; the Integrator
+fast-forwards that branch as the final commit. This is what "applied synchronously" in §4.2 means
+concretely, and it is why §9.1's `merge.no_conflict` gate is honest rather than quietly exempted for
+these files — task branches carry no shared-file changes to conflict over.
+
+Because the shared-file content is then absent from every task's diff, Core synthesizes a
+per-PR **shared-file delta view** from the intent log, attributing each hunk to the intent and the
+task that produced it. Full mechanics, the restated read-view guarantee, and the constraints on
+intent transport: `execution_isolation.md` §7.
 
 ---
 

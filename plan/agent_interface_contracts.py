@@ -67,6 +67,52 @@ AdditiveIntent = AddExport | AddRoute | AddProviderBinding
 
 
 # ---------------------------------------------------------------------------
+# Intent Submission Outcome  (design doc §4.5; execution_isolation.md §7)
+# ---------------------------------------------------------------------------
+#
+# Smart Mutex Rejection has been named since v0.2 without a shape. This is it.
+#
+# SECURITY: `blocking_*` fields tell one agent what another agent claimed. They are structured
+# data and never free-form text, because prose on this path is an injection channel between
+# agents -- the receiving side renders these fields, it does not replay a message.
+
+
+class IntentRejection(BaseModel, frozen=True):
+    """Why an intent was refused, with enough context to resolve in one shot rather than
+    restarting a planning cycle (design doc §4.5)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reason: Literal[
+        "collision",         # another pending/applied intent matches on every collision key
+        "unmapped_anchor",   # no registered insertion point covers this -- a registration gap
+        "not_registered",    # the target file is not in GovernancePolicy.registered_shared_files
+        "op_not_declared",   # the op is absent from RepoDeclaration.intent_vocabulary
+        "structural",        # exceeds the additive vocabulary -- exits via the SOP
+    ]
+    blocking_task_id: str | None = None
+    blocking_op: str | None = None
+    blocking_keys: dict[str, str] = Field(default_factory=dict)
+
+
+class IntentOutcome(BaseModel, frozen=True):
+    """Returned to the submitting agent, synchronously, before it continues. `applied_anchor`
+    and `content_digest` are what the per-PR shared-file delta view is reconstructed from
+    (execution_isolation.md §7.4), so the intent log is the audit record for content that
+    appears in no task's diff."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    intent: AdditiveIntent
+    task_id: str
+    target_file: str
+    applied: bool
+    applied_anchor: str | None = None   # where in the structural map it landed
+    content_digest: str | None = None   # of the shared file after application
+    rejection: IntentRejection | None = None
+
+
+# ---------------------------------------------------------------------------
 # Run Manifest  (design doc §3; reinstated from v0.1 §3.1, absent v0.2-v0.4)
 # ---------------------------------------------------------------------------
 #
