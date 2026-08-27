@@ -68,8 +68,9 @@ ledger rows can be filtered out rather than silently blended with new ones.
 
 ## 4. Cost per pair
 
-Precision is only half the question a Maker/Checker pair has to answer. The Budget Accountant
-(`budget_and_escalation_policy.md` §3) already attributes spend per agent; cross that with the
+Precision is only half the question a Maker/Checker pair has to answer. Per-agent spend is
+attributed by the dispatch-path metering the Budget Enforcer reads (`budget_and_escalation_policy.md`
+§4.3), not by the advisory Accountant; cross that with the
 ledger's precision numbers per validator to get cost per genuinely-caught defect, per pair. A
 validator with excellent precision that costs more than the defects it catches are worth is still
 the wrong trade — this is the check that would surface that, and nothing else in the design

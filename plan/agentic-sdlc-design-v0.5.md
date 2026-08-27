@@ -56,7 +56,7 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 4. **Disjoint write ownership.** Within the parallel swarm, each Task Dev agent owns a mutually exclusive set of files (`src/**` scoped per task). Explicit carve-out for shared files (§4) and an explicit escape hatch for changes too large to be additive (`structural_change_runbook.md`).
 5. **Human gates at irreversible or judgment-heavy points.** Plan Approval, Contract Freeze, QA→Prod promotion, shared-file registration/promotion, invariant deprecation, and structural architecture changes all require human sign-off.
 6. **Model escalation on repeated failure.** Agents that fail review repeatedly are re-run on a stronger model rather than retried indefinitely (exact ladder: `budget_and_escalation_policy.md`).
-7. **Budget and circuit-breaking.** A standing Budget Accountant agent monitors spend across all agent activity and can trigger a ceiling halt; the same philosophy governs individual loop-back edges (exact thresholds: `budget_and_escalation_policy.md`).
+7. **Budget and circuit-breaking.** Enforcement and forecasting are separated. A **deterministic Budget Enforcer** checks every phase transition against `GovernancePolicy.budget_ceilings` and refuses the transition on breach; a **Budget Accountant** agent forecasts spend trend advisorily and gates nothing. A circuit breaker that is itself an LLM can be slow, wrong, or unavailable at exactly the moment a runaway swarm is burning fastest — so nothing that must fire is left to judgment. The same philosophy governs individual loop-back edges (exact thresholds and the enforcement point: `budget_and_escalation_policy.md`).
 8. **Merge conflicts are decomposition errors.** A merge conflict is evidence the Task Decomposer drew task boundaries incorrectly — never punted to the PR Reviewer. Repeated conflicts on the same seam escalate as a boundary failure, not an infinite retry loop.
 9. **Shared state is governed, not merged.** Files that are legitimately shared across tasks are modified only through a closed vocabulary of typed, additive operations applied by a deterministic service (§4; schemas in `agent_interface_contracts.py`).
 10. **Deterministic classification before LLM judgment.** Wherever a failure or event can be classified from structured signals alone, it is. An LLM is only invoked for the residue that doesn't cleanly match a deterministic rule. Governs both the Shared-File Intent Service (§4) and failure triage (§6, `infra_triage_matrix.md`).
@@ -90,7 +90,8 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 | Security Reviewer (diff-time) | Validator | Diff-time security pass |
 | Log Monitor | Utility | Always-on observation in production |
 | Error Analyzer | Validator | Pattern-matches log findings; triggers rollback initialization on critical findings |
-| Budget Accountant | Utility | Monitors spend across all agents; ceiling-halt circuit breaker (`budget_and_escalation_policy.md`) |
+| Budget Enforcer | Deterministic | Middleware in the dispatch path; checks each transition against `GovernancePolicy.budget_ceilings` and refuses on breach. Never an LLM (`budget_and_escalation_policy.md` §4) |
+| Budget Accountant | Utility (advisory) | Forecasts spend trend across all agents and raises advisory findings; **gates nothing** — separated from enforcement so a slow or wrong forecast cannot fail open |
 
 Every Validator agent returns a `GateResult` (`agent_interface_contracts.py`) — a standardized pass/fail verdict with blocking vs. advisory findings and an evidence reference, so the Core Orchestrator can route on a consistent shape regardless of which Validator produced it.
 
@@ -215,7 +216,7 @@ one place instead of reconstructed from scattered phase prose.
 | `merge.no_conflict` | Integration | Yes | The No-Conflict Gate (Agent Roster, Integrator row); a conflict here is a Boundary Failure (Principle 8), never resolved in place |
 | `tests.baseline_delta` | Verification | Yes | Baseline Guard; the anti-deletion check (`agentic_sdlc_glossary.csv`, Baseline Delta) |
 | `triage.deterministic` | Verification | Yes (routing only) | `infra_triage_matrix.md`'s rules engine; only non-matches reach the Test Investigator |
-| `budget.within_ceiling` | Every transition | Yes | Budget Accountant; halts the run, never silently |
+| `budget.within_ceiling` | Every transition | Yes | Budget **Enforcer** — deterministic middleware, not the Accountant agent; halts the run, never silently |
 
 ### 9.2 Agent gates
 
@@ -291,8 +292,12 @@ tracked in any subsequent Open Questions section:**
 
 - **Task granularity.** What is one task — a file, a module, a vertical slice? Sets swarm width and
   conflict rate; v0.1 called this "the parameter most likely to be wrong on the first attempt."
-- **Concurrency ceiling.** Set by API rate limits, review throughput, or machine resources —
-  whichever binds first should be explicit rather than discovered at runtime.
+- ~~**Concurrency ceiling.**~~ *Resolved — see `core_adapter_boundary.md` §3.6.* A repo declares
+  its per-isolation-unit resource footprint (policy-bounded, since understating it buys concurrency
+  at co-tenants' expense); Core clamps, divides, and takes the minimum against
+  `GovernancePolicy.concurrency_cap`, API rate limits, and review throughput. Which constraint binds
+  is now explicit per run rather than discovered at runtime, which is exactly what this question
+  asked for.
 - **Plan Writer dialogue depth.** How much user interaction before a plan counts as "drafted"? Too
   little and the review loop does work the human could have done in one sentence.
 - **Run manifest location.** Repo-local (e.g. `.runs/`) or out of tree? In-tree gives free versioning

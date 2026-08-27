@@ -98,7 +98,7 @@ design set is where they get fixed.
 | D14 | New, arising from the adapter interface | An adapter contract naming test commands, bootstrap commands, and transformer entry points is **arbitrary code execution declared by the repo being operated on** — and if the same file also says which gates block, the repo grades itself. Two mechanisms close it. **Structural:** the contract splits into a repo-side `RepoDeclaration` (facts, self-punishing if false) and a control-plane `GovernancePolicy` (blocking gates, secret grants, ceilings, degradation policy — self-rewarding if false, so the beneficiary does not set them), with the discriminating test in `core_adapter_boundary.md` §3.1 and two intermediate classes for fields that are self-rewarding but genuinely repo-specific: policy-bounded (clamp and record) and verified (`TestTier.hermetic` is checked, not trusted). **Procedural:** the declaration is a registered shared file outside every agent's write scope, human-gated on change, and both artifacts are digest-pinned into the `RunManifest` (§3.4). | **Load-bearing** |
 | D15 | `infra_triage_matrix.md` | Written as *the* rules engine, with rules naming DOM state directly. A backend repo has no DOM. What is universal is the **evaluator** (ordered, first-match-wins, deliberate fallthrough to the LLM); the **rows are adapter data**. The file is reclassified from the engine to the reference rule set for a browser-automation adapter — which is what it has always actually been. | High |
 | D16 | `FailureSignature` | Frozen, `extra="forbid"`, one home per schema. An adapter cannot add a field without forking the schema per repo — the exact drift the file exists to prevent, at the type level. Resolved by a declared `signals` map (added additively in this pass); relocating `dom_state_diff_from_baseline` and `network_calls_over_threshold` into it is itself a structural change and goes through the SOP. | High |
-| D3 | `v0.5` Agent Roster vs. §9.1 | Budget Accountant is typed *Utility* (an agent) in the roster, but `budget.within_ceiling` is a **deterministic** gate on every transition. A circuit breaker that is itself an LLM can fail to fire, and it fails hardest under exactly the runaway conditions it exists to catch. Recommend: deterministic middleware in the dispatcher; keep an agent only for advisory forecasting. | High |
+| D3 | `v0.5` Agent Roster vs. §9.1; **resolved in this pass** | The roster typed the Budget Accountant as a *Utility* agent that "can trigger a ceiling halt," while §9.1 listed `budget.within_ceiling` as a **deterministic** gate on every transition. A circuit breaker that is itself an LLM fails hardest under exactly the runaway conditions it exists to catch — those conditions saturate the same API it depends on, so it fails *open*. **Split** (`budget_and_escalation_policy.md` §4): a deterministic **Budget Enforcer** in the dispatch path reads `GovernancePolicy.budget_ceilings` and refuses the transition; the **Budget Accountant** survives as an advisory forecaster raising advisory findings only, which is what makes it safe to be an LLM — nothing depends on it firing. | Resolved |
 | D4 | `test_harness_architecture.md` §1.2 | The mandate is `browser.new_context()` / `context.close()`. **Selenium has no `new_context()`.** More importantly under the new model: a *capture strategy* is adapter-declared, and §1.2 hard-codes one framework's API into a universal document. | High |
 | D5 | `v0.5` §9.1 vs. `test_harness_architecture.md` §3.2 | `mutation.diff_scoped` is **blocking**, justified by "a pure, hermetic unit suite." Non-hermetic tiers cannot satisfy it, so it either blocks forever or gets waived — and a routinely-waived blocking gate is worse than none, because the ledger records it as enforced. Resolved by `TestTier.hermetic` + `satisfies_gates`: the gate applies to tiers that claim it and is not claimed of the others. | High |
 | D6 | `execution_isolation.md` §5 | "Containers are not required — yet ... revisit the moment any task's tests bind a port or hit a real service." A discovered-at-runtime escape condition becomes a declared `IsolationUnit` in the manifest. | High |
@@ -109,6 +109,9 @@ design set is where they get fixed.
 | D11 | Glossary + `v0.5` §4 heading | "Shared-File Intent Service" and "Synchronous Intent Service" both exist as glossary terms cross-referencing each other as aliases, and §4's heading still uses the old name. Cosmetic **now**; stops being cheap once code and log field names are written against either spelling. | Low, urgent |
 | D17 | Arose from the adapter contract; **resolved in this pass** | The set was about to carry `RunManifest`, a `ProjectManifest`, "Invariant Manifest" (a glossary term), and two repo-meta `*_MANIFEST.md` files — four unrelated things called *manifest*, in a design whose central thesis is closed vocabularies. The declaration/policy split retires the name: `RepoDeclaration` and `GovernancePolicy`. D11's naming pass now only has the Shared-File / Synchronous Intent Service drift to settle. | Resolved |
 | D12 | `budget_and_escalation_policy.md` §3 | A ceiling halt "pauses the pipeline." Undefined: what a pause does to an agent mid-wait, to a held driver process, to an intent submitted but not applied, and to live worktrees. No general run-abort exists anywhere in the set. | Medium |
+| D18 | `v0.5` §4.5, since v0.2 | **Smart Mutex Rejection has been named in every version since v0.2 without ever having a shape.** §4.5 promises a rejection carrying "the blocking context (what the other agent already claimed), so it can resolve in one shot" — but no schema anywhere defined what that context is, which meant the design's most novel mechanism was the one piece nothing could be built against. Closed by `IntentOutcome` / `IntentRejection` in `agent_interface_contracts.py`, with a closed `reason` enum covering collision, unmapped anchor, unregistered file, undeclared op, and structural overflow. | Resolved |
+| D19 | `v0.5` §4.5, security | A rejection tells one agent what **another agent** claimed. Free-form prose on that path is a prompt-injection channel between agents inside the swarm — the one trust boundary the design never examined, because both parties are "our" agents. Closed by making blocking context structured data only (`blocking_task_id`, `blocking_op`, `blocking_keys`), rendered by the receiving side rather than replayed as a message. | Resolved |
+| D20 | Deployment, arising from intent transport | If intent submission is served per-agent-session — the default shape for an MCP server — the swarm gets **N writers and no mutex**, and it appears to work until two agents collide. The arbitration in §4.5 is only arbitration if every worktree's agent talks to one long-lived process. Recorded as a hard constraint on any transport (`execution_isolation.md` §7.5) rather than left to discovery. | Resolved |
 | D13 | `structural_change_runbook.md` §4 vs. `v0.5` §12 | The runbook's "additive-intent-count threshold" and §12's "task granularity" are the same knob from opposite ends: a task needing many intents against one file *is* a task drawn too coarsely. Resolving them independently produces two contradictory numbers. | Medium |
 
 ---
@@ -157,7 +160,7 @@ with zero repo-specific code in the loop.
 | **S1-1** Orchestrator state machine (**R3**) | Reads a `RunManifest`, dispatches, persists a new one. Phases 2→6. |
 | **S1-2** Event log + manifest persistence (**#8**) | Resolves the run-manifest-location question by building it. Recommendation: **out of tree**, content-addressed, with an in-tree pointer committed to the PR — auditability without run state in every diff. |
 | **S1-3** Contract loader, validator, reconciler, and digest pins | Load both artifacts, validate each, reconcile them per §3.3 — refuse on hard conflict, clamp-and-record on bounded conflict — and pin both digests. Refusals and mid-run digest mismatches are `HaltReason` values, not warnings. |
-| **S1-4** Cost metering + deterministic kill switch (**R7**, resolves D3) | Every invocation emits `{tokens_in, tokens_out, model, cost, task_id, phase}`. The kill switch is **middleware in the dispatch path** and ships now; the calibrated cost model is derived from Stage 3–5 telemetry, not calculated up front from invented priors. |
+| **S1-4** Cost metering + Budget Enforcer (**R7**, implements D3) | Every invocation emits `{tokens_in, tokens_out, model, cost, task_id, phase}`. The Enforcer is **middleware in the dispatch path** reading `GovernancePolicy.budget_ceilings`, and ships now; the Budget Accountant's advisory forecasting waits for Stage 3 telemetry, and the calibrated cost model for Stage 6. Ship the thing that must fire before the thing that merely helps. |
 | **S1-5** Isolation unit lifecycle | Worktree path first; container path stubbed behind the same interface so Stage 4 is a provider swap, not a rewrite. |
 | **S1-6** Run abort / halt semantics (**R11**, resolves D12) | Define what pause does to a live process, a held lock, and a submitted-but-unapplied intent — then implement it, because Stage 4 will need it. |
 | **S1-7** Human gate control plane (**R8**) | Authenticated approve/reject writing an identity into the event log. Most phases cannot complete without it. This is **control plane, not visualization** — not the dashboard `CLAUDE.md` scopes out. |
@@ -294,18 +297,65 @@ Raised one at a time, in the order they block work.
 2. ~~**D14 — where the adapter contract lives and who owns it.**~~ **Decided:** split into a repo-side
    `RepoDeclaration` and a control-plane `GovernancePolicy`, with the self-punishing/self-rewarding
    test (`core_adapter_boundary.md` §3.1) deciding field placement. D17 resolved as a side effect.
-3. **D3 — Budget Accountant.** Confirm the ceiling check becomes deterministic middleware, or state
-   why it should remain an agent. Now also a contract question: `budget_ceilings` sits in
-   `GovernancePolicy`, so the enforcement point should be the same middleware that reads it.
+3. ~~**D3 — Budget Accountant.**~~ **Decided:** deterministic Budget Enforcer in the dispatch path,
+   Accountant retained as an advisory forecaster with no halt authority.
 4. **The second reference adapter's shape.** Its whole value is being unlike the first; which axes
    it differs on is a deliberate choice.
 5. **Who owns `GovernancePolicy` in practice.** The split assumes an approver distinct from repo
    maintainers. If that is the same person today, the split still buys the cadence separation but
    not the trust separation — worth being explicit about which benefit is real now.
+6. **D5's scope predicate, concretely.** `TestTier.hermetic` decides where `mutation.diff_scoped`
+   applies, and `blocking_gates` decides whether it blocks. Neither says what happens to a repo whose
+   *only* tier is non-hermetic — the gate then applies nowhere, silently. Refuse, or record it as a
+   declared degradation under §3.5? Not urgent until Stage 3, but it is the same class of quiet
+   fail-open the rest of this pass has been closing.
 
 ---
 
-## 8. Deliberately not in this roadmap
+## 8. Where each decision landed
+
+Every resolved finding in §3 is written into the design set, not only recorded here. This table is
+the provenance: what changed, and where to read the reasoning rather than the conclusion. It is a
+snapshot — re-check it against `git log` if the set moves under it, the same discipline
+`AGENTIC_ARCHITECTURE_MANIFEST.md` carries for the file inventory.
+
+### 8.1 Files created
+
+| File | Created for | Owns |
+|---|---|---|
+| `implementation_roadmap.md` | The backlog critique | This document — the design→build sequence, the finding register, and the provenance below |
+| `core_adapter_boundary.md` | The Core/Adapter split | The seam: what Core owns vs. what a repo declares, the three leak points, the `RepoDeclaration`/`GovernancePolicy` contract, capability negotiation, hydration, credential injection, and how "universal" is made falsifiable |
+
+### 8.2 Files changed, by decision
+
+| Decision | Files changed | What changed in each |
+|---|---|---|
+| **Core/Adapter split** (D2, D15, D16) | `agent_interface_contracts.py`, `agentic-sdlc-design-v0.5.md`, `CLAUDE.md`, `AGENTIC_ARCHITECTURE_MANIFEST.md` | Contracts gained the adapter-contract block and `FailureSignature.signals`; the blueprint's Modular Reference Files table gained the new companion; both indexes updated |
+| **Declaration / policy split** (D14, D17) | `agent_interface_contracts.py`, `core_adapter_boundary.md` | `ProjectManifest` split into `RepoDeclaration` + `GovernancePolicy`; `RunManifest` gained `declaration_digest`, `policy_digest`, `policy_adjustments`; `HaltReason` gained `adapter_policy_conflict`; boundary §3 rewritten around the self-punishing/self-rewarding test and the four field classes |
+| **Shared-file materialization** (D1) | `execution_isolation.md`, `agentic-sdlc-design-v0.5.md`, `CLAUDE.md`, `AGENTIC_ARCHITECTURE_MANIFEST.md` | New `execution_isolation.md` §7 (canonical branch, `skip-worktree` overlay, atomic re-materialization, restated read-view guarantee, synthesized delta view, transport constraints); blueprint gained §4.7 and its Phase 4 prose corrected |
+| **Intent outcome schema** (D18, D19) | `agent_interface_contracts.py` | `IntentOutcome` and `IntentRejection` added, with blocking context as structured fields and a security note on why it is never prose |
+| **Intent transport constraints** (D20) | `execution_isolation.md` | §7.5 — transport is pluggable; one shared long-lived service, structured blocking context, reads stay local |
+| **Budget enforcement split** (D3) | `budget_and_escalation_policy.md`, `agentic-sdlc-design-v0.5.md`, `calibration_and_measurement.md`, `agentic_sdlc_glossary.csv` | New `budget_and_escalation_policy.md` §4; Principle 7 rewritten; roster split into Budget Enforcer (Deterministic) and Budget Accountant (advisory); §9.1 gate re-attributed; §3 heading de-scoped; cost-per-pair attribution re-sourced to dispatch metering; glossary term added and two rewritten |
+| **Tooling** (supporting the above) | `scripts/frontmatter.py`, `scripts/check_frontmatter.py`, `scripts/sync_counts.py` | `roadmap` registered as a doc type; `companion_file_count` now selects on front-matter `doc_type` rather than "every `plan/*.md` that isn't a design doc", which would have miscounted this file; `live_human_gate_count` added to the registry |
+
+### 8.3 Findings still open, and where they will land when decided
+
+| Finding | Will change |
+|---|---|
+| D4 (Selenium capture strategy) | `test_harness_architecture.md` §1.2 — capture strategy becomes adapter-declared rather than one framework's API |
+| D5 (mutation gate scope) | `test_harness_architecture.md` §3, plus the §7 question on an all-non-hermetic repo |
+| D6 (isolation unit) | `execution_isolation.md` §5 — "not required yet" becomes a declared `IsolationUnit` |
+| D7 (in-process leakage signal) | The reference adapter's `SignalSpec` set, not the core schema |
+| D8 (passes-alone/fails-in-suite rule) | `infra_triage_matrix.md` §2, as a reference rule |
+| D9 (evidence retention) | `core_adapter_boundary.md` §5 has the scrubbing model; retention and dereference rules are unwritten |
+| D10 (two dropped open questions) | `agentic-sdlc-design-v0.5.md` §12 — S0-13 answers concurrency ceiling; Plan Writer dialogue depth waits for Stage 3 |
+| D11 (naming drift) | `agentic-sdlc-design-v0.5.md` §4 heading and `agentic_sdlc_glossary.csv`'s duplicate alias pair |
+| D12 (run abort semantics) | `budget_and_escalation_policy.md` §3's pause step, which currently says "pauses" without saying what that does to a live process |
+| D13 (granularity ↔ intent threshold) | `structural_change_runbook.md` §4 and `agentic-sdlc-design-v0.5.md` §12, together or not at all |
+
+---
+
+## 9. Deliberately not in this roadmap
 
 - **Enterprise invariant arbitration** (#10) — genuinely out of scope until a second real repo, and
   better answered by that repo's actual disagreement than by anticipating it.
