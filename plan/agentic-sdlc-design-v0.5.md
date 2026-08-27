@@ -93,7 +93,7 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 | Budget Enforcer | Deterministic | Middleware in the dispatch path; checks each transition against `GovernancePolicy.budget_ceilings` and refuses on breach. Never an LLM (`budget_and_escalation_policy.md` §4) |
 | Budget Accountant | Utility (advisory) | Forecasts spend trend across all agents and raises advisory findings; **gates nothing** — separated from enforcement so a slow or wrong forecast cannot fail open |
 
-Every Validator agent returns a `GateResult` (`agent_interface_contracts.py`) — a standardized pass/fail verdict with blocking vs. advisory findings and an evidence reference, so the Core Orchestrator can route on a consistent shape regardless of which Validator produced it.
+Every Validator agent returns a `GateResult` (`agent_interface_contracts.py`) — a standardized verdict with blocking vs. advisory findings and an evidence reference, so the Core Orchestrator can route on a consistent shape regardless of which Validator produced it. A verdict carries an **applicability** alongside its pass/fail, because a gate that can be scoped out of a given diff needs a way to say "I did not run" that is neither a green check nor a block on work it never examined.
 
 ---
 
@@ -212,7 +212,8 @@ one place instead of reconstructed from scattered phase prose.
 |---|---|---|---|
 | `ownership.disjoint` | Contract Freeze | Yes | Asserted before the swarm spawns |
 | `intent.no_collision` | Parallel Swarm | Yes | Smart Mutex Rejection (§4.5); rejection returns blocking context, not a halt |
-| `mutation.diff_scoped` | Verification | Yes | Surviving mutants on changed files only — see `test_harness_architecture.md` §3 |
+| `tests.diff_covered` | Verification | Yes | Every changed line covered by at least one tier; runs **before** mutation, since an uncovered line's mutant survives by construction (`test_harness_architecture.md` §3.5) |
+| `mutation.diff_scoped` | Verification | Yes, where applicable | Surviving mutants on changed **lines** covered by a **hermetic** tier — see `test_harness_architecture.md` §3.4. Lines covered only non-hermetically return `NOT_APPLICABLE`, never a green check (§3.6) |
 | `merge.no_conflict` | Integration | Yes | The No-Conflict Gate (Agent Roster, Integrator row); a conflict here is a Boundary Failure (Principle 8), never resolved in place |
 | `tests.baseline_delta` | Verification | Yes | Baseline Guard; the anti-deletion check (`agentic_sdlc_glossary.csv`, Baseline Delta) |
 | `triage.deterministic` | Verification | Yes (routing only) | `infra_triage_matrix.md`'s rules engine; only non-matches reach the Test Investigator |
@@ -254,7 +255,8 @@ the cheapest path to green is not always the honest one.
 | Attack | Guard |
 |---|---|
 | Delete or skip a failing test | `tests.baseline_delta` (§9.1) — any reduction in test count, skip count, or coverage is a blocking gate failure, not a review comment |
-| Weaken an assertion (`>` quietly becomes `>=`) | `mutation.diff_scoped` (§9.1) — a test that still passes under mutation is theater |
+| Declare a mutant "equivalent" to retire a blocking finding | The equivalent-mutant registry is human-signed (`test_harness_architecture.md` §3.8); an agent may propose an equivalence, never record one |
+| Weaken an assertion (`>` quietly becomes `>=`) | `mutation.diff_scoped` (§9.1) — a test that still passes under mutation is theater. Scoped per line to hermetic coverage, so it cannot be evaded by moving code behind a non-hermetic tier: that path returns `NOT_APPLICABLE` and takes the policy branch, not a pass (`test_harness_architecture.md` §3.6) |
 | Write a test the implementation trivially satisfies | Test Author has a disjoint write scope from Task Dev (Principle 12) |
 | Mock away the behavior under test | Protocol fakes checked by strict mypy (`test_harness_architecture.md` §2); an `Any`-shaped mock is invisible to the type checker |
 | Silence a type error to reach green | CI Cleanup's diff-shape check forbids `cast(Any, ...)`, `# type: ignore`, and bare `except: pass` |

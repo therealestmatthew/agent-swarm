@@ -383,6 +383,18 @@ class GovernancePolicy(BaseModel, frozen=True):
     concurrency_cap: int | None = None
     model_tier_allowlist: list[str] = Field(default_factory=list)
 
+    # Mutation gate scope policy (test_harness_architecture.md §3.6-3.8). Policy rather than
+    # declaration because both are self-rewarding if the repo sets them: a low ceiling and a
+    # permissive posture together retire the gate.
+    #
+    # `non_hermetic_coverage_posture` decides what happens to a changed line covered only by a
+    # non-hermetic tier -- refuse the merge until it gains hermetic coverage, or degrade and
+    # record the shortfall in the PR. There is no option that reports it as passing.
+    non_hermetic_coverage_posture: AbsentCapabilityPolicy = AbsentCapabilityPolicy.DEGRADE
+    # Exceeding this halts the gate and reports the overflow -- never a silent sample, which
+    # would report a partial run as a full one. Read it as a task-size signal.
+    max_mutants_per_task: int | None = None
+
 
 # ---------------------------------------------------------------------------
 # Invariant Curator  (design doc §5)
@@ -452,6 +464,24 @@ class Finding(BaseModel, frozen=True):
     evidence_ref: str  # e.g. "diff:src/foo.py#L42", "log:run_id/line_88"
 
 
+class GateApplicability(str, Enum):
+    """Whether a gate's `passed` value means anything for this artifact.
+
+    Added for `mutation.diff_scoped` (test_harness_architecture.md §3.6) and load-bearing for
+    every scoped gate after it. A bare pass/fail cannot express "I did not run": a scoped gate
+    with nothing in scope must either report True -- a green check for a check that never
+    happened, which is the silent fail-open this design closes everywhere else -- or report
+    False and block work it never examined. Neither is honest, so the shape gains a third
+    thing to say.
+
+    A NOT_APPLICABLE or DEGRADED result is never rendered as a passing gate, whatever
+    `passed` holds."""
+
+    APPLIED = "applied"                  # ran; `passed` is meaningful
+    NOT_APPLICABLE = "not_applicable"    # nothing in scope; `passed` is vacuous
+    DEGRADED = "degraded"                # capability absent, running under `degrade` policy
+
+
 class GateResult(BaseModel, frozen=True):
     """
     Standard return shape for every Validator agent (Plan Reviewer, Code
@@ -472,7 +502,18 @@ class GateResult(BaseModel, frozen=True):
     # against its old behavior -- see calibration_and_measurement.md. Optional and
     # additive, so this does not break any GateResult already in a verdict ledger.
     reviewer_spec_version: str | None = None
+    # Defaults to APPLIED so every GateResult already in a verdict ledger stays valid and
+    # keeps meaning what it meant. A validator that can be scoped out must set this
+    # explicitly, and record why in `findings`.
+    applicability: GateApplicability = GateApplicability.APPLIED
 
     @property
     def blocking_findings(self) -> list[Finding]:
         return [f for f in self.findings if f.severity == "blocking"]
+
+    @property
+    def is_green(self) -> bool:
+        """True only for a gate that actually ran and actually passed. Consumers rendering a
+        PR summary use this rather than `passed`, so a gate that was scoped out or degraded
+        can never display as a green check."""
+        return self.passed and self.applicability is GateApplicability.APPLIED
