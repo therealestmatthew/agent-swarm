@@ -9,7 +9,7 @@ doc_type: companion
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §4 (Shared-File Governance) · §6 (Failure Triage) ·
 §8 (Execution Isolation) · `implementation_roadmap.md` Stage 0 · `agent_interface_contracts.py`
-(`ProjectManifest`)
+(`RepoDeclaration`, `GovernancePolicy`)
 
 ## Purpose
 
@@ -104,58 +104,122 @@ is what it has always actually been.
 
 ---
 
-## 3. The adapter contract: `ProjectManifest`
+## 3. The adapter contract: two artifacts, two trust levels
 
-Schema: `agent_interface_contracts.py`. A target repo declares its constraints in one file that
-Core reads before a run starts.
+Schemas: `agent_interface_contracts.py`. The contract is deliberately **not** one file. A target
+repo declares facts about itself; the control plane owns what the pipeline will tolerate. They have
+different authors, different change cadences, and different blast radii on compromise.
 
-### 3.1 Governance — the part that matters most
+| Artifact | Lives | Owner | Changes |
+|---|---|---|---|
+| `RepoDeclaration` | In the target repo, versioned with the code | Repo maintainers, via ordinary PR review | Whenever the repo changes — routine |
+| `GovernancePolicy` | Control plane, outside every target repo | Whoever owns the pipeline's risk posture | Rarely, at a human governance gate |
 
-A manifest that names a test command, a bootstrap script, and a transformer entry point is
-**arbitrary code execution declared by the repo being operated on**. If an agent working inside that
-repo can edit the manifest, an agent can rewrite its own gates: point the test command at `true`,
-drop the mutation tier, widen its own write scope. That is a privilege-escalation path running
-straight through Principle 12, and it is created the moment the adapter interface exists.
+The single-file alternative was rejected for three reasons. Routine edits (a changed test command)
+would have to clear the same heavyweight gate as governance edits (un-blocking a gate), which makes
+that gate fire on trivia and therefore get rubber-stamped — the same argument that makes a
+routinely-waived blocking gate worse than no gate. Enterprise-scope policy (`InvariantScope`
+§5, org budget ceilings) would have no home but a copy in every repo, which is the drift this
+design exists to prevent, at the config layer. And a repo compromise would reach the definition of
+the gates rather than only the declarations.
 
-Four rules close it:
+### 3.1 The discriminating test
 
-1. **The manifest is a registered shared file by construction** — it is in the registry before any
-   task spawns, not promoted into it by a conflict counter.
+Deciding which artifact a field belongs to does not require adjudicating each one:
+
+> **A field is a declaration if a false value punishes the declarer. It is policy if a false value
+> rewards them.**
+
+Lie about a test command and your own tests break — self-limiting, so the repo can be trusted with
+it. Lower a budget ceiling or un-block a gate and the declarer gains while the org absorbs the risk
+— not self-limiting, so it cannot live where the beneficiary can edit it.
+
+Two classes are not quite enough, because some fields are self-rewarding *and* only the repo knows
+the true value:
+
+- **Policy-bounded declaration.** The repo declares; the control plane sets a bound; Core clamps to
+  the bound and **records the clamp** in the `RunManifest`. `resource_footprint_mb` is the type
+  case: understate it and you get more concurrency while every co-tenant's machine swaps.
+- **Verified declaration.** The claim is self-rewarding but empirically checkable, so Core checks it
+  instead of trusting or adjudicating it. `TestTier.hermetic` is the type case: declaring a tier
+  non-hermetic exempts it from `mutation.diff_scoped`, and hermeticity is testable by running the
+  tier isolated and in-suite under randomized order.
+
+### 3.2 Field assignment
+
+| Field | Class | Reasoning |
+|---|---|---|
+| `repo_id`, `declaration_version`, `capabilities` | Declaration | Facts; a false value fails the run |
+| `isolation_unit`, `image_ref`, `bootstrap`, `declared_ports` | Declaration | Only the repo knows; wrong values break the repo's own runs |
+| `test_tiers[].command`, `.name`, `.isolation_unit` | Declaration | Self-punishing |
+| `test_tiers[].hermetic` | **Verified** declaration | Non-hermetic exempts a tier from the mutation gate — self-rewarding, and checkable |
+| `resource_footprint_mb` | **Policy-bounded** declaration | Understating buys concurrency at co-tenants' expense |
+| `intent_vocabulary`, `signals`, `triage_rules`, `hydration_fixture_ids` | Declaration | Repo-shaped facts; errors surface as the repo's own failures |
+| `requested_secrets` | Declaration (a **request**) | The repo states what it needs; needing is not getting |
+| `blocking_gates` | **Policy** | A repo declaring which gates it satisfies is a repo grading itself |
+| `granted_secrets` | **Policy** | The grant half of the request/grant pair — a task-scope agent asking for promotion scope is a refusal, not a config line |
+| `registered_shared_files` | **Policy** | Already a human gate (design doc §9.3); registration is a governance decision, not a repo fact |
+| `absent_capability_policy` | **Policy** | Left repo-side, a repo opts out of governance by declaring `degrade` |
+| `budget_ceilings`, `concurrency_cap`, `model_tier_allowlist` | **Policy** | Spend and escalation posture are org decisions |
+
+### 3.3 Precedence and conflict
+
+Policy always wins. How it wins depends on the class:
+
+- **Hard conflict** — a declaration asks for something policy does not grant (a secret scope, a
+  capability, a model tier). Core **refuses to start**. Not a clamp, not a warning: the repo asked
+  for something it may not have, and proceeding quietly would make the grant meaningless.
+- **Bounded conflict** — a policy-bounded declaration exceeds its bound. Core **clamps and records**
+  the clamp in the `RunManifest`, so a run that was silently narrowed is still visibly narrowed.
+- **Failed verification** — a verified declaration does not survive its check. Core treats the claim
+  as its conservative value (a tier claiming `hermetic=false` that verifies as hermetic is simply
+  held to the stricter gate) and records the discrepancy.
+
+### 3.4 Governance of the declaration itself
+
+Even reduced to declarations, the repo-side file names test commands, bootstrap commands, and
+transformer entry points — **arbitrary code execution declared by the repo being operated on**. If
+an agent working in that repo can edit it, an agent can change what "run the tests" means. That is a
+privilege-escalation path through Principle 12, created the moment the interface exists. Four rules
+close it:
+
+1. **The declaration is a registered shared file by construction** — in the registry before any task
+   spawns, not promoted into it by a conflict counter.
 2. **It is outside every agent's write scope**, enforced by permission, not instruction
-   (Principle 12). No Task Dev, Test Author, or CI Cleanup agent can write it. It accepts no
+   (Principle 12). No Task Dev, Test Author, or CI Cleanup agent can write it, and it accepts no
    Additive Intent.
-3. **A change to it is a human gate**, joining `agentic-sdlc-design-v0.5.md` §9.3 — the same
-   standard as shared-file registration, because it is a superset of that decision.
-4. **It is pinned by content digest into the `RunManifest` at run start.** A mid-run edit cannot
-   change the rules under a running pipeline; Core halts on digest mismatch rather than adopting the
-   new manifest.
+3. **A change to it is a human gate**, joining `agentic-sdlc-design-v0.5.md` §9.3. It is a lighter
+   gate than a policy change — ordinary PR review by repo maintainers — but it is never an agent's
+   to clear.
+4. **Both artifacts are digest-pinned into the `RunManifest` at run start.** A mid-run edit to
+   either cannot change the rules under a running pipeline; Core halts on a mismatch rather than
+   adopting the new value.
 
-### 3.2 Validation and capability negotiation
+### 3.5 Validation and capability negotiation
 
-Core validates the manifest against the contract schema before the run starts. **An invalid manifest
-is a refusal to start, not a warning** — Principle 7, nothing fails silently.
+Core validates both artifacts before the run starts. **An invalid one is a refusal to start, not a
+warning** — Principle 7, nothing fails silently.
 
 Capabilities are **declared, never inferred**. An adapter that declares no
-`shared_file_governance` capability does not get Shared-File Governance quietly disabled — because
-silently falling back to ordinary git merges on shared files is a return to the exact failure mode
-§4 exists to prevent, and it would be invisible. Instead the manifest states an
-`absent_capability_policy`:
+`shared_file_governance` capability does not get Shared-File Governance quietly disabled — silently
+falling back to ordinary git merges on shared files is a return to the exact failure mode §4 exists
+to prevent, and it would be invisible. `GovernancePolicy.absent_capability_policy` decides:
 
-- **`refuse`** — the run cannot start. Correct for a repo that needs the guarantee.
+- **`refuse`** — the run cannot start. Correct where the guarantee is the point.
 - **`degrade`** — the run proceeds with the capability off, and the degradation is recorded in the
-  `RunManifest` and surfaced at the PR. Visible, attributable, and reviewable.
+  `RunManifest` and surfaced at the PR. Visible, attributable, reviewable.
 
-There is no third option in which a capability is simply absent and nobody is told.
+There is no third option in which a capability is absent and nobody is told. Note that this field is
+policy precisely so the repo that benefits from degrading cannot be the one that chooses it.
 
-### 3.3 The concurrency ceiling falls out of this
+### 3.6 The concurrency ceiling falls out of this
 
 `agentic-sdlc-design-v0.5.md` §12 carries "concurrency ceiling" as an open question. Under this
-model it stops being a question and becomes arithmetic: the adapter declares a per-isolation-unit
-resource footprint, Core divides available resources by it, and takes the minimum against API rate
-limits and review throughput. Which constraint binds is then a fact about a specific run rather than
-something discovered when the machine starts swapping.
-
----
+model it stops being a question and becomes arithmetic: the repo declares a per-isolation-unit
+resource footprint (bounded by policy per §3.1), Core divides available resources by it, and takes
+the minimum against `GovernancePolicy.concurrency_cap`, API rate limits, and review throughput.
+Which constraint binds becomes a fact about a specific run rather than something discovered when
+the machine starts swapping.
 
 ## 4. Hydration, and what "baseline" means once it exists
 

@@ -64,7 +64,7 @@ New items introduced by this roadmap, with the item they attach to:
 
 | ID | Item | Why it is missing-critical | Attaches to |
 |---|---|---|---|
-| R1 | Adapter contract: `ProjectManifest` | The declaration surface that makes "any repo" checkable rather than aspirational | New — Core |
+| R1 | Adapter contract: `RepoDeclaration` + `GovernancePolicy` | The declaration/policy pair that makes "any repo" checkable rather than aspirational, without letting the beneficiary set its own limits | New — Core |
 | R2 | Shared-file materialization model across worktrees | §4 and `execution_isolation.md` describe incompatible mechanics (D1) | Blocks backlog #1 |
 | R3 | Core Orchestrator skeleton: state machine, event log, manifest persistence, dispatcher | The governor, absent from the backlog entirely | Subsumes backlog #8 |
 | R4 | Agent Spec format and registry | Supersedes "prompts" — prompt is 1 of 6 fields | Supersedes backlog #3 |
@@ -80,7 +80,7 @@ New items introduced by this roadmap, with the item they attach to:
 | R14 | Plan Writer dialogue depth | v0.5 §12 open question dropped from the backlog | Standalone |
 | R15 | Hydration interface + baseline redefinition | Baseline as "canonical empty" is false for any repo that seeds state | New — Core |
 | R16 | `CredentialProvider` + boundary scrubbing | One interface for a live tenant credential and a dummy string | Generalizes backlog #6 |
-| R17 | Adapter governance: write-scope exclusion, human gate, digest pinning | The adapter interface creates a privilege-escalation path the moment it exists (D14) | Blocks R1 |
+| R17 | Adapter governance: declaration/policy split, write-scope exclusion, human gates, digest pinning | The adapter interface creates a privilege-escalation path the moment it exists (D14) | Blocks R1 |
 | R18 | Capability declaration + absent-capability policy | Otherwise governance disables silently, which violates Principle 7 | Blocks R1 |
 | R19 | Second, deliberately dissimilar reference adapter | One adapter cannot distinguish abstraction from indirection | Stage 2 exit |
 
@@ -95,7 +95,7 @@ design set is where they get fixed.
 |---|---|---|---|
 | D1 | `v0.5` §4.2 vs. `execution_isolation.md` §6 | §4 says an intent is "applied synchronously before the agent continues." `execution_isolation.md` gives every Task Dev its own worktree with its own `HEAD`, and says "the Integrator's shared-file commit last." Both cannot be true. Either the service writes into every live worktree — destroying the stable read view §3 of that file promises — or the agent never sees its own applied intent and "synchronous" is a fiction whose collisions resurface at merge, which is precisely what §4 exists to prevent. **No materialization path is specified anywhere in the set.** Squarely Core, and still the top blocker. | **Load-bearing** |
 | D2 | `agent_interface_contracts.py` §4.2 intents | *Restated under the Core/Adapter model.* The defect is not that the vocabulary is web-shaped — it is that a **repo-specific vocabulary is sitting in the universal contracts file**, presented as the system's intent vocabulary rather than as one adapter's. `AddExport`/`AddRoute`/`AddProviderBinding` describe an Express/Nest/FastAPI codebase and describe nothing about a Selenium extraction tool, a data pipeline, or a CLI. **Resolution: they move out of Core into a reference web adapter**, and Core keeps only `IntentOpSpec` — the shape of a declaration. This is now a Stage 0 relocation, not a CPMI-access blocker. | **Load-bearing** |
-| D14 | New, arising from the adapter interface | A `ProjectManifest` naming test commands, bootstrap commands, and transformer entry points is **arbitrary code execution declared by the repo being operated on**. If an agent working in that repo can edit it, an agent can rewrite its own gates: point the test command at `true`, drop the mutation tier, widen its own write scope. That is a privilege-escalation path running straight through Principle 12, created the moment the interface exists. Closed by four rules in `core_adapter_boundary.md` §3.1 — registered by construction, outside every write scope, human-gated, digest-pinned into the `RunManifest`. | **Load-bearing** |
+| D14 | New, arising from the adapter interface | An adapter contract naming test commands, bootstrap commands, and transformer entry points is **arbitrary code execution declared by the repo being operated on** — and if the same file also says which gates block, the repo grades itself. Two mechanisms close it. **Structural:** the contract splits into a repo-side `RepoDeclaration` (facts, self-punishing if false) and a control-plane `GovernancePolicy` (blocking gates, secret grants, ceilings, degradation policy — self-rewarding if false, so the beneficiary does not set them), with the discriminating test in `core_adapter_boundary.md` §3.1 and two intermediate classes for fields that are self-rewarding but genuinely repo-specific: policy-bounded (clamp and record) and verified (`TestTier.hermetic` is checked, not trusted). **Procedural:** the declaration is a registered shared file outside every agent's write scope, human-gated on change, and both artifacts are digest-pinned into the `RunManifest` (§3.4). | **Load-bearing** |
 | D15 | `infra_triage_matrix.md` | Written as *the* rules engine, with rules naming DOM state directly. A backend repo has no DOM. What is universal is the **evaluator** (ordered, first-match-wins, deliberate fallthrough to the LLM); the **rows are adapter data**. The file is reclassified from the engine to the reference rule set for a browser-automation adapter — which is what it has always actually been. | High |
 | D16 | `FailureSignature` | Frozen, `extra="forbid"`, one home per schema. An adapter cannot add a field without forking the schema per repo — the exact drift the file exists to prevent, at the type level. Resolved by a declared `signals` map (added additively in this pass); relocating `dom_state_diff_from_baseline` and `network_calls_over_threshold` into it is itself a structural change and goes through the SOP. | High |
 | D3 | `v0.5` Agent Roster vs. §9.1 | Budget Accountant is typed *Utility* (an agent) in the roster, but `budget.within_ceiling` is a **deterministic** gate on every transition. A circuit breaker that is itself an LLM can fail to fire, and it fails hardest under exactly the runaway conditions it exists to catch. Recommend: deterministic middleware in the dispatcher; keep an agent only for advisory forecasting. | High |
@@ -107,7 +107,7 @@ design set is where they get fixed.
 | D9 | `Finding.evidence_ref` | Nothing constrains what an evidence reference may point at, how long it is retained, or who may dereference it. Note the non-obvious constraint: a scrubber must know the values it redacts, so it runs **inside** the isolation unit, not in Core (`core_adapter_boundary.md` §5). | Medium |
 | D10 | `v0.5` §12 vs. backlog | Concurrency ceiling and Plan Writer dialogue depth carried forward as open, then dropped from the backlog. The v0.2 regression pattern, repeating. | Medium |
 | D11 | Glossary + `v0.5` §4 heading | "Shared-File Intent Service" and "Synchronous Intent Service" both exist as glossary terms cross-referencing each other as aliases, and §4's heading still uses the old name. Cosmetic **now**; stops being cheap once code and log field names are written against either spelling. | Low, urgent |
-| D17 | New, arising from `ProjectManifest` | The set now carries `RunManifest` (orchestrator state), `ProjectManifest` (adapter contract), "Invariant Manifest" (a glossary term), and two repo-meta `*_MANIFEST.md` files. Four unrelated things called *manifest* is a vocabulary failure in a design whose central thesis is closed vocabularies. Recommend renaming the adapter contract — `AdapterContract` or `RepoContract` — and folding the decision into D11's naming pass while it is still only a schema name. | Low, urgent |
+| D17 | Arose from the adapter contract; **resolved in this pass** | The set was about to carry `RunManifest`, a `ProjectManifest`, "Invariant Manifest" (a glossary term), and two repo-meta `*_MANIFEST.md` files — four unrelated things called *manifest*, in a design whose central thesis is closed vocabularies. The declaration/policy split retires the name: `RepoDeclaration` and `GovernancePolicy`. D11's naming pass now only has the Shared-File / Synchronous Intent Service drift to settle. | Resolved |
 | D12 | `budget_and_escalation_policy.md` §3 | A ceiling halt "pauses the pipeline." Undefined: what a pause does to an agent mid-wait, to a held driver process, to an intent submitted but not applied, and to live worktrees. No general run-abort exists anywhere in the set. | Medium |
 | D13 | `structural_change_runbook.md` §4 vs. `v0.5` §12 | The runbook's "additive-intent-count threshold" and §12's "task granularity" are the same knob from opposite ends: a task needing many intents against one file *is* a task drawn too coarsely. Resolving them independently produces two contradictory numbers. | Medium |
 
@@ -126,21 +126,22 @@ Nothing here needs a running system, and everything downstream is blocked on it.
 |---|---|
 | **S0-1** Ratify the Core/Adapter boundary | `core_adapter_boundary.md`, including its three leak points: collision predicates (§2.1), telemetry schema (§2.2), triage rules as data (§2.3). Each is a decision, not a detail. |
 | **S0-2** Resolve D1: shared-file materialization | Core, and still the single decision that determines what the intent service *is*. Recommended shape: the service is the sole writer of a canonical shared-file branch; worktrees materialize its output read-only and never commit it; the Integrator's shared-file commit is a fast-forward of that branch, not a merge. Independent of any adapter. |
-| **S0-3** Adapter contract v0 (**R1**) | `ProjectManifest` in `agent_interface_contracts.py` — the schema home, same as `RunManifest`. Contract versions **independently of the blueprint**, because target repos upgrade on their own cadence; this is the concrete case backlog #13 has to answer. |
-| **S0-4** Adapter governance (**R17**, closes D14) | Registered shared file by construction; outside every agent's write scope by permission; a change to it is a human gate joining §9.3; digest-pinned into the `RunManifest` so a mid-run edit cannot move the gates under a running pipeline. Write this before any code reads a manifest. |
-| **S0-5** Capability declaration + absent-capability policy (**R18**) | Declared, never inferred. `refuse` or `degrade`-and-record. No third option in which a capability is absent and nobody is told (Principle 7). |
+| **S0-3** Adapter contract v0 (**R1**) | `RepoDeclaration` + `GovernancePolicy` in `agent_interface_contracts.py` — the schema home, same as `RunManifest`. Two artifacts, two trust levels, two change cadences. Each versions **independently of the blueprint**, because target repos upgrade on their own cadence; this is the concrete case backlog #13 has to answer. |
+| **S0-4** Adapter governance (**R17**, closes D14) | Apply the §3.1 test field by field and settle the four classes (declaration, policy, policy-bounded, verified). Then the procedural rules: declaration is a registered shared file outside every agent's write scope; a change to it is a lightweight human gate (maintainer PR review), a change to policy is a governance gate; both digest-pinned. Precedence: hard conflicts refuse, bounded conflicts clamp-and-record. Write this before any code reads a contract. |
+| **S0-5** Capability declaration + absent-capability policy (**R18**) | Capabilities declared by the repo, never inferred; the *response* to an absent one (`refuse` or `degrade`-and-record) is policy, precisely so the repo that benefits from degrading is not the one that chooses it. No third option in which a capability is absent and nobody is told (Principle 7). |
 | **S0-6** Relocate the intent vocabulary (resolves D2) | `AddExport`/`AddRoute`/`AddProviderBinding` move out of the universal contracts file into a reference web adapter. Core retains `IntentOpSpec` — the shape of a declaration, not a declaration. |
 | **S0-7** Generalize telemetry (**R12**, resolves D15, D16) | `FailureSignature.signals` as a declared map; triage rules become `TriageRule` rows over declared signals; `infra_triage_matrix.md` reclassified as the reference rule set for a browser adapter. Relocating the two hard-coded UI fields is a structural change and goes through the SOP — `signals` lands additively first. |
-| **S0-8** Test tiers + gate applicability (**R5**, **R6**, resolves D4, D5, D6) | `TestTier{hermetic, isolation_unit, satisfies_gates}`. Makes `mutation.diff_scoped` decidable rather than universally-blocking-or-waived, and turns the containers question into a declaration. |
+| **S0-8** Test tiers + gate applicability (**R5**, **R6**, resolves D4, D5, D6) | `TestTier{command, isolation_unit, hermetic}` repo-side; `blocking_gates` policy-side — a repo does not declare which gates it satisfies. `hermetic` is a **verified** claim (checked by running the tier isolated and in-suite under randomized order), since declaring non-hermetic is what exempts a tier from `mutation.diff_scoped`. Makes that gate decidable rather than universally-blocking-or-waived, and turns the containers question into a declaration. |
 | **S0-9** Hydration interface + baseline redefinition (**R15**) | Adapter owns fixtures and apply/verify/teardown; Core owns the ordering guarantee: isolation up → hydrate → **capture baseline** → first action. Baseline stops meaning "canonical empty" and starts meaning "the declared post-hydration state." |
-| **S0-10** `CredentialProvider` + scrubbing model (**R16**, **R9**) | Names and scopes in the manifest, never values. Scrubber supplied by Core, executed **inside** the isolation unit where values exist, filtering every artifact on the way out. Nothing unscrubbed becomes an `evidence_ref` target. |
+| **S0-10** `CredentialProvider` + scrubbing model (**R16**, **R9**) | A request/grant pair: the repo declares `requested_secrets`, policy holds `granted_secrets`, and an ungranted request refuses the run. Names and scopes only, never values. Scrubber supplied by Core, executed **inside** the isolation unit where values exist, filtering every artifact on the way out. Nothing unscrubbed becomes an `evidence_ref` target. |
 | **S0-11** Agent Spec format (**R4**, supersedes #3) | `{system_prompt, input_schema, output_schema, tool_allowlist, write_scope, model_tier, spec_version}`. Core owns the format; the adapter supplies the tool allowlist and write-scope roots. `GateResult.reviewer_spec_version` already expects this record to exist. |
 | **S0-12** Provisional granularity + intent threshold (**#2**, resolves D13) | Set both together, explicitly provisional, with Core defaults an adapter may narrow but not widen. Starting rule: one task owns one module directory plus its mirrored test path; more than 3 additive intents against one shared file is a decomposition error. Measured and revised in Stage 5. |
-| **S0-13** Concurrency ceiling (**R13**, closes an open question) | Stops being a question: adapter declares per-unit resource footprint, Core divides, then takes the minimum against API rate limits and review throughput. Which constraint binds becomes a fact about a run rather than a discovery when the machine swaps. |
-| **S0-14** Naming pass (**#14**, **#13**, resolves D11, D17) | One spelling: **Shared-File Intent Service**. Decide the fourth-*manifest* collision now, while the adapter contract is only a schema name. Settle companion-file versioning: companions version independently and each names the blueprint version it was last reconciled against. |
+| **S0-13** Concurrency ceiling (**R13**, closes an open question) | Stops being a question: the repo declares a per-unit resource footprint (policy-bounded — understating it buys concurrency at co-tenants' expense), Core clamps, divides, then takes the minimum against `concurrency_cap`, API rate limits, and review throughput. Which constraint binds becomes a fact about a run rather than a discovery when the machine swaps. |
+| **S0-14** Naming pass (**#14**, **#13**, resolves D11) | One spelling: **Shared-File Intent Service**. D17's fourth-*manifest* collision is already resolved by the declaration/policy naming. Settle companion-file versioning: companions version independently and each names the blueprint version it was last reconciled against. |
 
-**Exit criterion:** D1, D2, D14, D15, D16 have written answers in the design set; `ProjectManifest`
-validates under Pydantic; and every capability the Core will implement is declarable. **No target
+**Exit criterion:** D1, D2, D14, D15, D16 have written answers in the design set; both contract
+artifacts validate under Pydantic; every field has a class under the §3.1 test; and every capability
+the Core will implement is declarable. **No target
 repo has been read.** If Stage 0 cannot be completed without CPMI access, the abstraction has
 already failed and that is the finding.
 
@@ -148,22 +149,23 @@ already failed and that is the finding.
 
 The correction to the backlog's biggest structural flaw: build the governor end to end before any
 component is good. The **null adapter** is a synthetic fixture repo whose manifest declares a
-trivial test command, no governance, no hydration, no secrets. It exists so Core can be exercised
+trivial test command, no governance, no hydration, no secrets, and a permissive policy alongside it. It exists so Core can be exercised
 with zero repo-specific code in the loop.
 
 | Task | Notes |
 |---|---|
 | **S1-1** Orchestrator state machine (**R3**) | Reads a `RunManifest`, dispatches, persists a new one. Phases 2→6. |
 | **S1-2** Event log + manifest persistence (**#8**) | Resolves the run-manifest-location question by building it. Recommendation: **out of tree**, content-addressed, with an in-tree pointer committed to the PR — auditability without run state in every diff. |
-| **S1-3** Manifest loader, validator, and digest pin | Refuse-to-start on invalid; halt on mid-run digest mismatch. Both are `HaltReason` values, not warnings. |
+| **S1-3** Contract loader, validator, reconciler, and digest pins | Load both artifacts, validate each, reconcile them per §3.3 — refuse on hard conflict, clamp-and-record on bounded conflict — and pin both digests. Refusals and mid-run digest mismatches are `HaltReason` values, not warnings. |
 | **S1-4** Cost metering + deterministic kill switch (**R7**, resolves D3) | Every invocation emits `{tokens_in, tokens_out, model, cost, task_id, phase}`. The kill switch is **middleware in the dispatch path** and ships now; the calibrated cost model is derived from Stage 3–5 telemetry, not calculated up front from invented priors. |
 | **S1-5** Isolation unit lifecycle | Worktree path first; container path stubbed behind the same interface so Stage 4 is a provider swap, not a rewrite. |
 | **S1-6** Run abort / halt semantics (**R11**, resolves D12) | Define what pause does to a live process, a held lock, and a submitted-but-unapplied intent — then implement it, because Stage 4 will need it. |
 | **S1-7** Human gate control plane (**R8**) | Authenticated approve/reject writing an identity into the event log. Most phases cannot complete without it. This is **control plane, not visualization** — not the dashboard `CLAUDE.md` scopes out. |
 
 **Exit criterion:** a stub task traverses Phases 2→6 against the null adapter unattended, halts at a
-human gate, resumes after sign-off, and **resumes correctly from `kill -9`**. Plus two negative
-tests: a malformed manifest refuses to start, and a mid-run manifest edit halts the run. If the
+human gate, resumes after sign-off, and **resumes correctly from `kill -9`**. Plus three negative
+tests: a malformed contract refuses to start, a declaration requesting an ungranted secret scope
+refuses to start, and a mid-run edit to either artifact halts the run. If the
 manifest cannot survive a kill, resumability is a claim rather than a property.
 
 ### Stage 2 — The interface, proved with a dummy transformer
@@ -263,7 +265,7 @@ correctly rejected and resolved in one shot per §4.5.
 | 10 | Enterprise Invariant Arbitration | P2 | **Deferred, no stage** | Does not arise until a second real repo. Say that, rather than carrying it as perpetually-P2. |
 | 11 | Conflict Decay-Rate Tuning | P2 | **Stage 6** | Blocked by data, not deprioritised. |
 | 12 | Structural Change Cadence | P2 | **Stage 6** | Blocked by data. |
-| 13 | Modular File Versioning | P2 | **Stage 0** | Raised hard. It is no longer a documentation-tidiness question: `ProjectManifest` is consumed by repos on their own upgrade cadence, so the contract *must* version independently. The adapter interface is the concrete case that answers it. |
+| 13 | Modular File Versioning | P2 | **Stage 0** | Raised hard. It is no longer a documentation-tidiness question: `RepoDeclaration` is consumed by repos on their own upgrade cadence, and `GovernancePolicy` changes on a different one again, so both *must* version independently of the blueprint and of each other. The adapter interface is the concrete case that answers it. |
 | 14 | Naming Inconsistency | P2 | **Stage 0** | Raised on sequence. Costs an hour now, and D17 just added a fourth thing called *manifest*. |
 
 ---
@@ -286,14 +288,17 @@ Raised one at a time, in the order they block work.
 
 1. **D1 — shared-file materialization.** Core, unresolved since v1.0, and the top blocker on Stage 2.
    The recommendation in S0-2 is one of at least three viable shapes.
-2. **D14 — where the adapter contract lives and who owns it.** In-repo self-declaration (as proposed)
-   versus control-plane-supplied, versus split. Determines whether the privilege-escalation path
-   exists at all. *Asked now.*
-3. **D17 — the fourth *manifest*.** Rename the adapter contract while it is only a schema name.
-4. **D3 — Budget Accountant.** Confirm the ceiling check becomes deterministic middleware, or state
-   why it should remain an agent.
-5. **The second reference adapter's shape.** Its whole value is being unlike the first; which axes
+2. ~~**D14 — where the adapter contract lives and who owns it.**~~ **Decided:** split into a repo-side
+   `RepoDeclaration` and a control-plane `GovernancePolicy`, with the self-punishing/self-rewarding
+   test (`core_adapter_boundary.md` §3.1) deciding field placement. D17 resolved as a side effect.
+3. **D3 — Budget Accountant.** Confirm the ceiling check becomes deterministic middleware, or state
+   why it should remain an agent. Now also a contract question: `budget_ceilings` sits in
+   `GovernancePolicy`, so the enforcement point should be the same middleware that reads it.
+4. **The second reference adapter's shape.** Its whole value is being unlike the first; which axes
    it differs on is a deliberate choice.
+5. **Who owns `GovernancePolicy` in practice.** The split assumes an approver distinct from repo
+   maintainers. If that is the same person today, the split still buys the cadence separation but
+   not the trust separation — worth being explicit about which benefit is real now.
 
 ---
 

@@ -37,7 +37,7 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 | File | Owns |
 |---|---|
 | `agent_interface_contracts.py` | Every schema in the system — additive intents, `InvariantScope`, `FailureSignature`, `GateResult` — single source of truth |
-| `core_adapter_boundary.md` | **New.** What the universal Core owns vs. what a target repo declares for itself — the `ProjectManifest` adapter contract, capability negotiation, hydration, and credential injection |
+| `core_adapter_boundary.md` | **New.** What the universal Core owns vs. what a target repo declares for itself — the `RepoDeclaration`/`GovernancePolicy` adapter contract, capability negotiation, hydration, and credential injection |
 | `test_harness_architecture.md` | Baseline capture mechanics for `dom_state_diff_from_baseline`; Protocol-fake test double standards; diff-scoped mutation testing (§3) |
 | `execution_isolation.md` | **New.** One git worktree per task — why disjoint write ownership alone doesn't isolate reads |
 | `calibration_and_measurement.md` | **New.** Verdict ledger, Shadow Mode promotion thresholds, agent-spec versioning |
