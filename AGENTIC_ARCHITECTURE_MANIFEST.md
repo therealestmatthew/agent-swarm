@@ -8,7 +8,7 @@ doc_type: manifest
 # Agentic Architecture Manifest
 
 A complete inventory of every file in this repository, as of `plan/agentic-sdlc-design-v0.5.md`.
-55 tracked files, spanning two projects: the live Agentic SDLC design (`plan/`) and the frozen
+56 tracked files, spanning two projects: the live Agentic SDLC design (`plan/`) and the frozen
 hackathon project it grew out of (`archive/glass-box/`). Repo history runs 2026-08-25 to present.
 
 **Reading this table:** *Description* is what the file literally is (form/type). *Summary* is what's
@@ -60,6 +60,7 @@ schemas, capture rules) belong in a companion file, never inline in the core blu
 | `context_retrieval_strategy.md` | Markdown companion | Context Gatherer search heuristics (`git log -S`/blame vs. vector search, broad-then-narrow default), per-consumer token budgets, overflow handling | Owns Context Gatherer mechanics referenced but not detailed in §3 |
 | `execution_isolation.md` | Markdown companion, new in v0.5 | One git worktree per task; why disjoint write ownership alone doesn't isolate reads; lifecycle; when containers become necessary | Reinstates v0.1 §6, which had no home in v0.2–v0.4: verification is repo-scoped even when editing is file-scoped |
 | `calibration_and_measurement.md` | Markdown companion, new in v0.5 | Verdict ledger schema, Shadow Mode promotion criteria (illustrative), agent-spec versioning, cost-per-pair tracking | Reinstates v0.1 §8 — gives Shadow Mode (Agent Roster) an actual exit path; previously "calibrated against a baseline" named a baseline that didn't exist anywhere |
+| `implementation_roadmap.md` | Markdown roadmap | Critique of the submitted implementation backlog, a defects table of contradictions found between live design files, the items the backlog omitted, and a six-stage build sequence keyed to the CPMI proving ground | Turns the design set into an ordered build plan — the first document here that describes work rather than architecture, and the one that states the release condition for `CLAUDE.md`'s design-not-build gate |
 | `infra_triage_matrix.md` | Markdown companion | The deterministic `FailureSignature` rules engine — ordered rule table separating infra-class failures from logic failures before any LLM sees a failure | Owns the failure-classification mechanics `agentic-sdlc-design-v0.5.md` §6 only references |
 | `structural_change_runbook.md` | Markdown runbook | Human-gated SOP for non-additive shared-file changes: triggers, who's involved, the pause/propose/re-decompose/resume procedure | The escape hatch for changes too large to express as an Additive Intent |
 | `test_harness_architecture.md` | Markdown companion | Baseline capture rules (full teardown/rebuild, never surgical clearing), Protocol-fake test double standards, and (new in v0.5) diff-scoped mutation testing | Owns the verification-layer mechanics that make a passing test mean something |

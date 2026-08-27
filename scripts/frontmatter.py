@@ -36,7 +36,7 @@ PART_OF = ("agentic-sdlc", "glass-box", "repo-meta")
 DOC_TYPES = (
     "blueprint", "companion", "analysis", "glossary-notes", "guide", "manifest", "schema",
     "design-spec", "agent-contracts", "runbook", "demo-script", "payload-spec",
-    "review-prompt", "review-findings", "archive-notice",
+    "review-prompt", "review-findings", "archive-notice", "roadmap",
 )
 
 # Stable output order, independent of insertion order, so regenerated front matter is

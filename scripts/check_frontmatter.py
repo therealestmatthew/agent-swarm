@@ -42,6 +42,7 @@ CURATED_DOC_TYPES: dict[str, str] = {
     "plan/context_retrieval_strategy.md": "companion",
     "plan/execution_isolation.md": "companion",
     "plan/infra_triage_matrix.md": "companion",
+    "plan/implementation_roadmap.md": "roadmap",
     "plan/structural_change_runbook.md": "runbook",
     "plan/test_harness_architecture.md": "companion",
     "plan/versions/REGRESSION.md": "analysis",

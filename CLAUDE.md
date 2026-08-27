@@ -27,6 +27,7 @@ changes.
 |---|---|
 | `plan/agentic-sdlc-design-v0.5.md` | The orchestration blueprint — principles, agent roster, the eight phases. **Read first.** |
 | `plan/agent_interface_contracts.py` | Every schema exchanged between agents. Single source of truth. |
+| `plan/implementation_roadmap.md` | Design → build sequence: backlog critique, cross-file defects found, and the six stages. **Read second.** |
 | `plan/infra_triage_matrix.md` | The deterministic failure-classification rules engine |
 | `plan/test_harness_architecture.md` | Baseline capture, Protocol-fake test double standards, diff-scoped mutation testing |
 | `plan/context_retrieval_strategy.md` | Context Gatherer search heuristics and token budgets |

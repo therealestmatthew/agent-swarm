@@ -31,6 +31,9 @@ import sys
 from pathlib import Path
 from typing import Callable, NamedTuple
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import frontmatter as fm  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -90,10 +93,26 @@ def live_agent_roster_count() -> int:
 
 
 def companion_file_count() -> int:
+    """Mechanics files split out of the blueprint. Selected by front matter doc_type rather
+    than by "every plan/*.md that isn't a design doc" -- that older rule silently counted any
+    new plan/ document as a companion, which `implementation_roadmap.md` (doc_type: roadmap)
+    is not. `runbook` is included deliberately: `structural_change_runbook.md` was split out of
+    the blueprint alongside the companions and both count assertions have always included it."""
     plan_dir = ROOT / "plan"
+    counted = {"companion", "runbook"}
     return len([
         p for p in plan_dir.glob("*.md")
         if not p.name.startswith("agentic-sdlc-design")
+        and fm.parse(p.read_text(encoding="utf-8"))[0].get("doc_type") in counted
+    ])
+
+
+def live_human_gate_count() -> int:
+    s = _v5_doc()
+    block = s.split("### 9.3 Human gates")[1].split("\n---")[0]
+    return len([
+        line for line in block.splitlines()
+        if line.startswith("|") and "---" not in line and "| Gate " not in line
     ])
 
 
@@ -124,6 +143,9 @@ REGISTRY: list[Count] = [
     Count("companion_file_count", companion_file_count, [
         t("plan/agentic-sdlc-design-v0.5.md", r"mechanics live in (\d+) companion files"),
         t("CLAUDE.md", r"now (\d+) companion files, not five"),
+    ]),
+    Count("live_human_gate_count", live_human_gate_count, [
+        t("plan/implementation_roadmap.md", r"(\d+) human gates exist; nothing lets a human"),
     ]),
 ]
 
