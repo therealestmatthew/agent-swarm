@@ -17,15 +17,14 @@ A **general-purpose orchestration pipeline** with a formal seam between a univer
 per-repo Adapter Layer. The boundary itself is specified in `core_adapter_boundary.md`; this file
 sequences the work of building it.
 
-Connected Planning Model Intelligence (CPMI) — Python, Selenium, custom DOM extraction — is the
-**forcing function, not a dependency**. It guides the design so the abstraction survives contact
+A **forcing function, not a dependency**, guides the design so the abstraction survives contact
 with a genuinely awkward repo: browser processes, live tenant credentials, non-hermetic tests,
-seeded external state. Nothing in Stage 0 through Stage 2 requires access to it. CPMI enters at
+seeded external state. Nothing in Stage 0 through Stage 2 requires access to it. It enters at
 Stage 3 as the first *real* adapter, behind two synthetic reference adapters that exist to prove the
 interface without it.
 
 **Changelog from v1.0.** Restructured around the Core/Adapter split. D2 is restated (§3) rather than
-withdrawn: the finding was never "we need CPMI," it was "the intent vocabulary is presented as
+withdrawn: the finding was not that repo-specific tooling was required, but that "the intent vocabulary is presented as
 universal when it is one instance" — which this model resolves by relocating it. Stage 0 becomes
 contract definition rather than repo inventory; Stage 1 builds Core against a null adapter; Stage 2's
 AST work is reframed from a production transformer to an interface conformance proof.
@@ -94,7 +93,7 @@ design set is where they get fixed.
 | ID | Where | Defect | Severity |
 |---|---|---|---|
 | D1 | `v0.5` §4.2 vs. `execution_isolation.md` §6; **resolved in this pass** | §4 applied an intent "synchronously before the agent continues" while §6 committed shared files last, with no materialization path specified anywhere. **Resolved as canonical branch + read-only overlay** (`execution_isolation.md` §7): the Intent Service is sole writer of a `shared/` branch; registered files are `skip-worktree` in every task index and outside every agent's write scope; applied content is re-materialized into live worktrees by atomic rename, so the interpreter sees it and git does not; the Integrator fast-forwards at the end. The read-view guarantee is restated precisely — a worktree is isolated from sibling *in-progress work*, not from *governed shared state*. The reviewability cost is paid by a synthesized per-PR shared-file delta view (§7.4). | Resolved |
-| D2 | `agent_interface_contracts.py` §4.2 intents | *Restated under the Core/Adapter model.* The defect is not that the vocabulary is web-shaped — it is that a **repo-specific vocabulary is sitting in the universal contracts file**, presented as the system's intent vocabulary rather than as one adapter's. `AddExport`/`AddRoute`/`AddProviderBinding` describe an Express/Nest/FastAPI codebase and describe nothing about a Selenium extraction tool, a data pipeline, or a CLI. **Resolution: they move out of Core into a reference web adapter**, and Core keeps only `IntentOpSpec` — the shape of a declaration. This is now a Stage 0 relocation, not a CPMI-access blocker. | **Load-bearing** |
+| D2 | `agent_interface_contracts.py` §4.2 intents | *Restated under the Core/Adapter model.* The defect is not that the vocabulary is web-shaped — it is that a **repo-specific vocabulary is sitting in the universal contracts file**, presented as the system's intent vocabulary rather than as one adapter's. `AddExport`/`AddRoute`/`AddProviderBinding` describe an Express/Nest/FastAPI codebase and describe nothing about other codebases. **Resolution: they move out of Core into a reference web adapter**, and Core keeps only `IntentOpSpec` — the shape of a declaration. This is now a Stage 0 relocation. | **Load-bearing** |
 | D14 | New, arising from the adapter interface | An adapter contract naming test commands, bootstrap commands, and transformer entry points is **arbitrary code execution declared by the repo being operated on** — and if the same file also says which gates block, the repo grades itself. Two mechanisms close it. **Structural:** the contract splits into a repo-side `RepoDeclaration` (facts, self-punishing if false) and a control-plane `GovernancePolicy` (blocking gates, secret grants, ceilings, degradation policy — self-rewarding if false, so the beneficiary does not set them), with the discriminating test in `core_adapter_boundary.md` §3.1 and two intermediate classes for fields that are self-rewarding but genuinely repo-specific: policy-bounded (clamp and record) and verified (`TestTier.hermetic` is checked, not trusted). **Procedural:** the declaration is a registered shared file outside every agent's write scope, human-gated on change, and both artifacts are digest-pinned into the `RunManifest` (§3.4). | **Load-bearing** |
 | D15 | `infra_triage_matrix.md` | Written as *the* rules engine, with rules naming DOM state directly. A backend repo has no DOM. What is universal is the **evaluator** (ordered, first-match-wins, deliberate fallthrough to the LLM); the **rows are adapter data**. The file is reclassified from the engine to the reference rule set for a browser-automation adapter — which is what it has always actually been. | High |
 | D16 | `FailureSignature` | Frozen, `extra="forbid"`, one home per schema. An adapter cannot add a field without forking the schema per repo — the exact drift the file exists to prevent, at the type level. Resolved by a declared `signals` map (added additively in this pass); relocating `dom_state_diff_from_baseline` and `network_calls_over_threshold` into it is itself a structural change and goes through the SOP. | High |
@@ -148,7 +147,7 @@ Nothing here needs a running system, and everything downstream is blocked on it.
 **Exit criterion:** D1, D2, D14, D15, D16 have written answers in the design set; both contract
 artifacts validate under Pydantic; every field has a class under the §3.1 test; and every capability
 the Core will implement is declarable. **No target
-repo has been read.** If Stage 0 cannot be completed without CPMI access, the abstraction has
+repo has been read.** If Stage 0 cannot be completed without access to a specific target repo, the abstraction has
 already failed and that is the finding.
 
 ### Stage 1 — Core walking skeleton, against a null adapter
@@ -197,7 +196,7 @@ replaying an entire intent log twice produces byte-identical files.
 
 ### Stage 3 — First real adapter, and the first Maker/Checker pair
 
-CPMI enters here, as an adapter written against a proven interface rather than as the thing the
+The first real adapter enters here, written against a proven interface rather than as the thing the
 interface was reverse-engineered from.
 
 The backlog starts its agent work with Plan Writer / Task Decomposer. That is the **worst** first
@@ -206,7 +205,7 @@ Start where the oracle is deterministic.
 
 | Task | Notes |
 |---|---|
-| **S3-1** CPMI adapter, hermetic tier only | Declaration, vocabulary, signals, triage rules, `libcst` transformer against the conformance kit. Browser tier deferred to Stage 4. |
+| **S3-1** First real adapter, hermetic tier only | Declaration, vocabulary, signals, triage rules, transformer against the conformance kit. Browser tier deferred to Stage 4. |
 | **S3-1a** Intent transport (MCP server over the Stage 2 library) | The first stage with real LLM agents, so the first stage a transport has anything to talk to. **One shared long-lived server, not one per agent session** — the per-session default gives N writers and no mutex, and looks fine until two agents collide. Reads stay on disk per §7.2, so an outage blocks submissions without breaking test runs. |
 | **S3-2** Test Author agent spec + Baseline Guard + mutation gate | Ground truth is a test suite, not an opinion. Falsifiable on day one. |
 | **S3-3** Task Dev / Code Reviewer in Shadow Mode | Per `calibration_and_measurement.md` §2 — shadow is the default onboarding path. |
@@ -214,16 +213,16 @@ Start where the oracle is deterministic.
 | **S3-5** Plan Writer / Task Decomposer specs (**#3**) | Last, not first — by now there is a ledger to grade them against. |
 | **S3-6** Plan Writer dialogue depth (**R14**) | Answerable once S3-5 runs and review-loop cost is observable. |
 
-**Exit criterion:** one real CPMI change goes plan → decomposition → tests → implementation → merge
+**Exit criterion:** one real adapter change goes plan → decomposition → tests → implementation → merge
 with agents in the loop and humans at the gates. Single task, no parallelism.
 
 ### Stage 4 — The browser tier (the adapter's hard half)
 
 | Task | Notes |
 |---|---|
-| **S4-1** Container isolation provider | The Stage 1 stub, implemented. Not a choice at this point: CPMI's reset strategy declares `port` + `filesystem_exclusive`, so §5.1 derives `container` as the floor. |
+| **S4-1** Container isolation provider | The Stage 1 stub, implemented. Not a choice at this point: the adapter's reset strategy declares `port` + `filesystem_exclusive`, so §5.1 derives `container` as the floor. |
 | **S4-2** Selenium reset strategy (**#5**, implements D4) | Driver process per test with a fresh `--user-data-dir`, declared as a `ResetStrategy` with its measured `typical_cost_ms` — the first real number for the wall-clock and concurrency derivations, which are guesses until it exists. |
-| **S4-3** Hydration provider for CPMI | Seeded tenant state as a named fixture; baseline captured after it. |
+| **S4-3** Hydration provider | Seeded tenant state as a named fixture; baseline captured after it. |
 | **S4-4** Credential provider, live tenant scope (**#6**) | Injected into the container environment at task start; never a file in a worktree an agent can read and echo. A permission boundary, not an instruction (Principle 12). |
 | **S4-5** Evidence scrubbing in-unit (**R9**) | Ships **with** S4-4, not after. |
 | **S4-6** Flake Registry | Only meaningful once a real browser suite generates real flakes. |
@@ -241,7 +240,7 @@ until there is parallelism; reuse candidates in `archive/glass-box/README.md`, n
 no concept of a phase or a human gate · **S5-5** Task granularity, measured (**#2** revisited) — the
 empirical answer that replaces S0-12's provisional one.
 
-**Exit criterion:** a multi-task CPMI change merges clean, with at least one intent collision
+**Exit criterion:** a multi-task adapter change merges clean, with at least one intent collision
 correctly rejected and resolved in one shot per §4.5.
 
 ### Stage 6 — Unblocked by data
@@ -312,8 +311,7 @@ Raised one at a time, in the order they block work.
    coverage, and absent-capability handling for a repo with no hermetic tier at all.
 7. **The two mutation policy defaults.** `non_hermetic_coverage_posture` currently defaults to
    `degrade` and `max_mutants_per_task` to unset. The first is the permissive choice and deserves a
-   deliberate answer for CPMI specifically, since its most valuable logic is exactly the code likely
-   to be browser-covered only. The second cannot be set honestly before Stage 3 measures real mutant
+   deliberate answer, particularly for adapters where valuable logic is browser-covered only. The second cannot be set honestly before Stage 3 measures real mutant
    counts — but leaving it unset means the cost ceiling is not actually enforced.
 
 ---

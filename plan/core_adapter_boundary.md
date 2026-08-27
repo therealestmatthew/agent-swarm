@@ -18,9 +18,9 @@ the seam that makes that claim checkable: what the Core owns for every repo it w
 what a target repo declares for itself, and — the part that is easy to get wrong — the three places
 where a naive reading of that split leaks.
 
-A specific repository (CPMI: Python, Selenium, DOM extraction) guides the design so it survives
-contact with reality. It is not a dependency of the Core, and nothing in Stage 0 through Stage 2 of
-`implementation_roadmap.md` requires access to it.
+The design is tested against contact with real repositories of varying complexity and tooling.
+It is not a dependency of the Core, and nothing in Stage 0 through Stage 2 of
+`implementation_roadmap.md` requires access to a specific implementation.
 
 ---
 
