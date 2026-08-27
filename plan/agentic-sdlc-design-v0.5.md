@@ -193,8 +193,9 @@ isolates the *writes* within the parallel swarm. It does nothing for the *reads*
 Task Dev agent runs the suite, the interpreter imports the whole package, including a file another
 agent is halfway through rewriting. Verification is repo-scoped even when editing is file-scoped.
 
-Full mechanics — one worktree per task, lifecycle, and when to add containers — live in
-`execution_isolation.md`.
+Full mechanics live in `execution_isolation.md`: one worktree per task and its lifecycle (§1–4),
+the isolation unit **derived** from a repo's declared reset-resource needs rather than discovered
+when two tasks collide (§5), and shared-file materialization (§7).
 
 ---
 

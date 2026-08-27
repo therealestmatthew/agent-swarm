@@ -63,13 +63,48 @@ reads and writes only inside that tree for the duration of the task.
 6. The worktree is torn down after its branch merges or its task is abandoned. Nothing about
    worktree teardown is itself a gate — the merge (`merge.no_conflict`, design doc §9.1) is.
 
-## 5. Containers are not required — yet
+## 5. The isolation unit is derived, not discovered
 
-For a pure unit suite with no external dependencies (databases, bound ports, real network calls), a
-worktree is sufficient isolation. **Revisit this the moment any of that changes:** if a task's tests
-start binding a port, hitting a real service, or running a migration, the isolation unit needs to
-become a container, not just a worktree, because two agents' processes can otherwise collide on a
-resource a worktree doesn't scope (a listening socket, a database file).
+This section previously read *"containers are not required — yet ... revisit the moment a task's
+tests start binding a port, hitting a real service, or running a migration."* That is a correct
+instinct expressed as an escape condition someone has to notice — and the whole posture of this
+design is that a constraint which binds should be a fact about a run rather than a discovery at
+runtime. It is also, for any browser-driven repo, already true on day one: a WebDriver reset spawns
+a process, binds a port, and needs a profile directory no sibling task may share.
+
+### 5.1 The derivation
+
+Each `ResetStrategy` a repo declares (`test_harness_architecture.md` §1.3) names the host resources
+one execution needs. Core reads those and derives the **minimum** isolation unit:
+
+| Any declared strategy requires | Minimum isolation unit | Why |
+|---|---|---|
+| `none` — in-process only | Worktree | Nothing escapes the tree |
+| `process` — spawns a process | Worktree | A child process that touches nothing shared is scoped by the tree it runs in |
+| `port` — binds a listening socket | **Container** | Two tasks' sockets collide on one host; a worktree does not scope a port |
+| `filesystem_exclusive` — needs an unshared path | **Container** | A profile directory or database file is not scoped by a worktree |
+| `external_service` — reaches a real service | **Container** | Blast radius and credential scope both need a boundary a worktree has not got |
+
+### 5.2 Derived is a floor, not an assignment
+
+`RepoDeclaration.isolation_unit` stays declared, and Core raises it to the derived minimum rather
+than replacing it. A repo may always declare a **stronger** unit than its resources require — for
+credential scoping, for blast radius, for reproducibility — and Core does not argue.
+
+What it may not do is declare a weaker one. **Declaring `worktree` while declaring a strategy that
+requires a port, an exclusive path, or an external service is incoherent**, and Core rejects it at
+contract validation with `HaltReason.ADAPTER_INVALID` — the same treatment as claiming
+`Capability.MUTATION_TESTING` with no hermetic tier (`test_harness_architecture.md` §3.7). A repo
+may honestly need a container; it may not claim it does not while declaring the reasons it does.
+
+### 5.3 What this costs, stated
+
+Containers are not free, and the derivation makes the bill legible rather than smaller. A container
+per task multiplies the per-unit resource footprint, which divides straight into the concurrency
+ceiling (`core_adapter_boundary.md` §3.6): browser containers are hundreds of megabytes each before
+a single test runs, so swarm width for a browser-tier repo is bound by memory long before it is
+bound by API rate limits. That is the answer to design doc §12's concurrency-ceiling question for
+this class of repo, and it falls out of the same declaration rather than needing a separate one.
 
 ## 6. Merge order is planned, not emergent
 

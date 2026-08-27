@@ -235,6 +235,44 @@ class AbsentCapabilityPolicy(str, Enum):
     DEGRADE = "degrade"  # the run proceeds; the degradation is recorded and surfaced at the PR
 
 
+class ResetResource(str, Enum):
+    """What one execution of a ResetStrategy needs from the host. This is what makes the
+    isolation unit derivable instead of a judgment call: execution_isolation.md §5 used to say
+    "containers are not required -- yet ... revisit the moment a task's tests bind a port," an
+    escape condition discovered at runtime. Declaring the resource makes it arithmetic."""
+
+    NONE = "none"                                  # in-process; nothing outside the worktree
+    PROCESS = "process"                            # spawns a process (a driver, a subprocess)
+    PORT = "port"                                  # binds a listening socket
+    FILESYSTEM_EXCLUSIVE = "filesystem_exclusive"  # needs a path no sibling task may share
+    EXTERNAL_SERVICE = "external_service"          # reaches a real service outside the host
+
+
+class ResetStrategy(BaseModel, frozen=True):
+    """How this repo produces a clean slate for one test.
+
+    test_harness_architecture.md §1.2 hard-coded `browser.new_context()` / `context.close()`
+    into a universal document. Playwright has that call; Selenium does not, and its nearest
+    honest equivalent -- a fresh driver process with a fresh profile directory -- costs
+    seconds rather than milliseconds. The *rule* (construct fresh, never clean in place) is
+    universal; the mechanism and its price are not, so the mechanism is declared.
+
+    `typical_cost_ms` is load-bearing rather than documentation: Core feeds it into the
+    wall-clock ceiling estimate and the concurrency derivation (core_adapter_boundary.md §3.6).
+    A strategy costing 2s per test across a large suite is a budget fact, not a footnote."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    strategy_id: str
+    recreates: str                  # e.g. "browser context", "driver process + fresh profile dir"
+    requires: list[ResetResource]
+    typical_cost_ms: int
+    # What this adapter's equivalent of §1.4's comparison table checks. A browser adapter
+    # checks cookies and localStorage; a backend adapter checks open connections and temp
+    # files. Any single mismatch sets the clean-state signal False.
+    clean_state_checks: list[str] = Field(default_factory=list)
+
+
 class TestTier(BaseModel, frozen=True):
     """One runnable tier of a repo's suite. `hermetic` is what makes `mutation.diff_scoped`
     decidable instead of universally-blocking-or-waived: the gate applies to hermetic tiers
@@ -252,6 +290,9 @@ class TestTier(BaseModel, frozen=True):
     # it. A tier that verifies as hermetic is held to the stricter gate regardless of what it
     # claimed, and the discrepancy is recorded.
     hermetic: bool
+    # Which ResetStrategy wraps each test in this tier. Absent means the tier needs no reset
+    # beyond a fresh process, which Core will hold it to rather than assume.
+    reset_strategy_id: str | None = None
 
 
 class IntentOpSpec(BaseModel, frozen=True):
@@ -336,6 +377,7 @@ class RepoDeclaration(BaseModel, frozen=True):
 
     # Verification
     test_tiers: list[TestTier] = Field(default_factory=list)
+    reset_strategies: list[ResetStrategy] = Field(default_factory=list)
     hydration_fixture_ids: list[str] = Field(default_factory=list)
 
     # Vocabulary & transforms
@@ -391,6 +433,13 @@ class GovernancePolicy(BaseModel, frozen=True):
     # non-hermetic tier -- refuse the merge until it gains hermetic coverage, or degrade and
     # record the shortfall in the PR. There is no option that reports it as passing.
     non_hermetic_coverage_posture: AbsentCapabilityPolicy = AbsentCapabilityPolicy.DEGRADE
+    # Reset adequacy (test_harness_architecture.md §1.6). A clean-state diff at t=0 means the
+    # reset did not work, so the rate of those diffs per strategy audits the strategy itself --
+    # the signal already exists for failure triage and is simply also evidence about the
+    # mechanism that produced it. Above this rate, Core demotes the tier to the strictest
+    # declared strategy and records it. Tightening is automatic because it costs only time;
+    # loosening is a human gate because it costs correctness.
+    max_baseline_diff_rate: float = 0.02
     # Exceeding this halts the gate and reports the overflow -- never a silent sample, which
     # would report a partial run as a full one. Read it as a task-size signal.
     max_mutants_per_task: int | None = None

@@ -41,7 +41,7 @@ contact with reality. It is not a dependency of the Core, and nothing in Stage 0
 | Area | Adapter declares |
 |---|---|
 | Execution | Isolation unit (worktree or container), image reference, bootstrap commands, port bindings, per-unit resource footprint |
-| Verification | Test tiers, their commands, whether each is hermetic, which gates each tier satisfies |
+| Verification | Test tiers, their commands, whether each is hermetic, and the reset strategy wrapping each test — what it recreates, what host resources it needs, and what it costs |
 | Vocabulary | Its Additive Intent operations, their collision keys, and the transformer that applies each |
 | Telemetry | The signals its harness can capture, and the ordered triage rules written over those signals |
 | Hydration | Named fixture states and the hooks that apply, verify, and tear them down |
@@ -232,8 +232,11 @@ Hydration and baseline are therefore the same concept viewed twice:
 
 - **Adapter owns** what hydration *is*: named fixture states, and hooks to apply, verify, and tear
   down.
-- **Core owns** the ordering and the guarantee: isolation unit up → hydration applied → **baseline
-  captured** → first test action. `dom_state_diff_from_baseline` and its successors compare against
+- **Core owns** the ordering and the guarantee: isolation unit up → per-test instance constructed
+  (`test_harness_architecture.md` §1.2) → hydration applied → **baseline captured** → first test
+  action. Core also derives the isolation unit itself from the declared reset strategies'
+  resource needs (`execution_isolation.md` §5), so "which unit" is arithmetic rather than a
+  judgment call. `dom_state_diff_from_baseline` and its successors compare against
   *the declared post-hydration state*, never against empty and never against the previous test's end
   state.
 

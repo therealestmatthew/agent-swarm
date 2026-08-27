@@ -20,32 +20,72 @@ This file owns the mechanics of the verification layer that the core design docu
 ### 1.1 The problem this solves
 `FailureSignature.dom_state_diff_from_baseline` (see `agent_interface_contracts.py`) is only trustworthy if "baseline" is unambiguous and the mechanism that produces it can't itself leak state. This section defines both.
 
-### 1.2 Capture rule: full teardown/rebuild, not surgical clearing
-For DOM-heavy automation (Selenium/Playwright): **every test gets a freshly constructed browser context.** No context reuse across tests, even for performance — surgically clearing cookies/localStorage in place is explicitly disallowed as the sole isolation mechanism.
+### 1.2 Capture rule: construct fresh, never clean in place
+
+**The universal rule:** every test gets a **freshly constructed instance** of whatever holds its
+state. Reusing an instance and clearing it is explicitly disallowed as the sole isolation mechanism,
+at any scope.
+
+**Why, and why it generalizes:** clearing routines only reach what they explicitly enumerate. In a
+browser, service workers, cache storage, IndexedDB, open native dialogs, and in-flight download
+state routinely fall outside that enumeration and persist silently. The same shape recurs everywhere
+— a reused Python process leaks module globals, import side effects, and monkeypatches; a reused
+database connection leaks session settings and transaction state; a reused temp directory leaks
+files. A leaky clearing mechanism doesn't just cause occasional flakiness: it undermines the
+clean-state signal the triage matrix depends on, and `infra_triage_matrix.md`'s rule ordering
+(state-leakage checked *before* timing) collapses if that signal can be wrong.
+
+**What is *not* universal is the mechanism.** This section previously mandated:
 
 ```
-Mandate:
-  before each test:  browser.new_context()   (or framework equivalent)
-  after each test:   context.close()
-  never:             clear cookies/storage on a reused context and call it clean
+before each test:  browser.new_context()
+after each test:   context.close()
 ```
 
-**Why:** cookie- and storage-clearing routines only reach what they explicitly enumerate. Service workers, cache storage, IndexedDB, open native dialogs, and in-flight download state routinely fall outside that enumeration and persist silently between tests. A leaky clearing mechanism doesn't just cause occasional flakiness — it undermines the signal `dom_state_diff_from_baseline` exists to produce, and `infra_triage_matrix.md`'s rule ordering (state-leakage checked *before* timing) depends on that signal being trustworthy. If the field can be wrong, the whole ordering rationale collapses.
+That is Playwright's API, hard-coded into a document that governs every repo. **Selenium has no
+`new_context()`.** Its nearest honest equivalent is a fresh WebDriver process with a fresh
+`--user-data-dir`; `delete_all_cookies()` plus a `localStorage.clear()` is precisely the in-place
+clearing this rule forbids, and a new session against a reused browser process still shares the
+profile, the cache, and any registered service worker. The rule survives; the mechanism was one
+framework's, and one framework's price:
 
-**Cost tradeoff, stated explicitly:** full teardown/rebuild costs more wall-clock time per test than in-place clearing. This is accepted deliberately — the alternative degrades a load-bearing signal in the triage system, and a flake-detection mechanism that can't trust its own inputs is worse than a slower one that can.
+| Mechanism | Cost per test | Genuinely clean? |
+|---|---|---|
+| Playwright `browser.new_context()` | milliseconds | Yes |
+| Selenium: clear cookies + storage in place | ~0 | **No** — forbidden as sole mechanism |
+| Selenium: new session, reused browser process | tens of ms | **No** — shares profile, cache, service workers |
+| Selenium: new driver process + fresh `--user-data-dir` | ~1–3 **seconds** | Yes |
 
-### 1.3 What "baseline" is, and when it's captured
-Baseline is a canonical empty state, defined once:
+§1.2 previously stated the cost tradeoff as "accepted deliberately." That acceptance was priced for
+milliseconds. At seconds per test it is a different decision — a 500-test browser suite spends
+minutes on browser startup alone — and it interacts directly with the wall-clock ceiling
+(`budget_and_escalation_policy.md` §3) and the concurrency derivation
+(`core_adapter_boundary.md` §3.6). Pretending the two cost the same is how a design accepts a
+tradeoff it never actually made.
 
-- Zero cookies
-- Empty `localStorage` / `sessionStorage`
-- No open modals or native dialogs
-- Default configured viewport
-- No pending network requests
+### 1.3 Reset strategies are declared, not assumed
 
-It is captured **immediately after context creation, before the test's first action.** `dom_state_diff_from_baseline` is the comparison of actual state at that t=0 moment against this canonical empty state — never against the previous test's end state, which (per §1.2) shouldn't exist anyway since contexts aren't reused.
+The mechanism is therefore adapter data: `ResetStrategy` in `agent_interface_contracts.py`, named
+per tier by `TestTier.reset_strategy_id`. A strategy declares what it recreates, what the host must
+give it (`ResetResource`), what it costs, and what its clean-state check actually inspects.
 
-### 1.4 What's actually compared
+`typical_cost_ms` is load-bearing rather than documentation. Core feeds it into the wall-clock
+estimate and the concurrency ceiling, so a two-second reset is a budget fact the pipeline reasons
+with rather than a footnote someone reads later.
+
+`requires` is what makes the isolation unit derivable rather than a judgment call — see
+`execution_isolation.md` §5, which is the other half of this decision.
+
+### 1.4 What "baseline" is, and when it's captured
+
+Baseline is the **declared clean state** — which, once hydration exists, means the declared
+*post-hydration* state, not canonical emptiness (`core_adapter_boundary.md` §4). It is captured
+**immediately after instance construction and hydration, before the test's first action**. The
+clean-state signal is the comparison of actual state at that t=0 moment against the declaration —
+never against the previous test's end state, which per §1.2 should not exist.
+
+The reference browser adapter's checks, which is what this table always was:
+
 | Check | Flags as diff if |
 |---|---|
 | Cookie count/keys | Nonzero |
@@ -54,7 +94,38 @@ It is captured **immediately after context creation, before the test's first act
 | Active WebSocket / pending fetch count | Nonzero |
 | Viewport dimensions | Differ from configured default |
 
-Any single nonzero mismatch sets `dom_state_diff_from_baseline = True`.
+A backend adapter's list is different in every row and identical in shape: open connections, temp
+files, registered signal handlers, module-registry delta. Any single mismatch sets the strategy's
+clean-state signal `True`, which is what `dom_state_diff_from_baseline` — and its successors in
+`FailureSignature.signals` — report.
+
+### 1.5 Verifying that the reset actually worked
+
+§1.2 asserted that full teardown produces a clean slate. Nothing checked. That is a load-bearing
+assertion about a mechanism, in a design whose stated rule is not to assert what has not been run —
+and the evidence needed to check it already exists, unused for this purpose.
+
+**A clean-state diff at t=0 means the reset did not work.** Per-test, that is a state-leakage
+failure and `infra_triage_matrix.md` rule 1 already routes it. In *aggregate over a strategy*, it is
+something else: evidence about the mechanism rather than about any one test. A strategy whose
+diff rate exceeds `GovernancePolicy.max_baseline_diff_rate` is not isolating, whatever it claims.
+
+Core therefore audits each strategy against its own diff rate and, above the threshold, **demotes
+the tier to the strictest strategy the repo declares**, recording the demotion in
+`RunManifest.policy_adjustments`.
+
+The asymmetry is deliberate:
+
+- **Tightening is automatic.** Moving to a stricter reset costs wall-clock time and nothing else.
+- **Loosening is a human gate.** Moving to a cheaper reset trades correctness for speed, and it is
+  self-rewarding for whoever proposes it (`core_adapter_boundary.md` §3.1) — so it is never
+  something the pipeline does to itself.
+
+This is the same shape as the cumulative conflict counter driving shared-file promotion (design doc
+§4.6): evidence accumulates against a threshold, and crossing it changes governance rather than
+being noted and forgotten. It also closes the loophole that would otherwise open the moment resets
+became declarable — an adapter could declare a cheap reset, gain a fast suite, and push the cost
+onto triage quality where it would look like flakiness rather than like a declaration.
 
 ---
 
