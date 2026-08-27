@@ -37,6 +37,7 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 | File | Owns |
 |---|---|
 | `agent_interface_contracts.py` | Every schema in the system — additive intents, `InvariantScope`, `FailureSignature`, `GateResult` — single source of truth |
+| `core_adapter_boundary.md` | **New.** What the universal Core owns vs. what a target repo declares for itself — the `ProjectManifest` adapter contract, capability negotiation, hydration, and credential injection |
 | `test_harness_architecture.md` | Baseline capture mechanics for `dom_state_diff_from_baseline`; Protocol-fake test double standards; diff-scoped mutation testing (§3) |
 | `execution_isolation.md` | **New.** One git worktree per task — why disjoint write ownership alone doesn't isolate reads |
 | `calibration_and_measurement.md` | **New.** Verdict ledger, Shadow Mode promotion thresholds, agent-spec versioning |
@@ -266,7 +267,7 @@ Verdict ledger schema, promotion thresholds, and agent-spec versioning: `calibra
 - **Enterprise invariant arbitration.** If two repos' Context Gatherers generate opposing signals about whether an `enterprise_wide` invariant still holds, who arbitrates — a designated owner per enterprise invariant, or does every conflict go to the same human review queue as deprecation? *(Carried forward from v0.3 — still unresolved.)*
 - **Decay tuning.** The §4.6 decay rule (−1 per clean integration phase, floored at 0) is a reasonable starting point but untested — worth revisiting once there's real promotion data on false-positive/false-negative rates.
 - **Structural Change SOP cadence.** Repeated triggering of `structural_change_runbook.md` against the same file or subsystem may itself be a signal worth feeding back into governance — a file that keeps needing structural intervention might need a heavier redesign rather than another round of the SOP.
-- **Modular file versioning.** Now that mechanics live in 7 companion files, do they carry
+- **Modular file versioning.** Now that mechanics live in 8 companion files, do they carry
   independent version numbers, or do they always track the core document's version? Matters once one
   companion file needs to change without the others. *(The question grows more pressing this version:
   two companions were just added.)*

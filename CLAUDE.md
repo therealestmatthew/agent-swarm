@@ -28,6 +28,7 @@ changes.
 | `plan/agentic-sdlc-design-v0.5.md` | The orchestration blueprint — principles, agent roster, the eight phases. **Read first.** |
 | `plan/agent_interface_contracts.py` | Every schema exchanged between agents. Single source of truth. |
 | `plan/implementation_roadmap.md` | Design → build sequence: backlog critique, cross-file defects found, and the six stages. **Read second.** |
+| `plan/core_adapter_boundary.md` | The universal Core vs. the per-repo Adapter Layer — the `ProjectManifest` contract, its governance, capability negotiation, hydration, credentials |
 | `plan/infra_triage_matrix.md` | The deterministic failure-classification rules engine |
 | `plan/test_harness_architecture.md` | Baseline capture, Protocol-fake test double standards, diff-scoped mutation testing |
 | `plan/context_retrieval_strategy.md` | Context Gatherer search heuristics and token budgets |
@@ -103,7 +104,7 @@ Tracked in `plan/agentic-sdlc-design-v0.5.md` §12, and live:
   promotion data.
 - **Structural Change SOP cadence** — repeated triggering against one file may itself be a
   governance signal.
-- **Modular file versioning** — now 7 companion files, not five. Do they version independently
+- **Modular file versioning** — now 8 companion files, not five. Do they version independently
   of the blueprint?
 - **Five more, carried forward from v0.1 and dropped without resolution at v0.2** (task granularity,
   concurrency ceiling, Plan Writer dialogue depth, run manifest location, secrets posture) — see
