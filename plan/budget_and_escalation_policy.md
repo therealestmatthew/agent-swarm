@@ -1,3 +1,10 @@
+---
+title: Budget & Escalation Policy
+status: live
+part_of: agentic-sdlc
+doc_type: companion
+---
+
 # Budget & Escalation Policy
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §7 (Circuit Breakers) · Principle 7

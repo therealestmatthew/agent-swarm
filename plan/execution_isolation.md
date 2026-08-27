@@ -1,3 +1,10 @@
+---
+title: Execution Isolation
+status: live
+part_of: agentic-sdlc
+doc_type: companion
+---
+
 # Execution Isolation
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §8 (Execution Isolation) · Principle 4 (Disjoint

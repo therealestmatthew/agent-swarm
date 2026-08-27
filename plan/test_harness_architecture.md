@@ -1,3 +1,10 @@
+---
+title: Test Harness Architecture
+status: live
+part_of: agentic-sdlc
+doc_type: companion
+---
+
 # Test Harness Architecture
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §6 (Test Investigator & Failure Triage) · §9.1 (`mutation.diff_scoped`) · `infra_triage_matrix.md` §1 (`FailureSignature.dom_state_diff_from_baseline`) · `agent_interface_contracts.py`

@@ -1,3 +1,10 @@
+---
+title: 10 — Second-Pass Analysis
+status: archived
+part_of: glass-box
+doc_type: review-findings
+---
+
 # 10 — Second-Pass Analysis
 
 Two agents ran against this repo after `09`: one adversarial, explicitly barred from re-reporting

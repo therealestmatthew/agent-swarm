@@ -1,3 +1,10 @@
+---
+title: 05 — Demo Script
+status: archived
+part_of: glass-box
+doc_type: demo-script
+---
+
 # 05 — Demo Script
 
 Three minutes. Five beats. Memorize the first line and the last line; improvise the middle.

@@ -1,3 +1,10 @@
+---
+title: Infrastructure Triage Matrix
+status: live
+part_of: agentic-sdlc
+doc_type: companion
+---
+
 # Infrastructure Triage Matrix
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §6 (Test Investigator & Flake Handling)

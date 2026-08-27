@@ -1,3 +1,10 @@
+---
+title: 04 — Tomorrow's Runbook
+status: archived
+part_of: glass-box
+doc_type: runbook
+---
+
 # 04 — Tomorrow's Runbook
 
 Open this on a second screen and work down it. Do not improvise the order.

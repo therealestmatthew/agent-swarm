@@ -1,3 +1,10 @@
+---
+title: Calibration and Measurement
+status: live
+part_of: agentic-sdlc
+doc_type: companion
+---
+
 # Calibration and Measurement
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §11 (Measurement and Calibration) · §9.2 (Agent

@@ -1,3 +1,10 @@
+---
+title: Structural Change Runbook
+status: live
+part_of: agentic-sdlc
+doc_type: companion
+---
+
 # Structural Change Runbook
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §4.2, §4.6, §8

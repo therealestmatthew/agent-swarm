@@ -1,3 +1,10 @@
+---
+title: 01 — Event Schema
+status: archived
+part_of: glass-box
+doc_type: schema
+---
+
 # 01 — Event Schema
 
 The contract. Build this first; everything else is downstream of it.

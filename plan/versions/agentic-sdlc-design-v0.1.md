@@ -1,3 +1,12 @@
+---
+title: Agentic SDLC Orchestration — Design Proposal
+status: superseded
+part_of: agentic-sdlc
+doc_type: blueprint
+version: "0.1"
+superseded_by: plan/versions/agentic-sdlc-design-v0.2.md
+---
+
 # Agentic SDLC Orchestration — Design Proposal
 
 **Status:** proposal, v0.1

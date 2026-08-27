@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Pre-commit hook: keeps every doc's front matter present and every drift-prone count honest.
+#
+# Activated via `scripts/install-hooks.sh` (sets core.hooksPath to this directory), not by
+# copying into .git/hooks/ -- .git/ isn't tracked, so a copied hook wouldn't survive a fresh
+# clone and every contributor would silently run without it.
+#
+# Runs on the WHOLE repo, not just staged files: a drifted count anywhere is wrong regardless
+# of which file happened to trigger this commit, and scripts/sync_counts.py's whole point is
+# that no doc is ever inconsistent, not just the one you touched. Anything either script fixes
+# gets re-staged automatically. Anything neither script can fix deterministically (a new doc
+# with no H1 title, a count assertion whose wording changed under the tracked pattern) fails
+# the commit with a specific message -- Principle 7, nothing fails silently.
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+STATUS=0
+CHANGED=()
+
+run_step() {
+  local label="$1"; shift
+  local output
+  if ! output=$(python3 "$@" 2>&1); then
+    echo "$output"
+    echo "✗ $label failed -- commit aborted. Fix the issue above and retry."
+    STATUS=1
+    return
+  fi
+  echo "$output"
+  # Both scripts print one line "CHANGED:<space-separated relative paths>" (possibly empty).
+  local changed_line
+  changed_line=$(echo "$output" | grep '^CHANGED:' || true)
+  if [[ -n "$changed_line" ]]; then
+    local files="${changed_line#CHANGED:}"
+    if [[ -n "$files" ]]; then
+      # shellcheck disable=SC2206
+      CHANGED+=($files)
+    fi
+  fi
+}
+
+echo "== pre-commit: front matter =="
+run_step "front matter check" scripts/check_frontmatter.py
+
+echo
+echo "== pre-commit: count sync =="
+run_step "count sync" scripts/sync_counts.py
+
+if [[ $STATUS -ne 0 ]]; then
+  exit 1
+fi
+
+if [[ ${#CHANGED[@]} -gt 0 ]]; then
+  echo
+  echo "Re-staging ${#CHANGED[@]} file(s) fixed automatically:"
+  printf '  %s\n' "${CHANGED[@]}"
+  git add -- "${CHANGED[@]}"
+fi
+
+exit 0

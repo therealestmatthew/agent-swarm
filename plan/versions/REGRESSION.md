@@ -1,3 +1,10 @@
+---
+title: v0.1 → v0.4 Regression Analysis
+status: live
+part_of: agentic-sdlc
+doc_type: analysis
+---
+
 # v0.1 → v0.4 Regression Analysis
 
 **Purpose:** v0.2's changelog documents six additions. It documents zero removals. Reading v0.1

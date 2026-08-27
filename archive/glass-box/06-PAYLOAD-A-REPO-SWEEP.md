@@ -1,3 +1,10 @@
+---
+title: "06 — Payload A: Repo Risk Sweep"
+status: archived
+part_of: glass-box
+doc_type: payload-spec
+---
+
 # 06 — Payload A: Repo Risk Sweep
 
 **Mission statement (use this verbatim in prompts):**

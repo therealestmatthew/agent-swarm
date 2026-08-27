@@ -1,3 +1,10 @@
+---
+title: 03 — Agent Contracts
+status: archived
+part_of: glass-box
+doc_type: agent-contracts
+---
+
 # 03 — Agent Contracts
 
 Four roles. Each one's job is defined by the events it emits, not by its internals — which is what

@@ -1,3 +1,10 @@
+---
+title: 08 — Adversarial Review Prompt
+status: archived
+part_of: glass-box
+doc_type: review-prompt
+---
+
 # 08 — Adversarial Review Prompt
 
 Paste everything below the line into Claude Code, with all Glass Box files in the working directory.

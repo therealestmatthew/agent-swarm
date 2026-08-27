@@ -1,3 +1,10 @@
+---
+title: 02 — Dashboard Design
+status: archived
+part_of: glass-box
+doc_type: design-spec
+---
+
 # 02 — Dashboard Design
 
 Single file. `dashboard.html`. No build step, no framework, no npm. Vanilla JS and CSS custom

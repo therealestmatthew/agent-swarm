@@ -1,3 +1,10 @@
+---
+title: "07 — Payload B: Budget Variance Hunt (fallback)"
+status: archived
+part_of: glass-box
+doc_type: payload-spec
+---
+
 # 07 — Payload B: Budget Variance Hunt (fallback)
 
 **Trigger this swap if, at T+15, any of these are true:**

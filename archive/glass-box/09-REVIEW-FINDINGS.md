@@ -1,3 +1,10 @@
+---
+title: 09 — Adversarial Review Findings
+status: archived
+part_of: glass-box
+doc_type: review-findings
+---
+
 # 09 — Adversarial Review Findings
 
 Response to `08-ADVERSARIAL-REVIEW-PROMPT.md`. Every claim below was checked against the

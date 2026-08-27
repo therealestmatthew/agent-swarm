@@ -1,3 +1,10 @@
+---
+title: GLASS BOX — Master Plan
+status: archived
+part_of: glass-box
+doc_type: blueprint
+---
+
 # GLASS BOX — Master Plan
 
 **One line:** A live mission-control board that makes an agent swarm visible while it runs.

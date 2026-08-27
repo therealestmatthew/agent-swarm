@@ -1,3 +1,10 @@
+---
+title: Quickstart
+status: archived
+part_of: glass-box
+doc_type: guide
+---
+
 # Quickstart
 
 **No install step.** There are no required dependencies — `glassbox/events.py` falls back to a

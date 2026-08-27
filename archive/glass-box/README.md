@@ -1,3 +1,10 @@
+---
+title: Glass Box — archived
+status: archived
+part_of: glass-box
+doc_type: archive-notice
+---
+
 # Glass Box — archived
 
 **Status: frozen. Built for a 90-minute hackathon, demoed in three minutes, and it won.**
