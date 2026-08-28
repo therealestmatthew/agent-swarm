@@ -9,7 +9,7 @@ doc_type: companion
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §4 (Shared-File Governance) · §6 (Failure Triage) ·
 §8 (Execution Isolation) · `implementation_roadmap.md` Stage 0 · `plan/contracts/governance.py`
-(`RepoDeclaration`, `GovernancePolicy`)
+(`RepoDeclaration`, `GovernancePolicy`) · `plan/llm_output_normalization.md` (§3 dispatch path)
 
 ## Purpose
 
@@ -101,6 +101,20 @@ LLM Investigator, with the deliberate-fallthrough guarantee intact. The **rules 
 (`TriageRule`), written over that adapter's declared signals. `infra_triage_matrix.md` is
 reclassified from *the engine* to *the reference rule set for a browser-automation adapter* — which
 is what it has always actually been.
+
+### 2.4 Agent output normalization
+
+Agent-produced JSON (Validator verdicts, additive intents) enters Core as raw JSON strings.
+Core's **normalization layer** is the first mechanism applied to this inbound payload: it
+recursively strips hallucinated extra fields, logs each removal as a `NormalizationEvent`
+(`plan/contracts/verification.py`), and then hands the cleaned data to strict Pydantic
+validation (`extra="forbid"`). Only validated, typed objects enter the downstream pipeline.
+
+This is an *inbound* data-cleaning path, distinct from the *outbound* credential-scrubbing
+egress path in §5: normalization handles what agents produce; scrubbing handles what leaves an
+isolation unit. Both are Core-owned deterministic mechanisms. See
+`plan/llm_output_normalization.md` for the full specification, including model categories
+(which schemas cross this boundary) and escalation interaction.
 
 ---
 

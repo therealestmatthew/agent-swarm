@@ -79,6 +79,6 @@ currently computes it.
 ## 5. Schema Hallucination Rate
 
 - Define the metric: count of `NormalizationEvent` records per model class, per agent, per model tier, over a rolling window.
-- Computed from `NormalizationEvent` instances (schema: `plan/contracts/verification.py`).
+- Computed from `NormalizationEvent` instances (schema: `plan/contracts/verification.py`; design rationale and escalation interaction: `plan/llm_output_normalization.md` §4).
 - A high hallucination rate on a specific LLM tier or model class is a signal for prompt refinement, not runtime escalation.
 - Per-tier analysis: if Sonnet hallucination rate on `GateResult` exceeds a threshold (illustrative, not settled), it surfaces as a prompt-engineering work item, not a budget event.

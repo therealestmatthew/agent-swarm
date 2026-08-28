@@ -7,7 +7,7 @@ doc_type: companion
 
 # LLM Output Normalization
 
-**Referenced by:** `agentic-sdlc-design-v0.5.md` §3 (Phase-by-Phase Architecture) · `CLAUDE.md` (Working agreements) · `plan/contracts/__init__.py` · `plan/calibration_and_measurement.md` §5 (Schema Hallucination Rate)
+**Referenced by:** `agentic-sdlc-design-v0.5.md` §3 (Phase-by-Phase Architecture) · `core_adapter_boundary.md` · `CLAUDE.md` (Working agreements) · `plan/contracts/__init__.py` · `plan/calibration_and_measurement.md` §5 (Schema Hallucination Rate)
 
 ## Purpose
 
@@ -34,10 +34,10 @@ Reference: each contract module's docstring carries a `Parsing discipline:` anno
 ## 3. Dispatch Path Integration
 
 The normalizer sits in the dispatch path:
-- It runs **at the Core/Adapter boundary**, immediately after the LLM provider returns raw JSON and before the payload crosses into Core's typed pipeline.
+- **Core owns the normalizer.** It is a deterministic mechanism (strip-and-log) with no LLM calls, aligning with the principle that "Core owns every mechanism; Adapter owns every noun."
+- The Adapter hands raw JSON strings to Core. The normalizer is the first thing that processes this inbound payload before it crosses into Core's typed pipeline.
 - For Validator agents: It sits between the raw `GateResult` JSON and the `GateResult` instance that enters the gate evaluation logic.
 - For Task Dev agents: It sits between the raw intent JSON and the `AdditiveIntent` instance that enters the Shared-File Intent Service.
-- Principle 2 alignment: The normalizer is fully deterministic (no LLM calls) — it strips and logs, nothing more.
 
 ## 4. Escalation Interaction
 
@@ -49,3 +49,7 @@ How normalization interacts with the escalation ladder:
 ## 5. Open Questions
 
 - What threshold of `NormalizationEvent` occurrences constitutes a reliable signal for prompt-refinement versus acceptable background noise for a given model tier?
+
+## 6. Schema Defaulting Convention
+
+Required fields with no default on top-level governance postures force explicit, conscious choice by the policy owner. Scoped or per-tier decisions may default to the conservative option. The reference case: `GovernancePolicy.absent_capability_policy` (no default — a top-level posture that must never be silently inherited) vs. `GovernancePolicy.non_hermetic_coverage_posture` (defaults to `DEGRADE` — a scoped, per-tier decision where degradation is the safe, conservative default). See `plan/contracts/governance.py` L309 for the inline rationale.
