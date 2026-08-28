@@ -20,7 +20,8 @@ Package layout (each module's own docstring declares its domain scope; new
 schemas should be added to the module whose scope they fit):
   - orchestration.py     -- Core Orchestrator's own state (RunManifest, Phase,
                             HaltReason) and the shared-file intent outcome
-                            envelope (IntentOutcome, IntentRejection).
+                            envelope (IntentOutcome, IntentRejection,
+                            RejectionEdge).
   - governance.py        -- The adapter contract: RepoDeclaration,
                             GovernancePolicy, and every sub-model they compose.
   - verification.py      -- Validator return shapes, failure-triage captures,
@@ -67,6 +68,7 @@ from plan.contracts.orchestration import (
     IntentOutcome,
     IntentRejection,
     Phase,
+    RejectionEdge,
     RunManifest,
 )
 from plan.contracts.verification import (
@@ -87,6 +89,7 @@ __all__ = [
     "HaltReason",
     "IntentOutcome",
     "IntentRejection",
+    "RejectionEdge",
     # Governance
     "RepoDeclaration",
     "GovernancePolicy",

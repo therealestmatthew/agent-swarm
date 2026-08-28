@@ -1,8 +1,8 @@
 """Orchestration-layer contracts: the Core Orchestrator's own state
 (RunManifest, Phase, HaltReason) and the shared-file intent outcome envelope
-returned to a submitting agent (IntentOutcome, IntentRejection). New schemas
-that describe Core's own bookkeeping, phase transitions, halt conditions, or
-the outcome of submitting a shared-file intent belong here.
+returned to a submitting agent (IntentOutcome, IntentRejection, RejectionEdge).
+New schemas that describe Core's own bookkeeping, phase transitions, halt
+conditions, or the outcome of submitting a shared-file intent belong here.
 
 This module is Core-only. It does not import from `governance`, `verification`,
 or `reference_adapter/` -- Core is standalone (see core_adapter_boundary.md §3).
@@ -32,7 +32,16 @@ from plan.contracts import BaseContract
 
 class IntentRejection(BaseContract):
     """Why an intent was refused, with enough context to resolve in one shot rather than
-    restarting a planning cycle (design doc §4.5)."""
+    restarting a planning cycle (design doc §4.5).
+
+    `deadlock_cycle` is the escape valve: when the Intent Service's cycle detector or
+    per-tuple rejection counter (governed by `GovernancePolicy.max_mutex_rejections`)
+    fires, the rejection returned to every task in the cycle carries
+    `reason = "deadlock_cycle"` and the full task-id set. That distinguishes a normal
+    single-collision rejection (which the agent can resolve from the blocking context)
+    from a systemic loop the agent cannot resolve on its own -- and is the signal Core
+    uses to fail the involved task set as a boundary failure rather than let it burn
+    budget on further retries."""
 
     reason: Literal[
         "collision",         # another pending/applied intent matches on every collision key
@@ -40,10 +49,40 @@ class IntentRejection(BaseContract):
         "not_registered",    # the target file is not in GovernancePolicy.registered_shared_files
         "op_not_declared",   # the op is absent from RepoDeclaration.intent_vocabulary
         "structural",        # exceeds the additive vocabulary -- exits via the SOP
+        "deadlock_cycle",    # graph cycle detected, or max_mutex_rejections breached -- §4.5
     ]
     blocking_task_id: str | None = None
     blocking_op: str | None = None
     blocking_keys: dict[str, str] = Field(default_factory=dict)
+    # Populated iff reason == "deadlock_cycle": the ordered set of task IDs forming the
+    # detected cycle (or the two ends of the repeatedly-colliding tuple when the counter
+    # ceiling is what tripped). None for every other reason -- so a rejection is either a
+    # single-collision fact (resolvable from blocking_*) or a systemic-loop fact
+    # (task-scoped termination), never ambiguously both.
+    deadlock_cycle: list[str] | None = None
+
+
+class RejectionEdge(BaseContract):
+    """One edge in the Intent Service's rejection graph: task A was rejected because task B
+    currently holds a lock (or a pending intent) on `resource_key`. The graph is what makes
+    the §4.5 cycle detector cheap -- adding an edge, then running a bounded-depth cycle walk
+    from the new node, is O(cycle length) rather than a rescan of all pending intents.
+
+    Core-only, and stays that way: an adapter has no reason to observe the graph and no
+    authority to mutate it. Persisted on `RunManifest.rejection_graph_edges` (see below) so
+    a crashed-and-resumed run reconstructs the deadlock state it detected pre-crash, rather
+    than silently starting the counters over and re-entering the same cycle -- the H8
+    crash-recovery concern applied to this specific piece of Intent Service state.
+
+    `timestamp` is epoch seconds; the counter decay Core applies (a cycle whose edges are
+    all older than a phase boundary is stale evidence) reads it directly. `resource_key` is
+    the target file path plus, when the collision was on an anchor, the anchor id -- the
+    same tuple `blocking_keys` on `IntentRejection` describes for the human-readable case."""
+
+    rejected_task_id: str
+    blocking_task_id: str
+    resource_key: str
+    timestamp: float
 
 
 class IntentOutcome(BaseContract):
@@ -93,7 +132,15 @@ class Phase(str, Enum):
 class HaltReason(str, Enum):
     """Why a run is currently halted. Ceiling Halt (§7/Budget Accountant) and Boundary
     Failure (Principle 8) are the two the design already names; HUMAN_GATE covers every
-    gate in design doc §9.3 that is currently awaiting sign-off."""
+    gate in design doc §9.3 that is currently awaiting sign-off.
+
+    `BOUNDARY_FAILURE` is run-level and only set when boundary failure has emptied
+    `active_task_ids` or otherwise blocked phase progress. A §4.5 deadlock that involves
+    only a subset of tasks does NOT raise this: the Intent Service drops the involved tasks
+    from `active_task_ids` via the existing per-task failure path (their rejection carries
+    `IntentRejection.reason = "deadlock_cycle"`), and Core continues the phase for the
+    remaining active tasks. The run-level halt is reserved for the case where the cascade
+    leaves no work Core can still make progress on."""
 
     CEILING_HALT = "ceiling_halt"
     BOUNDARY_FAILURE = "boundary_failure"
@@ -130,3 +177,11 @@ class RunManifest(BaseContract):
     # `degrade`. Recorded rather than applied silently -- a run that was narrowed is a run
     # whose reviewer needs to know it was narrowed (Principle 7).
     policy_adjustments: list[str] = Field(default_factory=list)
+    # Live snapshot of the Intent Service's rejection graph (design doc §4.5). Persisted here
+    # so a crashed-and-resumed run cannot silently re-enter a deadlock it had already
+    # detected -- H8 crash-recovery concern applied to §4.5's cycle detector. Additive and
+    # defaulted to empty for backward compatibility with manifests recorded before the
+    # detector existed. Core rewrites the field on every phase-transition snapshot, the same
+    # cadence as the rest of this model; the graph is bounded by the number of live tasks,
+    # so serialization cost is negligible.
+    rejection_graph_edges: list[RejectionEdge] = Field(default_factory=list)

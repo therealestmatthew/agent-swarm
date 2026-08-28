@@ -340,3 +340,12 @@ class GovernancePolicy(BaseContract):
     # Exceeding this halts the gate and reports the overflow -- never a silent sample, which
     # would report a partial run as a full one. Read it as a task-size signal.
     max_mutants_per_task: int | None = None
+    # Illustrative default (CLAUDE.md convention -- tune per repo). Per-tuple ceiling on the
+    # Intent Service's rejection counter: after this many rejections of the same
+    # (rejected_task, blocking_task, resource_key) tuple, the collision is classified as
+    # `IntentRejection.reason = "deadlock_cycle"` even when no full graph cycle has closed
+    # (agentic-sdlc-design-v0.5.md §4.5). Cycles shorter than the ceiling are still detected
+    # directly by the graph walk; this bound catches the two-agent ping-pong on a single
+    # resource that would otherwise burn task budget indefinitely without ever completing an
+    # edge back to its origin.
+    max_mutex_rejections: int = 3
