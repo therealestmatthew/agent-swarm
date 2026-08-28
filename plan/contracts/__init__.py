@@ -14,6 +14,7 @@ Conventions: Pydantic v2, `extra="forbid"`, `frozen=True` on every model.
 Every model is immutable once constructed — agents produce new instances
 rather than mutating shared state, matching the pipeline's broader
 "typed, additive, deterministic" governance philosophy (design doc §4, §10).
+Agent-produced models are routed through the normalization layer.
 
 Package layout (each module's own docstring declares its domain scope; new
 schemas should be added to the module whose scope they fit):
@@ -74,6 +75,7 @@ from plan.contracts.verification import (
     GateApplicability,
     GateResult,
     InvariantScope,
+    NormalizationEvent,
 )
 
 __all__ = [
@@ -107,4 +109,5 @@ __all__ = [
     "GateResult",
     "FailureSignature",
     "InvariantScope",
+    "NormalizationEvent",
 ]

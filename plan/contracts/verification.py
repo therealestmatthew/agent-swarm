@@ -3,6 +3,8 @@
 at failure (FailureSignature), and the scope enum that governs invariant
 deprecation windows (InvariantScope). New schemas that describe validator
 outputs, gate applicability, or invariant governance belong here.
+
+Parsing discipline: mixed. GateResult and Finding are agent-produced (Validator agents generate them from LLM output) and MUST be routed through the normalization layer. FailureSignature is harness-captured (deterministic). NormalizationEvent is Core-produced (the normalizer emits it). InvariantScope and GateApplicability are enums.
 """
 
 from __future__ import annotations
@@ -129,3 +131,26 @@ class GateResult(BaseContract):
         PR summary use this rather than `passed`, so a gate that was scoped out or degraded
         can never display as a green check."""
         return self.passed and self.applicability is GateApplicability.APPLIED
+
+
+# ---------------------------------------------------------------------------
+# Normalization Layer  (llm_output_normalization.md §1)
+# ---------------------------------------------------------------------------
+
+
+class NormalizationEvent(BaseContract):
+    """
+    Emitted by the normalization layer when hallucinated extra fields are stripped
+    from an agent's JSON output before it enters strict validation.
+    
+    A high rate of these events is a signal for prompt refinement, not a runtime
+    escalation trigger (llm_output_normalization.md §4).
+    """
+
+    model_class: str
+    agent_id: str
+    run_id: str
+    stripped_fields: list[str]
+    stripped_data_summary: dict[str, str]
+    nesting_depth: int
+    source_model_tier: str | None = None

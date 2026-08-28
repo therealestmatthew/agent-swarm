@@ -16,6 +16,8 @@ New schemas that describe repo-declared facts, control-plane policy bounds,
 the sub-models either artifact composes, or the runtime scrubber's inputs and
 outputs belong here. See core_adapter_boundary.md §3 for the
 declaration/policy dividing test.
+
+Parsing discipline: strict (Core-internal). The adapter contract artifacts (RepoDeclaration, GovernancePolicy) are authored by humans and validated at run start; they are not LLM-generated and are not routed through the normalization layer. Runtime scrubber schemas (SecretScrubberConfig, EgressPayload, ScrubbedEgressPayload) are populated by Core.
 """
 
 from __future__ import annotations
@@ -304,6 +306,7 @@ class GovernancePolicy(BaseContract):
 
     # Policy, not declaration, precisely so the repo that benefits from degrading is not the
     # one that chooses to degrade (core_adapter_boundary.md §3.5).
+    # No default is intentional. `absent_capability_policy` is a top-level governance posture that must be an explicit, conscious choice by the policy owner — unlike `non_hermetic_coverage_posture` (which defaults to `DEGRADE` because it governs a scoped, per-tier decision where degradation is the safe, conservative default). Requiring explicit choice here prevents a policy file from silently inheriting a posture that could either block all runs (`REFUSE`) or silently weaken governance (`DEGRADE`).
     absent_capability_policy: AbsentCapabilityPolicy
 
     # Shared-file registration is already a human gate (design doc §9.3) -- a governance

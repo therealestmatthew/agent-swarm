@@ -101,6 +101,8 @@ Every Validator agent returns a `GateResult` (`plan/contracts/verification.py`) 
 
 The Core Orchestrator's entire state across all eight phases is a `RunManifest` (schema: `plan/contracts/orchestration.py`) plus a reference to the event log — never a plan body, never a diff. *(Reinstated from v0.1 §3.1, absent v0.2 through v0.4; the original resumability argument is preserved in `plan/versions/agentic-sdlc-design-v0.1.md` §3.1.)* The manifest persists after every phase transition, so a crashed run resumes from the last recorded phase rather than restarting. Because every model in this system is immutable (see `plan/contracts/__init__.py`'s `BaseContract`), a transition produces a *new* `RunManifest` instance rather than mutating the old one — the same additive discipline Shared-File Governance (§4) applies to shared files applies here to orchestrator state.
 
+Agent-produced outputs (Validator verdicts, additive intents) pass through a **normalization layer** before entering Core's typed pipeline. This layer recurses through the graph, stripping and logging hallucinated extra fields before strict validation. See `plan/llm_output_normalization.md` for full specification.
+
 ### Phase 1 — Planning & Context (Gating)
 Context Gatherer pulls targeted context into a separate context window (`context_retrieval_strategy.md`). Plan Writer produces a plan; Plan Reviewer adversarially reviews it (bounded loop, §7). Security Review runs a plan-time pass. The Invariant Curator injects relevant constraints into the approval step. A human gate approves the plan.
 

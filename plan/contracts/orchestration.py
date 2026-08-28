@@ -6,6 +6,8 @@ the outcome of submitting a shared-file intent belong here.
 
 This module is Core-only. It does not import from `governance`, `verification`,
 or `reference_adapter/` -- Core is standalone (see core_adapter_boundary.md §3).
+
+Parsing discipline: strict (Core-internal). Models in this module are instantiated directly by deterministic Core components; they never hold LLM-generated content and are not routed through the normalization layer.
 """
 
 from __future__ import annotations

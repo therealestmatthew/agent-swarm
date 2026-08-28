@@ -70,6 +70,7 @@ schemas, capture rules) belong in a companion file, never inline in the core blu
 | `infra_triage_matrix.md` | Markdown companion | The deterministic `FailureSignature` rules engine — ordered rule table separating infra-class failures from logic failures before any LLM sees a failure | Owns the failure-classification mechanics `agentic-sdlc-design-v0.5.md` §6 only references |
 | `structural_change_runbook.md` | Markdown runbook | Human-gated SOP for non-additive shared-file changes: triggers, who's involved, the pause/propose/re-decompose/resume procedure | The escape hatch for changes too large to express as an Additive Intent |
 | `test_harness_architecture.md` | Markdown companion | Baseline capture rules (full teardown/rebuild, never surgical clearing), Protocol-fake test double standards, and (new in v0.5) diff-scoped mutation testing | Owns the verification-layer mechanics that make a passing test mean something |
+| `llm_output_normalization.md` | Markdown companion | Normalization layer for LLM outputs: two-pass strategy (strip extra keys, then validate), model categories (strict vs agent-produced), integration, and escalation interaction | The structural answer to `extra="forbid"` parsing failures when evaluating LLM-generated models |
 
 ---
 

@@ -9,7 +9,7 @@ doc_type: companion
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §11 (Measurement and Calibration) · §9.2 (Agent
 Gates — `code.review` promotion) · `agentic_sdlc_glossary.csv` (Shadow Mode) · `plan/contracts/verification.py`
-(`GateResult.reviewer_spec_version`)
+(`GateResult.reviewer_spec_version`) · `plan/llm_output_normalization.md`
 
 **Status:** reinstated from `agentic-sdlc-design-v0.1.md` §8, absent v0.2 through v0.4. See
 `plan/versions/REGRESSION.md` finding #5 — verified before reinstating that the only reference to
@@ -75,3 +75,10 @@ ledger's precision numbers per validator to get cost per genuinely-caught defect
 validator with excellent precision that costs more than the defects it catches are worth is still
 the wrong trade — this is the check that would surface that, and nothing else in the design
 currently computes it.
+
+## 5. Schema Hallucination Rate
+
+- Define the metric: count of `NormalizationEvent` records per model class, per agent, per model tier, over a rolling window.
+- Computed from `NormalizationEvent` instances (schema: `plan/contracts/verification.py`).
+- A high hallucination rate on a specific LLM tier or model class is a signal for prompt refinement, not runtime escalation.
+- Per-tier analysis: if Sonnet hallucination rate on `GateResult` exceeds a threshold (illustrative, not settled), it surfaces as a prompt-engineering work item, not a budget event.

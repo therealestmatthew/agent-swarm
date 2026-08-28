@@ -78,7 +78,7 @@ wins unless the proposal argues explicitly for changing it.
   code.
 - **Schemas live in `plan/contracts/`.** The package is the single home for a schema, organized by domain: `orchestration.py` for Core state, `governance.py` for the adapter contract, `verification.py` for validator outputs, `reference_adapter/` for concrete adapter vocabulary. Each module's docstring names its scope so a new schema has an obvious home. `plan/contracts/__init__.py` re-exports every public model, so consumers can import canonically from the top level (`from plan.contracts import GateResult`) even though the definition lives in `verification.py`. Two agents inventing two slightly different shapes for one thing is the drift the whole shared-file design exists to prevent — don't reintroduce it at the type level.
 - **Pydantic v2, `extra="forbid"`, `frozen=True`** on every model. Agents produce new instances
-  rather than mutating shared state.
+  rather than mutating shared state. Agent-produced models (Validator outputs, additive intents) are routed through the normalization layer (`plan/llm_output_normalization.md`) which strips and logs hallucinated extra fields before strict validation. Core-internal models are instantiated directly. Each contract module's docstring declares its parsing discipline.
 - **Say what's unresolved.** Several thresholds in the set are explicitly illustrative
   (cost ceilings, context budgets, the additive-intent threshold, decay tuning). Don't present them
   as decided, and don't quietly harden one without saying so.
