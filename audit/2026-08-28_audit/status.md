@@ -47,7 +47,7 @@ they touch entirely different files.
 | 2 | **C1** | completed | `6bacbce`, `22bad69` | 6 (see below) | Scrubber to Core, allow-list egress, credential-isolation floor. Three surfaced items → `followups.md` |
 | 3 | **H6** | completed | `2c33e7d` (+ C5 scaffolding: `cd34117`, `42c5ab4`, `cb53dda`) | 4 (see below) | Normalization boundary, Core ownership, cross-refs, F5 closure. ~80% pre-seeded by C5. |
 | 4 | **C2** | completed | `506ee85` | 7 (see below) | Cycle detection + threshold, task-scoped boundary failure. Two surfaced items → `followups.md` (F9, F10) |
-| 5 | C3 | not_started | — | — | — |
+| 5 | **C3** | completed | `fe66305` | 8 (see below) | Meta-gate `gate_coverage.minimum` for NOT_APPLICABLE bypass. Two surfaced items → `followups.md` (F9 broadened, F11 new) |
 | 6 | C4 | not_started | — | — | — |
 | 7 | H8 | not_started | — | — | — |
 | 8 | H2 | not_started | — | — | — |
@@ -58,6 +58,63 @@ they touch entirely different files.
 | 13 | M1–M6 | not_started | — | — | Medium findings, internally parallelizable |
 
 ## Per-remediation detail
+
+### C3 — NOT_APPLICABLE gate bypass detector (completed 2026-08-28)
+
+One commit with Maker/Checker sub-agent pair. Net: +122 / −11 across 8 files.
+
+- **`fe66305`** meta-gate `gate_coverage.minimum`: adds a Phase-6 aggregate
+  check that fires when a `NON_TRIVIAL_CODE` diff produces no `APPLIED`-and-
+  passed result from the coverage family (`tests.diff_covered` +
+  `mutation.diff_scoped`, hard-coded). New `DiffClassification` enum in
+  `plan/contracts/verification.py` (`TRIVIAL_DOCS`, `NON_TRIVIAL_CODE`);
+  new `RunManifest.diff_classification` field on `plan/contracts/orchestration.py`
+  (parallel to C2's `rejection_graph_edges` — task-scoped state persisted so
+  H8 crash recovery cannot silently lose the classification). New
+  `RepoDeclaration.trivial_path_globs` on `plan/contracts/governance.py`
+  (adapter-extensible; Core defaults to `.md/.rst/.txt` allow-list). Extended
+  `agentic-sdlc-design-v0.5.md` §9.1 with the meta-gate row, §10 with a new
+  attack row cross-referencing the existing `mutation.diff_scoped` row
+  (per-line, per-gate) vs. the new per-diff aggregate guard, Phase 6 with an
+  ordering note, and §12 with a triviality-upgrade open question. New §3.9
+  in `test_harness_architecture.md` defines the triviality rule and
+  distinguishes from §3.6 (line-level) and §3.7 (repo-level absent
+  capability), including the DEGRADE-branch interaction. Updated
+  `budget_and_escalation_policy.md` §2.2 to classify coverage-family gaps
+  as boundary-type, skipping escalation rung 3. Updated
+  `AGENTIC_ARCHITECTURE_MANIFEST.md` row descriptions for the three
+  contracts modules and the two prose docs. `GateApplicability` (3-value),
+  `GateResult`, and `HaltReason` all untouched — the remediation was drafted
+  pre-C5 and would have clobbered them.
+
+**Design decisions locked in during human gate:**
+- Triviality rule is illustrative extension allow-list (`.md/.rst/.txt`) +
+  adapter-extensible `RepoDeclaration.trivial_path_globs`; no AST-aware
+  analysis in the starting rule. §12 open question tracks the upgrade.
+- `DiffClassification` enum in `verification.py`, but the field lives on
+  `RunManifest` in `orchestration.py` — parallel to how C2 landed
+  `rejection_graph_edges`. `GateResult` is a validator output; the
+  classification is task/run metadata and does not belong there.
+- `gate_coverage.minimum` FAIL is a task-scoped boundary failure via
+  `active_task_ids` drop, exact mechanism from C2. No new `HaltReason`
+  value.
+- Coverage family is hard-coded to two gates. Expanding it requires an
+  explicit edit to both the meta-gate constant AND the §9.1 row — no tag
+  mechanism, no registry.
+- `RunManifest.diff_classification` docstring locks in a **no-recompute**
+  posture for H8: preserve on resume, do not re-derive from the diff. A
+  diff mutated (or reverted) between crash and restart would silently
+  reclassify the task and defeat the point of persistence.
+
+**Follow-ups surfaced:** F9 broadened (H8 must preserve both
+`rejection_graph_edges` and `diff_classification`, with C3's explicit
+no-recompute posture on the latter); F11 new (design doc §2/Phase 6
+should name the Core Orchestrator as the runner of `gate_coverage.minimum`
+for future-reader clarity — housekeeping, not a new roster entry).
+
+**Downstream impact:** H8 (crash recovery) picks up C3's no-recompute
+requirement in addition to C2's persistence requirement, both tracked
+under F9. No other remediations touched.
 
 ### C2 — Deadlock detection in Smart Mutex Rejection (completed 2026-08-28)
 
