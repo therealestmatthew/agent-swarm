@@ -6,9 +6,16 @@ tolerate. Every sub-model they compose (IsolationUnit, Capability,
 AbsentCapabilityPolicy, ResetResource, ResetStrategy, TestTier, IntentOpSpec,
 SignalSpec, TriageRule, SecretSpec) belongs here too.
 
-New schemas that describe repo-declared facts, control-plane policy bounds, or
-the sub-models either artifact composes belong here. See
-core_adapter_boundary.md §3 for the declaration/policy dividing test.
+Runtime credential-handling schemas also live here — SecretScrubberConfig,
+EgressPayload, and ScrubbedEgressPayload — because "how the pipeline treats
+secrets" is one domain even though declaration/grant and runtime scrubbing
+sit at different layers of the credential lifecycle (see
+core_adapter_boundary.md §5).
+
+New schemas that describe repo-declared facts, control-plane policy bounds,
+the sub-models either artifact composes, or the runtime scrubber's inputs and
+outputs belong here. See core_adapter_boundary.md §3 for the
+declaration/policy dividing test.
 """
 
 from __future__ import annotations
@@ -174,6 +181,69 @@ class SecretSpec(BaseContract):
 
     name: str
     scope: Literal["task", "integration", "promotion"]
+
+
+class SecretScrubberConfig(BaseContract):
+    """Runtime configuration handed to Core's egress scrubber for one task's
+    duration. Distinct from `SecretSpec` (declaration/grant metadata): the
+    scrubber operates on raw values, while `SecretSpec` names and scopes them
+    without ever holding a value. The two are related but at different layers
+    of the credential lifecycle — declaration and grant on one side, runtime
+    scrubbing state on the other.
+
+    SECURITY: `active_secrets` contains raw credential values. Instances of
+    this schema live only in Core memory for the duration of a task and are
+    never persisted, logged, or serialized into the RunManifest event log.
+    See core_adapter_boundary.md §5 for the trust-boundary argument."""
+
+    active_secrets: list[str] = Field(
+        ...,
+        description="Raw secret values to be redacted from isolation-unit egress. Populated by Core at task start from `GovernancePolicy.granted_secrets`; never returned to any agent or written to any artifact.",
+    )
+    redaction_placeholder: str = Field(
+        default="[REDACTED_SECRET]",
+        description="String substituted for each detected secret in scrubbed egress.",
+    )
+
+
+class EgressPayload(BaseContract):
+    """One artifact leaving an isolation unit before Core's scrubber inspects
+    it. Every log line, screenshot filename, DOM dump, HAR file, git commit
+    message, or network payload passes through this shape on the way out.
+    Nothing that has not been transformed into a `ScrubbedEgressPayload` is
+    admissible as an `evidence_ref` target or as a network egress destination.
+    See core_adapter_boundary.md §5."""
+
+    payload_type: str = Field(
+        ...,
+        description="Category of egress: 'log', 'commit_message', 'filename', 'artifact_metadata', 'network', etc. Used to route the payload to the correct scrubbing pass — text-based scrubbing for strings, filename-safe substitution for paths, structured-header handling for network.",
+    )
+    content: str = Field(
+        ...,
+        description="Raw payload content requiring scrubbing. Byte-safe representation for text; base64 or hex for binary payloads whose type does not admit inline redaction (see followups.md — binary redaction is an open question).",
+    )
+
+
+class ScrubbedEgressPayload(BaseContract):
+    """The scrubber's output for one `EgressPayload`. Emitted by Core's
+    scrubber, consumed by whatever downstream sink was going to receive the
+    original payload. `secrets_detected` is a signal to failure triage and to
+    the verdict ledger: a task that repeatedly triggers redaction is a task
+    whose behavior needs review, even if the redaction succeeded. See
+    core_adapter_boundary.md §5."""
+
+    original_type: str = Field(
+        ...,
+        description="Copy of the source `EgressPayload.payload_type` so downstream sinks route consistently.",
+    )
+    scrubbed_content: str = Field(
+        ...,
+        description="Content with every detected secret replaced by `SecretScrubberConfig.redaction_placeholder`.",
+    )
+    secrets_detected: bool = Field(
+        ...,
+        description="True if at least one secret was found and redacted. False means the scrubber ran and matched nothing — not that it was skipped.",
+    )
 
 
 class RepoDeclaration(BaseContract):
