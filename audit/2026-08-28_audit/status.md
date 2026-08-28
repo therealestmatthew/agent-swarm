@@ -44,7 +44,7 @@ they touch entirely different files.
 | # | ID | Status | Commits | Files modified | Notes |
 |---|---|---|---|---|---|
 | 1 | **C5** | completed | `cd34117`, `42c5ab4`, `cb53dda` | 16 (see below) | Decomposition + phase gate. Three surfaced items → `followups.md` |
-| 2 | C1 | not_started | — | — | — |
+| 2 | **C1** | completed | `6bacbce`, `22bad69` | 6 (see below) | Scrubber to Core, allow-list egress, credential-isolation floor. Three surfaced items → `followups.md` |
 | 3 | H6 | not_started | — | — | — |
 | 4 | C2 | not_started | — | — | — |
 | 5 | C3 | not_started | — | — | — |
@@ -58,6 +58,36 @@ they touch entirely different files.
 | 13 | M1–M6 | not_started | — | — | Medium findings, internally parallelizable |
 
 ## Per-remediation detail
+
+### C1 — Secret scrubbing trust boundary (completed 2026-08-28)
+
+Two commits, each with Maker/Checker sub-agent pair. Net: +142 / −15
+across 6 files.
+
+- **`6bacbce`** scaffold schemas: added `SecretScrubberConfig`,
+  `EgressPayload`, `ScrubbedEgressPayload` to `plan/contracts/governance.py`
+  (per user Q2 — governance already owns `SecretSpec`), re-exported from
+  `plan/contracts/__init__.py`. All three inherit from `BaseContract`.
+- **`22bad69`** prose: rewrote `core_adapter_boundary.md` §5 with new
+  Core-side scrubbing design and a §5.3 "why the trust boundary moved"
+  callout preserving the prior argument (per user Q1). Added
+  `execution_isolation.md` §5.4 for credential-isolation floor (per user
+  Q4). Extended manifest row. Fixed three roadmap contradictions the
+  Maker surfaced (D9 L106, S0-10 L141, S4-5 L227 including stage title
+  rename).
+
+**Design decisions locked in during human gate:**
+- Rewrite §5 with explicit design-change callout (not silent rewrite)
+- Schemas in `plan/contracts/governance.py` (same domain as `SecretSpec`)
+- Egress: **allow-list is the design**, DPI is a possible extension only
+- Credential-isolation: new derivation rule alongside `ResetStrategy`,
+  orthogonal source; `granted_secrets` non-empty → floors to `CONTAINER`
+- Trust-boundary inversion accepted: Core-memory exposure of raw values
+  for one task's duration < in-unit tamperability under adversarial agent
+
+**Downstream impact:** H3+H4 (tiered execution + onboarding) will
+touch `execution_isolation.md`; may need to consider the new §5.4 rule
+in its derivation examples.
 
 ### C5 — Phase gate clarity + contracts decomposition (completed 2026-08-28)
 
