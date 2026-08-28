@@ -277,6 +277,17 @@ class RepoDeclaration(BaseContract):
     test_tiers: list[TestTier] = Field(default_factory=list)
     reset_strategies: list[ResetStrategy] = Field(default_factory=list)
     hydration_fixture_ids: list[str] = Field(default_factory=list)
+    # Adapter-tunable extension of Core's default triviality allow-list. The starting rule
+    # (test_harness_architecture.md §3.9) classifies a diff as TRIVIAL_DOCS iff every changed
+    # path matches Core's built-in extension allow-list (`.md`, `.rst`, `.txt`) OR one of the
+    # globs listed here. Repo-specific trivial paths -- `docs/**`, `CHANGELOG.*`,
+    # `LICENSE`, an `examples/**` tree that carries no production code -- extend the rule
+    # without editing Core. Illustrative starting rule per CLAUDE.md convention (extension-
+    # only in Core, no AST-aware detection); a future revision may add per-language rules
+    # (design doc §12). Consumed only by `gate_coverage.minimum`'s triviality classifier
+    # (design doc §9.1, §10). Empty is a valid declaration -- a repo whose only trivial paths
+    # are already covered by Core's extension list has nothing to add here.
+    trivial_path_globs: list[str] = Field(default_factory=list)
 
     # Vocabulary & transforms
     intent_vocabulary: list[IntentOpSpec] = Field(default_factory=list)

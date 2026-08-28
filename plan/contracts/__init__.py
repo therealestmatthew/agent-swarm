@@ -72,6 +72,7 @@ from plan.contracts.orchestration import (
     RunManifest,
 )
 from plan.contracts.verification import (
+    DiffClassification,
     FailureSignature,
     Finding,
     GateApplicability,
@@ -107,6 +108,7 @@ __all__ = [
     "EgressPayload",
     "ScrubbedEgressPayload",
     # Verification
+    "DiffClassification",
     "Finding",
     "GateApplicability",
     "GateResult",

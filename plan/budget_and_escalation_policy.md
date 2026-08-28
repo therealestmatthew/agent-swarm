@@ -43,6 +43,8 @@ The Merge Conflict → Task Decomposer loop does **not** use rung 3. A merge con
 
 **Structural-intent deadlocks** (detected by the Intent Service's cycle detector or a `GovernancePolicy.max_mutex_rejections` breach — see `agentic-sdlc-design-v0.5.md` §4.5) are the same class of failure and skip rung 3 for the same reason: an architectural incompatibility between two tasks' intents is not a stochastic miss a stronger model would resolve. Detection is task-scoped termination — the involved tasks drop out of `RunManifest.active_task_ids` and route to the Structural Change SOP (`structural_change_runbook.md`) or to human triage per the SOP's own procedure — with no rung 1 or rung 2 retry either, because the detector fires precisely when re-planning has already failed enough times to prove it will not resolve the collision on its own.
 
+**Coverage-family gaps** (the `gate_coverage.minimum` meta-gate returning FAIL — see `agentic-sdlc-design-v0.5.md` §9.1, §10) are boundary-type for the same reason: a `NON_TRIVIAL_CODE` diff whose coverage family entirely scoped out is a decomposition or test-design shortfall, not a stochastic miss a stronger model would close. Task-scoped termination via `RunManifest.active_task_ids` drop, no rung 3.
+
 ### 2.3 Test Investigator loop
 Also skips model-tier escalation by default. A Test Investigator loop back to Task Dev is specifically a logic-fix loop — infra-class failures are routed to the Environment/Infra queue instead (`infra_triage_matrix.md` §4), so what reaches Task Dev here is already known to be a code issue. This loop follows the ladder through rung 2, then proceeds to human triage (rung 4), unless the specific failure pattern gives a concrete reason to believe model competence is the limiting factor.
 

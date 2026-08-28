@@ -4,8 +4,12 @@ returned to a submitting agent (IntentOutcome, IntentRejection, RejectionEdge).
 New schemas that describe Core's own bookkeeping, phase transitions, halt
 conditions, or the outcome of submitting a shared-file intent belong here.
 
-This module is Core-only. It does not import from `governance`, `verification`,
-or `reference_adapter/` -- Core is standalone (see core_adapter_boundary.md §3).
+This module is Core-only for adapter-facing types. It imports the
+`DiffClassification` enum from `verification` because `RunManifest` carries the
+Core-computed diff label consumed by `gate_coverage.minimum`; `verification` is
+a leaf module (no back-edge to orchestration), so this dependency does not
+introduce a cycle. It still does not import from `governance` or
+`reference_adapter/` -- see core_adapter_boundary.md §3.
 
 Parsing discipline: strict (Core-internal). Models in this module are instantiated directly by deterministic Core components; they never hold LLM-generated content and are not routed through the normalization layer.
 """
@@ -18,6 +22,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from plan.contracts import BaseContract
+from plan.contracts.verification import DiffClassification
 
 # ---------------------------------------------------------------------------
 # Intent Submission Outcome  (design doc §4.5; execution_isolation.md §7)
@@ -185,3 +190,14 @@ class RunManifest(BaseContract):
     # cadence as the rest of this model; the graph is bounded by the number of live tasks,
     # so serialization cost is negligible.
     rejection_graph_edges: list[RejectionEdge] = Field(default_factory=list)
+    # Diff triviality label for this task, computed once by Core before Phase 6 begins from
+    # the task's write-scope diff (rule in test_harness_architecture.md §3.9). Read by the
+    # `gate_coverage.minimum` meta-gate (design doc §9.1, §10): a NON_TRIVIAL_CODE diff whose
+    # coverage-family gates all returned anything other than APPLIED-and-passed is a boundary
+    # failure, propagated via the same `active_task_ids` drop the §4.5 detector uses.
+    # Optional and defaulted to None so manifests recorded before this field existed still
+    # validate; H8 crash-recovery must preserve it on resume, same discipline as
+    # `rejection_graph_edges` above -- Core does not recompute from the diff on resume,
+    # because the diff may have been mutated (or reverted) between crash and restart, and a
+    # silently-reclassified task would defeat the point of persisting the label.
+    diff_classification: DiffClassification | None = None

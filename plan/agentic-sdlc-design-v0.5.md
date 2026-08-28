@@ -116,7 +116,7 @@ Task Dev agents work disjoint `src/**` slices in parallel. Code Reviewer runs in
 The Integrator merges completed branches. Because shared-file changes were resolved in Phase 4, this phase only resolves genuine git-level conflicts on disjoint code. A conflict is treated per Principle 8: bounded retries, then escalation to the Decomposer as a boundary failure. The Integrator also increments the lifetime conflict counter for any ungoverned file involved (§4.6).
 
 ### Phase 6 — Verification & Cleanup
-Test Runner executes the full suite. Baseline Guard checks for anti-deletion regressions. Failures are classified via the deterministic triage table (`infra_triage_matrix.md`) first; only signatures that don't cleanly match a rule reach the Test Investigator (§6). CI Cleanup runs lint/formatting, with a re-review pass.
+Test Runner executes the full suite. Baseline Guard checks for anti-deletion regressions. Coverage-family gates (`tests.diff_covered`, `mutation.diff_scoped`) run first; the `gate_coverage.minimum` meta-gate then consumes their `GateResult`s together with `RunManifest.diff_classification` to catch the case where every coverage-family gate honestly scoped out of a `NON_TRIVIAL_CODE` diff (§9.1, §10). Failures are classified via the deterministic triage table (`infra_triage_matrix.md`) first; only signatures that don't cleanly match a rule reach the Test Investigator (§6). CI Cleanup runs lint/formatting, with a re-review pass.
 
 ### Phase 7 & 8 — Promotion & Observation
 Draft PR is generated; PR Reviewer and a diff-time Security Reviewer evaluate it. Approved PRs merge automatically from Dev to QA; QA to Production requires a human approval gate. In production, the Log Monitor watches continuously; the Error Analyzer pattern-matches findings, initiating rollback authorization on critical ones.
@@ -229,6 +229,7 @@ one place instead of reconstructed from scattered phase prose.
 | `intent.no_collision` | Parallel Swarm | Yes | Smart Mutex Rejection (§4.5); rejection returns blocking context, not a halt |
 | `tests.diff_covered` | Verification | Yes | Every changed line covered by at least one tier; runs **before** mutation, since an uncovered line's mutant survives by construction (`test_harness_architecture.md` §3.5) |
 | `mutation.diff_scoped` | Verification | Yes, where applicable | Surviving mutants on changed **lines** covered by a **hermetic** tier — see `test_harness_architecture.md` §3.4. Lines covered only non-hermetically return `NOT_APPLICABLE`, never a green check (§3.6) |
+| `gate_coverage.minimum` | Verification | Yes | Meta-gate over the **coverage family** (`tests.diff_covered` + `mutation.diff_scoped`). Reads `RunManifest.diff_classification` (rule: `test_harness_architecture.md` §3.9). A `NON_TRIVIAL_CODE` diff whose coverage-family gates all returned anything other than `APPLIED` with `passed=True` is a **boundary failure** (Principles 4/5), task-scoped: the task drops from `RunManifest.active_task_ids`, same mechanism §4.5's deadlock detector uses. Closes the adversarial "shape the diff to duck coverage" bypass (§10) that §3.6's per-line DEGRADE branch would let through when the *whole diff* is untested by construction. Runs **after** both coverage-family gates, so it can read their `GateResult` verdicts. Expanding the family (adding a third coverage-family gate later) is an explicit edit to the meta-gate's constant list of member gates AND to this table row — no tag or registry mechanism |
 | `merge.no_conflict` | Integration | Yes | The No-Conflict Gate (Agent Roster, Integrator row); a conflict here is a Boundary Failure (Principle 8), never resolved in place |
 | `tests.baseline_delta` | Verification | Yes | Baseline Guard; the anti-deletion check (`agentic_sdlc_glossary.csv`, Baseline Delta) |
 | `triage.deterministic` | Verification | Yes (routing only) | `infra_triage_matrix.md`'s rules engine; only non-matches reach the Test Investigator |
@@ -271,7 +272,8 @@ the cheapest path to green is not always the honest one.
 |---|---|
 | Delete or skip a failing test | `tests.baseline_delta` (§9.1) — any reduction in test count, skip count, or coverage is a blocking gate failure, not a review comment |
 | Declare a mutant "equivalent" to retire a blocking finding | The equivalent-mutant registry is human-signed (`test_harness_architecture.md` §3.8); an agent may propose an equivalence, never record one |
-| Weaken an assertion (`>` quietly becomes `>=`) | `mutation.diff_scoped` (§9.1) — a test that still passes under mutation is theater. Scoped per line to hermetic coverage, so it cannot be evaded by moving code behind a non-hermetic tier: that path returns `NOT_APPLICABLE` and takes the policy branch, not a pass (`test_harness_architecture.md` §3.6) |
+| Weaken an assertion (`>` quietly becomes `>=`) | `mutation.diff_scoped` (§9.1) — a test that still passes under mutation is theater. Scoped per line to hermetic coverage, so it cannot be evaded by moving code behind a non-hermetic tier: that path returns `NOT_APPLICABLE` and takes the policy branch, not a pass (`test_harness_architecture.md` §3.6). Complemented per-diff by `gate_coverage.minimum` — this row catches the per-line, per-gate attack; the next row catches the whole-diff aggregate |
+| Shape the diff so every coverage gate returns `NOT_APPLICABLE` | `gate_coverage.minimum` (§9.1) — modify code paths the hermetic tiers do not cover so `tests.diff_covered` and `mutation.diff_scoped` both scope out, then walk past a silent green built out of honest per-line scope-outs. A `NON_TRIVIAL_CODE` diff (rule: `test_harness_architecture.md` §3.9) with no `APPLIED` + `passed=True` result in the coverage family is a **boundary failure**, task-scoped (`RunManifest.active_task_ids` drop), never a warning or a recorded adjustment. Distinct from the `mutation.diff_scoped` row above (per-line, per-gate); this is the per-diff aggregate — the last line of defense when the per-gate policy is `DEGRADE` |
 | Write a test the implementation trivially satisfies | Test Author has a disjoint write scope from Task Dev (Principle 12) |
 | Mock away the behavior under test | Protocol fakes checked by strict mypy (`test_harness_architecture.md` §2); an `Any`-shaped mock is invisible to the type checker |
 | Silence a type error to reach green | CI Cleanup's diff-shape check forbids `cast(Any, ...)`, `# type: ignore`, and bare `except: pass` |
@@ -303,6 +305,13 @@ Verdict ledger schema, promotion thresholds, and agent-spec versioning: `calibra
   independent version numbers, or do they always track the core document's version? Matters once one
   companion file needs to change without the others. *(The question grows more pressing this version:
   two companions were just added.)*
+- **Triviality heuristic upgrade.** The `test_harness_architecture.md` §3.9 rule that
+  `gate_coverage.minimum` reads is illustrative and extension-only — path suffixes plus
+  `RepoDeclaration.trivial_path_globs`. A future revision may add AST-aware detection
+  (whitespace/comment-only Python hunks, docstring-only changes) or per-language rules so a
+  `.py` file whose diff is comment-only does not force a `NON_TRIVIAL_CODE` classification.
+  Extension-only is the honest starting point; it will misclassify a comment-only source-file
+  edit as `NON_TRIVIAL_CODE`, which fails safe (blocks) rather than open.
 
 **Re-listed, carried forward from v0.1 §10 and dropped without resolution at v0.2 — not previously
 tracked in any subsequent Open Questions section:**

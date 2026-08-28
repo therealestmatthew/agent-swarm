@@ -7,7 +7,7 @@ doc_type: companion
 
 # Test Harness Architecture
 
-**Referenced by:** `agentic-sdlc-design-v0.5.md` §6 (Test Investigator & Failure Triage) · §9.1 (`mutation.diff_scoped`) · `infra_triage_matrix.md` §1 (`FailureSignature.dom_state_diff_from_baseline`) · `plan/contracts/`
+**Referenced by:** `agentic-sdlc-design-v0.5.md` §6 (Test Investigator & Failure Triage) · §9.1 (`mutation.diff_scoped`, `gate_coverage.minimum`) · §10 (anti-reward-hacking, the coverage-bypass row) · `infra_triage_matrix.md` §1 (`FailureSignature.dom_state_diff_from_baseline`) · `plan/contracts/`
 
 ## Purpose
 
@@ -256,3 +256,54 @@ Decomposer drew too large. That is the same signal as the additive-intent thresh
 (`structural_change_runbook.md` §4) and task granularity (design doc §12) — three ceilings that are
 three views of one knob, which is why D13 records that resolving any of them alone will produce
 numbers that contradict the other two.
+
+### 3.9 Diff triviality classification
+
+§3.6 and §3.7 answer, per line and per repo, what the mutation gate does when nothing hermetic
+covers the code. Both branches can honestly return `NOT_APPLICABLE` or `DEGRADED` on every line
+of a diff — and under `absent_capability_policy = DEGRADE` (the default), that is a merge with
+the shortfall named in the PR rather than a block. That is the right call for a genuinely trivial
+change; it is the wrong call for an adversarial diff shaped so *every* changed line lands where the
+hermetic tiers do not run. Design doc §10 names the attack: modify code paths the hermetic tiers do
+not cover so `mutation.diff_scoped` and `tests.diff_covered` both scope out, then walk past a silent
+green built out of honest per-line scope-outs.
+
+The `gate_coverage.minimum` meta-gate (design doc §9.1) is the answer, and it needs one input this
+section owns: whether the *diff itself* is code that the coverage family should have applied to.
+That label is `DiffClassification` (`plan/contracts/verification.py`), computed once by Core before
+Phase 6 begins from the task's write-scope diff and carried on `RunManifest.diff_classification`
+(`plan/contracts/orchestration.py`), the same place the §4.5 rejection graph lives so H8 crash
+recovery preserves both together.
+
+**The starting rule (illustrative, per CLAUDE.md convention):**
+
+- `TRIVIAL_DOCS` iff **every** changed path in the task's write-scope diff matches Core's
+  built-in extension allow-list (`.md`, `.rst`, `.txt`) **or** matches one of
+  `RepoDeclaration.trivial_path_globs` (`plan/contracts/governance.py`) — adapter-tunable, so
+  a repo whose `docs/**` tree, `CHANGELOG.*`, or `LICENSE` file is trivial by construction can
+  extend the rule without editing Core.
+- `NON_TRIVIAL_CODE` otherwise.
+
+This is extension-only and deliberately conservative. A source file whose diff is comment-only
+classifies as `NON_TRIVIAL_CODE` under this rule, because Core has no AST-aware detection in the
+starting version. That is a **fail-safe misclassification**: it forces the coverage family to
+apply to a change that likely does not need it, which costs a re-plan or a policy-recorded
+degrade — never a silent pass. AST-aware detection (whitespace-only Python hunks, docstring-only
+changes, per-language rules for header/import blocks) is a defensible upgrade and is deferred to
+design doc §12's open questions rather than smuggled into the starting rule.
+
+**How this differs from §3.6 and §3.7.** Both prior sections are line-level or capability-level
+policy answers: one line has no hermetic tier over it (§3.6), or the whole repo has no hermetic
+tier declared (§3.7). §3.9 is the *diff-level aggregate* — the observation that even when every
+line's policy branch is legitimately `DEGRADE`, the *whole diff* is untested by construction, and
+that is a task-scoped boundary failure rather than a recorded adjustment. §3.6 says "this line
+lacks hermetic coverage — degrade or refuse per policy"; §3.9 says "the whole `NON_TRIVIAL_CODE`
+diff has no `APPLIED`-and-passing coverage-family result — task drops from
+`RunManifest.active_task_ids`, same mechanism §4.5's deadlock detector uses." The two never fire on
+the same evidence: §3.6 governs per-line policy, §3.9 governs per-diff aggregate.
+
+**Cross-references:** design doc §9.1 (`gate_coverage.minimum` row), §10 (the attack row this
+guard closes), §12 (the triviality-heuristic upgrade open question);
+`plan/contracts/verification.py` (`DiffClassification`); `plan/contracts/orchestration.py`
+(`RunManifest.diff_classification`); `plan/contracts/governance.py`
+(`RepoDeclaration.trivial_path_globs`).

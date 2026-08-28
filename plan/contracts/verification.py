@@ -4,7 +4,7 @@ at failure (FailureSignature), and the scope enum that governs invariant
 deprecation windows (InvariantScope). New schemas that describe validator
 outputs, gate applicability, or invariant governance belong here.
 
-Parsing discipline: mixed. GateResult and Finding are agent-produced (Validator agents generate them from LLM output) and MUST be routed through the normalization layer. FailureSignature is harness-captured (deterministic). NormalizationEvent is Core-produced (the normalizer emits it). InvariantScope and GateApplicability are enums.
+Parsing discipline: mixed. GateResult and Finding are agent-produced (Validator agents generate them from LLM output) and MUST be routed through the normalization layer. FailureSignature is harness-captured (deterministic). NormalizationEvent is Core-produced (the normalizer emits it). InvariantScope, GateApplicability, and DiffClassification are enums; DiffClassification is Core-produced (the deterministic triviality classifier emits it, `test_harness_architecture.md` §3.9).
 """
 
 from __future__ import annotations
@@ -96,6 +96,26 @@ class GateApplicability(str, Enum):
     APPLIED = "applied"                  # ran; `passed` is meaningful
     NOT_APPLICABLE = "not_applicable"    # nothing in scope; `passed` is vacuous
     DEGRADED = "degraded"                # capability absent, running under `degrade` policy
+
+
+class DiffClassification(str, Enum):
+    """Deterministic label for a task's diff, produced once by Core before Phase 6 begins.
+    Consumed exclusively by `gate_coverage.minimum` (agentic-sdlc-design-v0.5.md §9.1, §10),
+    the meta-gate that catches the case where an adversarial diff shapes itself so every
+    coverage-family gate returns NOT_APPLICABLE — a silent green built out of honest
+    scope-outs, which the per-gate applicability enum alone cannot distinguish from a
+    genuinely trivial change.
+
+    Triviality is a property of the *diff*, not of any single gate's result — a diff either
+    is or is not code the coverage family should have applied to, regardless of what any one
+    gate returned. That is why this lives here as an enum but is carried on `RunManifest`
+    (`plan/contracts/orchestration.py`) rather than on `GateResult`: it is one label per task,
+    not per gate. The starting rule is extension-only, defined in
+    `test_harness_architecture.md` §3.9 and adapter-tunable via
+    `RepoDeclaration.trivial_path_globs`."""
+
+    TRIVIAL_DOCS = "trivial_docs"
+    NON_TRIVIAL_CODE = "non_trivial_code"
 
 
 class GateResult(BaseContract):
