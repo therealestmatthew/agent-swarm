@@ -46,7 +46,7 @@ they touch entirely different files.
 | 1 | **C5** | completed | `cd34117`, `42c5ab4`, `cb53dda` | 16 (see below) | Decomposition + phase gate. Three surfaced items → `followups.md` |
 | 2 | **C1** | completed | `6bacbce`, `22bad69` | 6 (see below) | Scrubber to Core, allow-list egress, credential-isolation floor. Three surfaced items → `followups.md` |
 | 3 | **H6** | completed | `2c33e7d` (+ C5 scaffolding: `cd34117`, `42c5ab4`, `cb53dda`) | 4 (see below) | Normalization boundary, Core ownership, cross-refs, F5 closure. ~80% pre-seeded by C5. |
-| 4 | C2 | not_started | — | — | — |
+| 4 | **C2** | completed | `506ee85` | 7 (see below) | Cycle detection + threshold, task-scoped boundary failure. Two surfaced items → `followups.md` (F9, F10) |
 | 5 | C3 | not_started | — | — | — |
 | 6 | C4 | not_started | — | — | — |
 | 7 | H8 | not_started | — | — | — |
@@ -58,6 +58,46 @@ they touch entirely different files.
 | 13 | M1–M6 | not_started | — | — | Medium findings, internally parallelizable |
 
 ## Per-remediation detail
+
+### C2 — Deadlock detection in Smart Mutex Rejection (completed 2026-08-28)
+
+One commit with Maker/Checker sub-agent pair. Net: +105 / −12 across 7 files.
+
+- **`506ee85`** deadlock detection: extended `IntentRejection.reason` with a 6th value
+  `deadlock_cycle` (spec was pre-C5 and would have replaced the vocabulary — corrected at
+  human gate). Added Core-only `RejectionEdge` model in `plan/contracts/orchestration.py`
+  and persisted `RunManifest.rejection_graph_edges: list[RejectionEdge]` (additive,
+  backward-compat, feeds H8 crash recovery). Added `GovernancePolicy.max_mutex_rejections:
+  int = 3` (illustrative, adapter-tunable). Expanded `agentic-sdlc-design-v0.5.md` §4.5
+  from 2 lines to cover cycle detection, per-tuple counter, task-scoped termination via
+  `active_task_ids` drop, and explicit non-overlap with the SOP's slow-boil trigger.
+  Updated `budget_and_escalation_policy.md` §2.2 to classify structural-intent deadlocks
+  as boundary-type (skip model escalation). Sharpened `structural_change_runbook.md` §1
+  trigger 5 to "non-cyclic" and added §5 "Deadlocked-intent escape hatch" for the manual
+  review path over persisted rejection edges.
+
+**Design decisions locked in during human gate:**
+- Extend `IntentRejection.reason` (add `deadlock_cycle`), don't replace — spec was drafted
+  before C5 and would have destroyed the post-C5 5-value vocabulary and `dict[str, str]`
+  blocking_keys shape.
+- Two parallel paths for repeated collisions: C2 detector handles graph cycles (fast,
+  mechanical) and per-tuple counter breaches; the Structural Change SOP (`§1` trigger 5)
+  handles non-cyclic slow-boil where blocking-context resolution isn't converging. Both
+  paths cite each other for non-overlap.
+- `max_mutex_rejections` on `GovernancePolicy` (adapter-tunable), illustrative default 3
+  per CLAUDE.md convention.
+- Persist `RejectionEdge`s in `RunManifest` so H8 crash recovery cannot silently lose
+  detected deadlock state.
+- Task-scoped boundary failure via `active_task_ids` drop; `HaltReason.BOUNDARY_FAILURE`
+  reserved for cascade blockage. No new HaltReason value added.
+
+**Follow-ups surfaced:** F9 (H8 must actually read persisted `rejection_graph_edges` on
+resume), F10 (phase-boundary decay rule inferred by Maker but not locked at gate; H8 or
+a design pass to confirm).
+
+**Downstream impact:** H8 (crash recovery) inherits the requirement to integrate
+`RunManifest.rejection_graph_edges` and settle the decay rule. No other remediations
+touched by this change.
 
 ### H6 — Schema validation two-pass (completed 2026-08-28)
 
