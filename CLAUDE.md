@@ -17,9 +17,9 @@ The thesis is that agent pipelines fail in predictable ways — context rot, mer
 those has a structural answer rather than a prompt-engineering one. The design encodes those
 answers.
 
-**We are in design, not build.** `plan/` is the source of truth and the current work is refining it.
-Do not start implementing agents, services, or schemas until the design settles and this line
-changes.
+**We are in the structural design phase.** `plan/` is the source of truth and the current work is refining it.
+- **Permitted:** Defining, refining, and modularizing Pydantic schemas, system contracts, glossary definitions, and interface boundaries. Schema relocation is design.
+- **Forbidden:** Implementing agent logic, service execution code, internal pipeline routing logic, or API integrations. Do not build application logic until the design settles and this phase gate changes.
 
 ## Where things live
 
