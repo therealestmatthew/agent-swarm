@@ -26,7 +26,7 @@ changes.
 | Path | What it is |
 |---|---|
 | `plan/agentic-sdlc-design-v0.5.md` | The orchestration blueprint — principles, agent roster, the eight phases. **Read first.** |
-| `plan/agent_interface_contracts.py` | Every schema exchanged between agents. Single source of truth. |
+| `plan/contracts/` | Every schema exchanged between agents, organized by domain (`orchestration.py`, `governance.py`, `verification.py`, `reference_adapter/`). Single source of truth. |
 | `plan/implementation_roadmap.md` | Design → build sequence: backlog critique, cross-file defects found, and the six stages. **Read second.** |
 | `plan/core_adapter_boundary.md` | The universal Core vs. the per-repo Adapter Layer — the `RepoDeclaration`/`GovernancePolicy` contract split and its governance, capability negotiation, hydration, credentials |
 | `plan/infra_triage_matrix.md` | The deterministic failure-classification rules engine |
@@ -76,9 +76,7 @@ wins unless the proposal argues explicitly for changing it.
 
 - **Docs before build.** The current phase is plan refinement. Changes land as design edits, not
   code.
-- **Schemas live in one place.** `plan/agent_interface_contracts.py` is the only home for a schema.
-  Two agents inventing two slightly different shapes for one thing is the drift the whole
-  shared-file design exists to prevent — don't reintroduce it at the type level.
+- **Schemas live in `plan/contracts/`.** The package is the single home for a schema, organized by domain: `orchestration.py` for Core state, `governance.py` for the adapter contract, `verification.py` for validator outputs, `reference_adapter/` for concrete adapter vocabulary. Each module's docstring names its scope so a new schema has an obvious home. `plan/contracts/__init__.py` re-exports every public model, so consumers can import canonically from the top level (`from plan.contracts import GateResult`) even though the definition lives in `verification.py`. Two agents inventing two slightly different shapes for one thing is the drift the whole shared-file design exists to prevent — don't reintroduce it at the type level.
 - **Pydantic v2, `extra="forbid"`, `frozen=True`** on every model. Agents produce new instances
   rather than mutating shared state.
 - **Say what's unresolved.** Several thresholds in the set are explicitly illustrative

@@ -71,7 +71,7 @@ things, and the difference is load-bearing.*
 ### 4.1 Enforcement is deterministic middleware
 
 The ceiling check runs **in the dispatch path**, as middleware the Core Orchestrator cannot route
-around. It reads `GovernancePolicy.budget_ceilings` (`agent_interface_contracts.py`) directly and
+around. It reads `GovernancePolicy.budget_ceilings` (`plan/contracts/governance.py`) directly and
 refuses the transition on breach, emitting `HaltReason.CEILING_HALT`.
 
 The reason it cannot be an agent: a circuit breaker that is itself an LLM can be slow, wrong, or

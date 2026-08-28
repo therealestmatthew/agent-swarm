@@ -8,7 +8,7 @@ doc_type: companion
 # Core / Adapter Boundary
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §4 (Shared-File Governance) · §6 (Failure Triage) ·
-§8 (Execution Isolation) · `implementation_roadmap.md` Stage 0 · `agent_interface_contracts.py`
+§8 (Execution Isolation) · `implementation_roadmap.md` Stage 0 · `plan/contracts/governance.py`
 (`RepoDeclaration`, `GovernancePolicy`)
 
 ## Purpose
@@ -106,7 +106,7 @@ is what it has always actually been.
 
 ## 3. The adapter contract: two artifacts, two trust levels
 
-Schemas: `agent_interface_contracts.py`. The contract is deliberately **not** one file. A target
+Schemas: `plan/contracts/governance.py`. The contract is deliberately **not** one file. A target
 repo declares facts about itself; the control plane owns what the pipeline will tolerate. They have
 different authors, different change cadences, and different blast radii on compromise.
 

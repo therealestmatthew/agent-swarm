@@ -8,7 +8,7 @@ doc_type: companion
 # Calibration and Measurement
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §11 (Measurement and Calibration) · §9.2 (Agent
-Gates — `code.review` promotion) · `agentic_sdlc_glossary.csv` (Shadow Mode) · `agent_interface_contracts.py`
+Gates — `code.review` promotion) · `agentic_sdlc_glossary.csv` (Shadow Mode) · `plan/contracts/verification.py`
 (`GateResult.reviewer_spec_version`)
 
 **Status:** reinstated from `agentic-sdlc-design-v0.1.md` §8, absent v0.2 through v0.4. See
@@ -30,7 +30,7 @@ Every `GateResult` a Validator agent produces is appended to a ledger alongside 
 | Field | Source | Why it's recorded |
 |---|---|---|
 | The `GateResult` itself | The validator | Subject ref, findings, severities — the verdict being graded |
-| `reviewer_spec_version` | `GateResult` (`agent_interface_contracts.py`) | So a later prompt change doesn't silently invalidate this row's precision data — see §3 |
+| `reviewer_spec_version` | `GateResult` (`plan/contracts/verification.py`) | So a later prompt change doesn't silently invalidate this row's precision data — see §3 |
 | Human override | Whichever human gate follows | Did a human overturn this verdict (approved something the validator blocked, or blocked something it approved) |
 | Downstream outcome | Test Runner, Log Monitor, or a later phase | Did the artifact the validator passed later fail (a bug reached production; a plan materially changed after a reviewer's advisory finding was ignored) |
 
@@ -58,7 +58,7 @@ starting points rather than settled numbers (see `budget_and_escalation_policy.m
 
 ## 3. Agent spec versioning
 
-`GateResult.reviewer_spec_version` (`agent_interface_contracts.py`) records which version of a
+`GateResult.reviewer_spec_version` (`plan/contracts/verification.py`) records which version of a
 validator's prompt/spec produced a given verdict. Without this field, changing a reviewer's prompt
 silently invalidates every precision and recall number gathered under the old one — the ledger keeps
 accumulating rows, but they no longer describe the validator currently running. A version bump on a

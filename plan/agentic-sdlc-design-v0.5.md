@@ -20,7 +20,7 @@ questions, not silently dropped a second time.
 |---|---|---|
 | Validator asymmetry | Absent since v0.1 | **Reinstated:** Principle 11 — a validator sees the spec and the artifact, never the generator's rationale |
 | Write-scope enforcement | Stated as an outcome | **Reinstated:** Principle 12 — enforced by permission/config, not by instructing an agent not to |
-| Core Orchestrator state | Undefined | **Reinstated:** `RunManifest` schema (`agent_interface_contracts.py`); §3 names it as the orchestrator's entire context alongside the event log |
+| Core Orchestrator state | Undefined | **Reinstated:** `RunManifest` schema (`plan/contracts/orchestration.py`); §3 names it as the orchestrator's entire context alongside the event log |
 | Concurrent execution isolation | Absent since v0.1 | **Reinstated:** one git worktree per task — new companion, `execution_isolation.md` |
 | Weakened-assertion detection | Absent since v0.1 | **Reinstated:** diff-scoped mutation testing — `test_harness_architecture.md` §3 |
 | Consolidated gate tables | Never relocated from v0.1 | **Reinstated:** §9 — deterministic, agent, and human gates in one place |
@@ -36,7 +36,7 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 
 | File | Owns |
 |---|---|
-| `agent_interface_contracts.py` | Every schema in the system — additive intents, `InvariantScope`, `FailureSignature`, `GateResult` — single source of truth |
+| `plan/contracts/` | Every schema exchanged between agents, decomposed by domain into `orchestration.py`, `governance.py`, `verification.py`, and `reference_adapter/` — single source of truth |
 | `core_adapter_boundary.md` | **New.** What the universal Core owns vs. what a target repo declares for itself — the `RepoDeclaration`/`GovernancePolicy` adapter contract, capability negotiation, hydration, and credential injection |
 | `test_harness_architecture.md` | Baseline capture mechanics for `dom_state_diff_from_baseline`; Protocol-fake test double standards; diff-scoped mutation testing (§3) |
 | `execution_isolation.md` | **New.** One git worktree per task — why disjoint write ownership alone doesn't isolate reads |
@@ -58,7 +58,7 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 6. **Model escalation on repeated failure.** Agents that fail review repeatedly are re-run on a stronger model rather than retried indefinitely (exact ladder: `budget_and_escalation_policy.md`).
 7. **Budget and circuit-breaking.** Enforcement and forecasting are separated. A **deterministic Budget Enforcer** checks every phase transition against `GovernancePolicy.budget_ceilings` and refuses the transition on breach; a **Budget Accountant** agent forecasts spend trend advisorily and gates nothing. A circuit breaker that is itself an LLM can be slow, wrong, or unavailable at exactly the moment a runaway swarm is burning fastest — so nothing that must fire is left to judgment. The same philosophy governs individual loop-back edges (exact thresholds and the enforcement point: `budget_and_escalation_policy.md`).
 8. **Merge conflicts are decomposition errors.** A merge conflict is evidence the Task Decomposer drew task boundaries incorrectly — never punted to the PR Reviewer. Repeated conflicts on the same seam escalate as a boundary failure, not an infinite retry loop.
-9. **Shared state is governed, not merged.** Files that are legitimately shared across tasks are modified only through a closed vocabulary of typed, additive operations applied by a deterministic service (§4; schemas in `agent_interface_contracts.py`).
+9. **Shared state is governed, not merged.** Files that are legitimately shared across tasks are modified only through a closed vocabulary of typed, additive operations applied by a deterministic service (§4; schemas in `plan/contracts/`).
 10. **Deterministic classification before LLM judgment.** Wherever a failure or event can be classified from structured signals alone, it is. An LLM is only invoked for the residue that doesn't cleanly match a deterministic rule. Governs both the Shared-File Intent Service (§4) and failure triage (§6, `infra_triage_matrix.md`).
 11. **Validator asymmetry.** *(Reinstated from v0.1 — absent v0.2 through v0.4.)* A validator only adds signal if its inputs differ from the generator's. Concretely: information asymmetry (the reviewer sees the spec and the artifact, never the generator's own rationale — a validator that reads the builder's justification is grading the persuasion, not the artifact); tooling asymmetry (a validator can execute — run the tests, run the type checker, grep for callers — a review that only reads is a style pass); model asymmetry (a different tier from the builder, at minimum). Applies to every Maker/Checker pair in §2, most concretely Plan Writer/Plan Reviewer and Task Dev/Code Reviewer.
 12. **Enforce with permissions, not prompts.** *(Reinstated from v0.1 — stated in v0.4 as an outcome, e.g. "Test Author... never touches implementation," without this as its stated mechanism.)* A write-scope boundary (Principle 4) or a role restriction (Test Author writes no implementation) is a permission or a filesystem/config-level constraint, never an instruction an agent is asked to reason its way past. An instruction can be argued with; a permission cannot.
@@ -93,13 +93,13 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 | Budget Enforcer | Deterministic | Middleware in the dispatch path; checks each transition against `GovernancePolicy.budget_ceilings` and refuses on breach. Never an LLM (`budget_and_escalation_policy.md` §4) |
 | Budget Accountant | Utility (advisory) | Forecasts spend trend across all agents and raises advisory findings; **gates nothing** — separated from enforcement so a slow or wrong forecast cannot fail open |
 
-Every Validator agent returns a `GateResult` (`agent_interface_contracts.py`) — a standardized verdict with blocking vs. advisory findings and an evidence reference, so the Core Orchestrator can route on a consistent shape regardless of which Validator produced it. A verdict carries an **applicability** alongside its pass/fail, because a gate that can be scoped out of a given diff needs a way to say "I did not run" that is neither a green check nor a block on work it never examined.
+Every Validator agent returns a `GateResult` (`plan/contracts/verification.py`) — a standardized verdict with blocking vs. advisory findings and an evidence reference, so the Core Orchestrator can route on a consistent shape regardless of which Validator produced it. A verdict carries an **applicability** alongside its pass/fail, because a gate that can be scoped out of a given diff needs a way to say "I did not run" that is neither a green check nor a block on work it never examined.
 
 ---
 
 ## 3. Phase-by-Phase Architecture
 
-The Core Orchestrator's entire state across all eight phases is a `RunManifest` (schema: `agent_interface_contracts.py`) plus a reference to the event log — never a plan body, never a diff. *(Reinstated from v0.1 §3.1, absent v0.2 through v0.4; the original resumability argument is preserved in `plan/versions/agentic-sdlc-design-v0.1.md` §3.1.)* The manifest persists after every phase transition, so a crashed run resumes from the last recorded phase rather than restarting. Because every model in this system is immutable (see `agent_interface_contracts.py`'s header), a transition produces a *new* `RunManifest` instance rather than mutating the old one — the same additive discipline Shared-File Governance (§4) applies to shared files applies here to orchestrator state.
+The Core Orchestrator's entire state across all eight phases is a `RunManifest` (schema: `plan/contracts/orchestration.py`) plus a reference to the event log — never a plan body, never a diff. *(Reinstated from v0.1 §3.1, absent v0.2 through v0.4; the original resumability argument is preserved in `plan/versions/agentic-sdlc-design-v0.1.md` §3.1.)* The manifest persists after every phase transition, so a crashed run resumes from the last recorded phase rather than restarting. Because every model in this system is immutable (see `plan/contracts/__init__.py`'s `BaseContract`), a transition produces a *new* `RunManifest` instance rather than mutating the old one — the same additive discipline Shared-File Governance (§4) applies to shared files applies here to orchestrator state.
 
 ### Phase 1 — Planning & Context (Gating)
 Context Gatherer pulls targeted context into a separate context window (`context_retrieval_strategy.md`). Plan Writer produces a plan; Plan Reviewer adversarially reviews it (bounded loop, §7). Security Review runs a plan-time pass. The Invariant Curator injects relevant constraints into the approval step. A human gate approves the plan.
@@ -127,7 +127,7 @@ Draft PR is generated; PR Reviewer and a diff-time Security Reviewer evaluate it
 A small set of files — DI containers, routers, export barrels — are inherently shared across tasks that are otherwise disjoint. Treating them as ordinary merge targets recreates the failure mode the swarm's ownership model exists to avoid: two agents can produce textually non-overlapping, git-clean changes that are still semantically incompatible.
 
 ### 4.2 Typed, additive intents
-Task Dev agents never edit a registered shared file directly. They emit typed intents (`AddExport`, `AddRoute`, `AddProviderBinding` — full schemas in `agent_interface_contracts.py`). The vocabulary is deliberately closed and additive-only; a genuine structural change (splitting a router, restructuring a DI graph) exits via `structural_change_runbook.md` instead.
+Task Dev agents never edit a registered shared file directly. They emit typed intents (`AddExport`, `AddRoute`, `AddProviderBinding` — full schemas in `plan/contracts/reference_adapter/web_intents.py`). The vocabulary is deliberately closed and additive-only; a genuine structural change (splitting a router, restructuring a DI graph) exits via `structural_change_runbook.md` instead.
 
 ### 4.3 Shared-File Registration
 Before a file can accept intents, a one-time registration step maps its structural insertion points: an agent proposes the map, a human confirms it once, and it's cached for reuse.
@@ -159,7 +159,7 @@ intent transport: `execution_isolation.md` §7.
 
 ## 5. Invariant Curator — Deprecation Flow
 
-Every invariant is tagged `repo_local` or `enterprise_wide` (`InvariantScope`, `agent_interface_contracts.py`). Each tracks whether the Context Gatherer actually retrieves and uses it — but the zero-hit window is evaluated **within the invariant's own scope**: a `repo_local` invariant's disuse is measured against that one repo; an `enterprise_wide` invariant's disuse is measured across every repo the manifest serves, so a single repo's disinterest doesn't flag a constraint that's firing constantly elsewhere.
+Every invariant is tagged `repo_local` or `enterprise_wide` (`InvariantScope`, `plan/contracts/verification.py`). Each tracks whether the Context Gatherer actually retrieves and uses it — but the zero-hit window is evaluated **within the invariant's own scope**: a `repo_local` invariant's disuse is measured against that one repo; an `enterprise_wide` invariant's disuse is measured across every repo the manifest serves, so a single repo's disinterest doesn't flag a constraint that's firing constantly elsewhere.
 
 Zero-hit invariants are never auto-deleted. They route to a human review queue — the same standard of review their creation implicitly had.
 
@@ -305,7 +305,7 @@ tracked in any subsequent Open Questions section:**
   little and the review loop does work the human could have done in one sentence.
 - **Run manifest location.** Repo-local (e.g. `.runs/`) or out of tree? In-tree gives free versioning
   and PR-visible provenance but puts run state in the diff. Now directly relevant: §3 and
-  `agent_interface_contracts.py`'s `RunManifest` need somewhere to actually live.
+  `plan/contracts/orchestration.py`'s `RunManifest` need somewhere to actually live.
 - **Secrets posture.** Which agents get which credentials, and does anything in the build phase need
   more than read access to the repo?
 

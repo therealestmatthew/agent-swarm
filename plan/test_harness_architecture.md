@@ -7,7 +7,7 @@ doc_type: companion
 
 # Test Harness Architecture
 
-**Referenced by:** `agentic-sdlc-design-v0.5.md` §6 (Test Investigator & Failure Triage) · §9.1 (`mutation.diff_scoped`) · `infra_triage_matrix.md` §1 (`FailureSignature.dom_state_diff_from_baseline`) · `agent_interface_contracts.py`
+**Referenced by:** `agentic-sdlc-design-v0.5.md` §6 (Test Investigator & Failure Triage) · §9.1 (`mutation.diff_scoped`) · `infra_triage_matrix.md` §1 (`FailureSignature.dom_state_diff_from_baseline`) · `plan/contracts/`
 
 ## Purpose
 
@@ -18,7 +18,7 @@ This file owns the mechanics of the verification layer that the core design docu
 ## 1. Baseline Management
 
 ### 1.1 The problem this solves
-`FailureSignature.dom_state_diff_from_baseline` (see `agent_interface_contracts.py`) is only trustworthy if "baseline" is unambiguous and the mechanism that produces it can't itself leak state. This section defines both.
+`FailureSignature.dom_state_diff_from_baseline` (see `plan/contracts/verification.py`) is only trustworthy if "baseline" is unambiguous and the mechanism that produces it can't itself leak state. This section defines both.
 
 ### 1.2 Capture rule: construct fresh, never clean in place
 
@@ -65,7 +65,7 @@ tradeoff it never actually made.
 
 ### 1.3 Reset strategies are declared, not assumed
 
-The mechanism is therefore adapter data: `ResetStrategy` in `agent_interface_contracts.py`, named
+The mechanism is therefore adapter data: `ResetStrategy` in `plan/contracts/governance.py`, named
 per tier by `TestTier.reset_strategy_id`. A strategy declares what it recreates, what the host must
 give it (`ResetResource`), what it costs, and what its clean-state check actually inspects.
 
@@ -141,7 +141,7 @@ Because Test Author writes tests before implementation exists (TDD-first, Princi
 Protocol definitions for shared dependencies are produced at **Contract Freeze** (design doc §3, Phase 2 & 3) as part of the interface map — not invented ad hoc by whichever Test Author or Task Dev agent happens to need a fake first. Two agents independently inventing two slightly different Protocols for the same dependency reintroduces, at the type level, the same kind of semantic drift the Shared-File Intent Service (design doc §4) exists to prevent for shared files.
 
 ### 2.4 Fixture data
-Where a fake needs to return structured data — not just satisfy a call signature — that data is constructed from the same Pydantic models in `agent_interface_contracts.py` that the real code uses, not parallel dict literals or ad hoc dataclasses. A fixture built from the shared schema can't silently drift from what the real code actually produces; a hand-rolled one can.
+Where a fake needs to return structured data — not just satisfy a call signature — that data is constructed from the same Pydantic models in `plan/contracts/` that the real code uses, not parallel dict literals or ad hoc dataclasses. A fixture built from the shared schema can't silently drift from what the real code actually produces; a hand-rolled one can.
 
 ---
 
