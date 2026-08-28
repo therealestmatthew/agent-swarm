@@ -106,6 +106,25 @@ a single test runs, so swarm width for a browser-tier repo is bound by memory lo
 bound by API rate limits. That is the answer to design doc §12's concurrency-ceiling question for
 this class of repo, and it falls out of the same declaration rather than needing a separate one.
 
+### 5.4 Credential-bearing tasks floor to `CONTAINER`
+
+**A task whose resolved `granted_secrets` set is non-empty floors to `CONTAINER`, independent of
+what its `ResetStrategy.requires` values are.** The resource-based derivation of §5.1 and this
+credential-based derivation are orthogonal sources; whichever is stronger wins.
+
+The reason is not test-suite hygiene but network scope: the egress scrubber and its proxy
+(`core_adapter_boundary.md` §5.2) rely on the container's network boundary to interpose on outbound
+traffic. A worktree does not scope network egress; a container does. A task that can reach the
+network unmediated is a task whose credentials can leave through a channel the scrubber never sees,
+which is the exact failure mode C1 moved the scrubber to Core to prevent.
+
+**The edge case is deliberate.** A task with a local-dummy credential provider still floors to
+`CONTAINER`. The trust posture is a property of the code path, not the value provided to it — a
+provider swap must not change the isolation guarantee, or a repo could weaken its own boundary by
+declaring a dummy provider it later replaces. A container for dummy-credential tasks is cheap
+insurance, and it keeps the derivation deterministic: two tasks with identical declarations resolve
+to the same unit regardless of which provider is currently wired in.
+
 ## 6. Merge order is planned, not emergent
 
 Design doc §3 already states this for the swarm as a whole; it's restated here because it's the

@@ -246,21 +246,53 @@ be cleared to an empty one.
 
 ---
 
-## 5. Credential injection
+## 5. Credential injection and egress scrubbing
 
-The adapter declares **names and scopes**. Values never appear in a manifest, never appear on a
-worktree filesystem, and never pass through an agent's context.
+The adapter declares **names and scopes**. Values never appear in a `RepoDeclaration`, never appear
+on a worktree filesystem, and never pass through an agent's context. **Core holds resolved values in
+memory for exactly one task's duration** — the scrubbing trust boundary — and nowhere else.
+
+### 5.1 Credential resolution
 
 - **Core owns** a `CredentialProvider` interface: `resolve(names, scope)` injects resolved values
   into the environment of an isolation unit at start, scoped to the phase that needs them.
 - A repo needing a live tenant credential and one needing a local dummy string use the same
   interface. The difference is which provider is configured, not which code path runs.
 
-**Scrubbing runs inside the isolation unit, at the boundary.** This is the non-obvious part: a
-redaction filter must know the values it is redacting, which conflicts with Core never holding them.
-So Core supplies the scrubber, the scrubber executes inside the unit where the values already exist,
-and it filters every artifact — logs, screenshots, DOM dumps, HARs — on the way out. Nothing that
-has not passed the scrubber becomes an `evidence_ref` target.
+### 5.2 Egress scrubbing
+
+**The scrubber runs in Core, at the Core/adapter trust boundary — not inside the isolation unit.**
+Every log line, screenshot filename, DOM dump, HAR file, git commit message, and network payload
+leaving the unit passes through it as an `EgressPayload` (`plan/contracts/governance.py`) and
+returns as a `ScrubbedEgressPayload` (`plan/contracts/governance.py`). Nothing that has not been
+transformed is admissible as an `evidence_ref` target or as a network egress destination.
+
+The scrubber holds active values via `SecretScrubberConfig` (`plan/contracts/governance.py`),
+populated at task start from `GovernancePolicy.granted_secrets`. Instances live only in Core memory
+for the task's duration and are never persisted, logged, or serialized into the `RunManifest` event
+log.
+
+Network egress is constrained by a Core-operated egress proxy with a **strict allow-list of
+destination domains** derived from the adapter's declared external services. Deep packet inspection
+on the egress stream is a possible extension for adapters that need finer-grained control, but is
+not the design's baseline stance: allow-listing sidesteps the MITM-cert-install surface a DPI proxy
+would require inside every container.
+
+Isolation implication: because the egress proxy is a network boundary, container isolation is a
+floor for any task consuming a credential. See `execution_isolation.md` §5.4 for the derivation
+rule.
+
+### 5.3 Why the trust boundary moved
+
+Earlier drafts of this design placed the scrubber **inside** the isolation unit, on the argument
+that a redaction filter must know its values, which conflicts with Core never holding them. Audit
+finding C1 (`audit/2026-08-28_audit/adversarial_audit_report.md`) established that in-unit
+scrubbing is defeatable: an agent with `src/` write access can tamper with the scrubber, encode
+credentials in filenames or commit messages, or exfiltrate them via network calls the scrubber never
+sees. The trade-off changed. **Core-memory exposure of raw values for one task's duration is a
+smaller attack surface than in-unit tamperability under an adversarial agent.** Principle 12 —
+enforce with permissions, not prompts — puts security controls outside the trust boundary they
+defend.
 
 ---
 
