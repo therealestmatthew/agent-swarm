@@ -45,7 +45,7 @@ they touch entirely different files.
 |---|---|---|---|---|---|
 | 1 | **C5** | completed | `cd34117`, `42c5ab4`, `cb53dda` | 16 (see below) | Decomposition + phase gate. Three surfaced items → `followups.md` |
 | 2 | **C1** | completed | `6bacbce`, `22bad69` | 6 (see below) | Scrubber to Core, allow-list egress, credential-isolation floor. Three surfaced items → `followups.md` |
-| 3 | H6 | not_started | — | — | — |
+| 3 | **H6** | completed | `2c33e7d` (+ C5 scaffolding: `cd34117`, `42c5ab4`, `cb53dda`) | 4 (see below) | Normalization boundary, Core ownership, cross-refs, F5 closure. ~80% pre-seeded by C5. |
 | 4 | C2 | not_started | — | — | — |
 | 5 | C3 | not_started | — | — | — |
 | 6 | C4 | not_started | — | — | — |
@@ -58,6 +58,33 @@ they touch entirely different files.
 | 13 | M1–M6 | not_started | — | — | Medium findings, internally parallelizable |
 
 ## Per-remediation detail
+
+### H6 — Schema validation two-pass (completed 2026-08-28)
+
+One commit for H6-specific changes; ~80% of deliverables were pre-seeded during
+C5 (companion doc, schema, parsing annotations, design doc update, CLAUDE.md,
+calibration metric, manifest entry). Net: +24 / −6 across 4 files.
+
+- **`2c33e7d`** normalization boundary and cross-refs: added §2.4 to
+  `core_adapter_boundary.md` (agent output normalization — inbound data-cleaning
+  path, distinguished from §5 outbound credential-scrubbing). Clarified Core
+  ownership of normalizer in `llm_output_normalization.md` §3. Added §6 Schema
+  Defaulting Convention (F5 resolution). Fixed bidirectional cross-references
+  between `core_adapter_boundary.md`, `calibration_and_measurement.md`, and
+  `llm_output_normalization.md`.
+
+**Design decisions locked in during human gate:**
+- Core owns the normalizer (it's a mechanism: deterministic strip-and-log, no
+  LLM calls). Adapter hands raw JSON strings to Core.
+- New sub-section (§2.4) in `core_adapter_boundary.md` rather than inline reference
+- F5 closed with both the existing inline comment (C5 `cd34117`) and a new §6
+  schema-design convention note in `llm_output_normalization.md`
+
+**Follow-ups resolved:** F5 (GovernancePolicy defaulting asymmetry)
+
+**Downstream impact:** None significant — H6 was largely self-contained.
+The normalization layer is referenced by later remediations only insofar as
+they may produce agent-produced schemas that need parsing-discipline annotations.
 
 ### C1 — Secret scrubbing trust boundary (completed 2026-08-28)
 
@@ -126,5 +153,10 @@ exist as separate files rather than sections of a monolith.
 - **Maker/Checker model:** Claude Code `general-purpose` sub-agents (fresh
   context each dispatch) rather than tiered Flash/Pro/Opus. Different mechanism,
   same governance principle (no agent reviews its own output).
-- **Human gates so far:** 1 (C5 pre-dispatch design questions). Remaining
+- **Human gates so far:** 3 (C5, C1, H6 pre-dispatch design questions). Remaining
   remediations will each get their own gate.
+- **H6 note:** C5's Maker sub-agents pre-seeded ~80% of H6 deliverables (companion
+  doc, schema, annotations, design doc §3, CLAUDE.md, calibration §5, manifest).
+  H6-specific Maker sub-agents encountered permission timeouts; remaining edits
+  were applied directly by the Orchestrator and independently reviewed by a
+  Checker sub-agent.
