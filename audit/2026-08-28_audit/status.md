@@ -53,7 +53,7 @@ they touch entirely different files.
 | 8 | **H2** | completed | `2dd00b7` | 3 (see below) | Parameterized loop ceilings (`max_cost_units`), CEILING_HALT semantics locked. Resolved F1. |
 | 9 | **H1** | completed | `da6bec1` | 3 (see below) | Tier 1/2/3 metrics, CPIC metric, CI window/overlap heuristics locked. |
 | 10 | **H3+H4** | completed | `401e24e` | 4 (see below) | Tiered execution (Tiers 1-3), Level 0-3 progressive onboarding, schema integration locked. |
-| 11 | H5 | not_started | — | — | — |
+| 11 | **H5** | completed | `5e2bb40` | 6 + 17 frontmatter (see below) | Three-tier structural change governance. SharedFileIntent rename, pending_tier2_review, max_intents_per_shared_file. |
 | 12 | H7 | not_started | — | — | — |
 | 13 | M1–M6 | not_started | — | — | Medium findings, internally parallelizable |
 
@@ -336,6 +336,22 @@ exist as separate files rather than sections of a monolith.
   **`a31e6c4`** (Maker/Checker pair, PASS) resolved all critical items. Remaining
   design smell: `VerdictLedgerEntry.reviewer_spec_version` is now redundant
   since `gate_result: GateResult` already carries it → logged as **F13**.
+
+### H5 — Structural change tiers (completed 2026-08-28)
+
+One commit (`5e2bb40`). Net: 6 design files + 17 audit-dir files (pre-commit hook frontmatter backfill).
+
+- **`5e2bb40`** three-tier structural change governance: Introduces Tier 1 (auto-resolved: `RenameExport`, `MoveRoute`, `DeprecateExport`), Tier 2 (async human review: `IntentRejection.reason = "pending_tier2_review"`, run does not halt), and Tier 3 (full SOP pause: existing `reason = "structural"`). Renames `AdditiveIntent → SharedFileIntent` in `plan/contracts/reference_adapter/web_intents.py` and all prose. Adds `GovernancePolicy.max_intents_per_shared_file: int | None = None` (illustrative; closes the TBD in the runbook §4/§5). Restructures `structural_change_runbook.md` into §3 Tier 2 Procedure + §4 Tier 3 Procedure + renumbered §5/§6. Updates `agentic-sdlc-design-v0.5.md` §4.2 heading and Principle 9.
+
+**Design decisions locked in during human gate:**
+- Clean rename (`AdditiveIntent → SharedFileIntent`): once `RenameExport` joins the union, "additive" is a misnomer; all prose updated in one pass.
+- Tier 2 return path via `IntentRejection.reason = "pending_tier2_review"` (not a new `IntentOutcome` field): agent sees `applied=False` with a resumable reason; `"structural"` unambiguously means Tier 3 only.
+- `max_intents_per_shared_file` on `GovernancePolicy` flat field (not nested sub-model): parallel to `max_mutex_rejections`, illustrative with `None = off`.
+- No new parking-constraint schema: existing write-scope (`src/**`) already excludes registered shared files; prose notes this without adding schema complexity.
+
+**Follow-ups surfaced:** None. F2 (D2 load-bearing status in implementation_roadmap.md) and F11 (Core Orchestrator named as runner of gate_coverage.minimum) remain pending but are not in H5 scope.
+
+**Downstream impact:** H7 (collision semantics, `core_adapter_boundary.md §2.1`) may reference the expanded `SharedFileIntent` union when discussing collision-key semantics for the new Tier 1 ops. M1–M6 may update the glossary to reflect the new tier terminology.
 
 ### H2 — Retry ceiling parameterization (completed 2026-08-28)
 
