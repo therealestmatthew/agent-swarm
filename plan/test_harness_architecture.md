@@ -3,6 +3,7 @@ title: Test Harness Architecture
 status: live
 part_of: agentic-sdlc
 doc_type: companion
+layer: adapter-sdlc
 ---
 
 # Test Harness Architecture

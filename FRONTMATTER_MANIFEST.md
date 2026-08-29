@@ -3,6 +3,7 @@ title: Front Matter Manifest
 status: live
 part_of: repo-meta
 doc_type: manifest
+layer: repo-meta
 generated: true
 ---
 
@@ -17,14 +18,26 @@ generated: true
 | Status | Count |
 |---|---|
 | live | 39 |
+| draft | 1 |
 | superseded | 4 |
 | archived | 0 |
 
 | Part of | Count |
 |---|---|
 | agentic-sdlc | 20 |
+| optimization | 0 |
+| audit | 3 |
 | glass-box | 0 |
 | repo-meta | 21 |
+
+| Layer | Count |
+|---|---|
+| core | 5 |
+| adapter-sdlc | 32 |
+| adapter-personal | 0 |
+| adapter-team | 0 |
+| shared | 5 |
+| repo-meta | 2 |
 
 | Doc type | Count |
 |---|---|
@@ -41,49 +54,49 @@ generated: true
 
 ## Every file
 
-| Path | Title | Status | Part of | Doc type | Version | Supersedes |
-|---|---|---|---|---|---|---|
-| `AGENTIC_ARCHITECTURE_MANIFEST.md` | Agentic Architecture Manifest | live | repo-meta | manifest |  |  |
-| `CLAUDE.md` | Agentic SDLC Orchestration | live | repo-meta | guide |  |  |
-| `audit/2026-08-28_audit/adversarial_audit_feedback.md` | Adversarial Audit Feedback: SDLC Agentic Development System (v0.5) | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/adversarial_audit_question_responses.md` | Audit Questions & Responses | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/adversarial_audit_report.md` | Adversarial Audit: SDLC Agentic Development System (v0.5) | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/followups.md` | Audit v0.5 Remediation Follow-ups | live | audit-2026-08-28 | tracker |  |  |
-| `audit/2026-08-28_audit/h8_handoff.md` | H8 Remediation Handoff | live | audit-2026-08-28 | handoff |  |  |
-| `audit/2026-08-28_audit/orchestrator_reference_instructions.md` | Remediation Orchestrator — Reference & Operating Instructions | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/prompt_remediation_orchestrator.md` | Orchestrator Prompt | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/prompt_session_kickoff.md` | Session Kickoff Prompt | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/remediation_C1_secret_scrubbing.md` | Remediation Plan: C1 Security — In-Unit Secret Scrubbing is Defeatable | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/remediation_C2_deadlock_detection.md` | Remediation Plan: C2 - Deadlock Potential in Smart Mutex Rejection | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/remediation_C3_gate_bypass.md` | Remediation Plan: Finding C3 - The NOT_APPLICABLE Gate Bypass | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/remediation_C4_materialization_races.md` | Remediation Plan: Finding C4 - Race Conditions in Shared-File Materialization | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/remediation_C5_phase_gate_clarity.md` | Remediation Plan: Finding C5 (Design/Build Phase Contradiction) | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/remediation_H1_calibration_loop.md` | Remediation H1: Calibration Loop Can't Close (Downstream Attribution is Impractical) | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/remediation_H2_retry_ceilings.md` | Remediation: Finding H2 - Blanket `max_retries=3` is Too Coarse | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/remediation_H3_H4_tiered_execution.md` | Remediation Plan: Findings H3 & H4 (Tiered Execution & Onboarding) | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/remediation_H5_structural_change_tiers.md` | Remediation Plan: Finding H5 (Structural Change SOP Creates a Human Bottleneck) | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/remediation_H6_schema_validation.md` | Remediation Plan: Finding H6 (extra='forbid' + LLM Output = Chronic Parse Failures) | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/remediation_H7_collision_semantics.md` | Remediation: H7 Collision Key Semantics are Too Shallow | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/remediation_H8_crash_recovery.md` | Remediation Plan: H8 - No Crash Recovery for Stateful Isolation Units | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/remediation_M1_M6_medium_findings.md` | Remediation Plan: Medium Findings (M1 - M6) | live | repo-meta | reference |  |  |
-| `audit/2026-08-28_audit/status.md` | Audit v0.5 Remediation Execution Status | live | audit-2026-08-28 | tracker |  |  |
-| `plan/adapter_onboarding.md` | Adapter Onboarding | live | agentic-sdlc | companion |  |  |
-| `plan/agent_taxonomy.md` | Agent Taxonomy | draft | agentic-sdlc | companion |  |  |
-| `plan/agentic-sdlc-design-v0.5.md` | Agentic SDLC Orchestration — Design Document v0.5 | live | agentic-sdlc | blueprint | 0.5 |  |
-| `plan/agentic_sdlc_glossary.md` | Agentic SDLC Glossary | live | agentic-sdlc | reference |  |  |
-| `plan/budget_and_escalation_policy.md` | Budget & Escalation Policy | live | agentic-sdlc | companion |  |  |
-| `plan/calibration_and_measurement.md` | Calibration and Measurement | live | agentic-sdlc | companion |  |  |
-| `plan/context_retrieval_strategy.md` | Context Retrieval Strategy | live | agentic-sdlc | companion |  |  |
-| `plan/core_adapter_boundary.md` | Core / Adapter Boundary | live | agentic-sdlc | companion |  |  |
-| `plan/crash_recovery.md` | Crash Recovery | live | agentic-sdlc | companion |  |  |
-| `plan/execution_isolation.md` | Execution Isolation | live | agentic-sdlc | companion |  |  |
-| `plan/implementation_roadmap.md` | Implementation Roadmap — Design to Execution | live | agentic-sdlc | roadmap | 1.1 |  |
-| `plan/infra_triage_matrix.md` | Infrastructure Triage Matrix | live | agentic-sdlc | companion |  |  |
-| `plan/llm_output_normalization.md` | LLM Output Normalization | live | agentic-sdlc | companion |  |  |
-| `plan/structural_change_runbook.md` | Structural Change Runbook | live | agentic-sdlc | runbook |  |  |
-| `plan/test_harness_architecture.md` | Test Harness Architecture | live | agentic-sdlc | companion |  |  |
-| `plan/versions/REGRESSION.md` | v0.1 → v0.4 Regression Analysis | live | agentic-sdlc | analysis |  |  |
-| `plan/versions/agentic-sdlc-design-v0.1.md` | Agentic SDLC Orchestration — Design Proposal | superseded | agentic-sdlc | blueprint | 0.1 | plan/versions/agentic-sdlc-design-v0.2.md |
-| `plan/versions/agentic-sdlc-design-v0.2.md` | Agentic SDLC Orchestration — Design Document v0.2 | superseded | agentic-sdlc | blueprint | 0.2 | plan/versions/agentic-sdlc-design-v0.3.md |
-| `plan/versions/agentic-sdlc-design-v0.3.md` | Agentic SDLC Orchestration — Design Document v0.3 | superseded | agentic-sdlc | blueprint | 0.3 | plan/versions/agentic-sdlc-design-v0.4.md |
-| `plan/versions/agentic-sdlc-design-v0.4.md` | Agentic SDLC Orchestration — Design Document v0.4 | superseded | agentic-sdlc | blueprint | 0.4 | plan/agentic-sdlc-design-v0.5.md |
+| Path | Title | Status | Part of | Layer | Doc type | Version | Supersedes |
+|---|---|---|---|---|---|---|---|
+| `AGENTIC_ARCHITECTURE_MANIFEST.md` | Agentic Architecture Manifest | live | repo-meta | repo-meta | manifest |  |  |
+| `CLAUDE.md` | Agentic SDLC Orchestration | live | repo-meta | repo-meta | guide |  |  |
+| `audit/2026-08-28_audit/adversarial_audit_feedback.md` | Adversarial Audit Feedback: SDLC Agentic Development System (v0.5) | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/adversarial_audit_question_responses.md` | Audit Questions & Responses | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/adversarial_audit_report.md` | Adversarial Audit: SDLC Agentic Development System (v0.5) | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/followups.md` | Audit v0.5 Remediation Follow-ups | live | audit | adapter-sdlc | tracker |  |  |
+| `audit/2026-08-28_audit/h8_handoff.md` | H8 Remediation Handoff | live | audit | adapter-sdlc | handoff |  |  |
+| `audit/2026-08-28_audit/orchestrator_reference_instructions.md` | Remediation Orchestrator — Reference & Operating Instructions | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/prompt_remediation_orchestrator.md` | Orchestrator Prompt | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/prompt_session_kickoff.md` | Session Kickoff Prompt | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/remediation_C1_secret_scrubbing.md` | Remediation Plan: C1 Security — In-Unit Secret Scrubbing is Defeatable | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/remediation_C2_deadlock_detection.md` | Remediation Plan: C2 - Deadlock Potential in Smart Mutex Rejection | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/remediation_C3_gate_bypass.md` | Remediation Plan: Finding C3 - The NOT_APPLICABLE Gate Bypass | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/remediation_C4_materialization_races.md` | Remediation Plan: Finding C4 - Race Conditions in Shared-File Materialization | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/remediation_C5_phase_gate_clarity.md` | Remediation Plan: Finding C5 (Design/Build Phase Contradiction) | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/remediation_H1_calibration_loop.md` | Remediation H1: Calibration Loop Can't Close (Downstream Attribution is Impractical) | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/remediation_H2_retry_ceilings.md` | Remediation: Finding H2 - Blanket `max_retries=3` is Too Coarse | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/remediation_H3_H4_tiered_execution.md` | Remediation Plan: Findings H3 & H4 (Tiered Execution & Onboarding) | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/remediation_H5_structural_change_tiers.md` | Remediation Plan: Finding H5 (Structural Change SOP Creates a Human Bottleneck) | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/remediation_H6_schema_validation.md` | Remediation Plan: Finding H6 (extra='forbid' + LLM Output = Chronic Parse Failures) | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/remediation_H7_collision_semantics.md` | Remediation: H7 Collision Key Semantics are Too Shallow | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/remediation_H8_crash_recovery.md` | Remediation Plan: H8 - No Crash Recovery for Stateful Isolation Units | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/remediation_M1_M6_medium_findings.md` | Remediation Plan: Medium Findings (M1 - M6) | live | repo-meta | adapter-sdlc | reference |  |  |
+| `audit/2026-08-28_audit/status.md` | Audit v0.5 Remediation Execution Status | live | audit | adapter-sdlc | tracker |  |  |
+| `plan/adapter_onboarding.md` | Adapter Onboarding | live | agentic-sdlc | adapter-sdlc | companion |  |  |
+| `plan/agent_taxonomy.md` | Agent Taxonomy | draft | agentic-sdlc | shared | companion |  |  |
+| `plan/agentic-sdlc-design-v0.5.md` | Agentic SDLC Orchestration — Design Document v0.5 | live | agentic-sdlc | shared | blueprint | 0.5 |  |
+| `plan/agentic_sdlc_glossary.md` | Agentic SDLC Glossary | live | agentic-sdlc | shared | reference |  |  |
+| `plan/budget_and_escalation_policy.md` | Budget & Escalation Policy | live | agentic-sdlc | core | companion |  |  |
+| `plan/calibration_and_measurement.md` | Calibration and Measurement | live | agentic-sdlc | core | companion |  |  |
+| `plan/context_retrieval_strategy.md` | Context Retrieval Strategy | live | agentic-sdlc | core | companion |  |  |
+| `plan/core_adapter_boundary.md` | Core / Adapter Boundary | live | agentic-sdlc | shared | companion |  |  |
+| `plan/crash_recovery.md` | Crash Recovery | live | agentic-sdlc | core | companion |  |  |
+| `plan/execution_isolation.md` | Execution Isolation | live | agentic-sdlc | adapter-sdlc | companion |  |  |
+| `plan/implementation_roadmap.md` | Implementation Roadmap — Design to Execution | live | agentic-sdlc | adapter-sdlc | roadmap | 1.1 |  |
+| `plan/infra_triage_matrix.md` | Infrastructure Triage Matrix | live | agentic-sdlc | adapter-sdlc | companion |  |  |
+| `plan/llm_output_normalization.md` | LLM Output Normalization | live | agentic-sdlc | core | companion |  |  |
+| `plan/structural_change_runbook.md` | Structural Change Runbook | live | agentic-sdlc | shared | runbook |  |  |
+| `plan/test_harness_architecture.md` | Test Harness Architecture | live | agentic-sdlc | adapter-sdlc | companion |  |  |
+| `plan/versions/REGRESSION.md` | v0.1 → v0.4 Regression Analysis | live | agentic-sdlc | adapter-sdlc | analysis |  |  |
+| `plan/versions/agentic-sdlc-design-v0.1.md` | Agentic SDLC Orchestration — Design Proposal | superseded | agentic-sdlc | adapter-sdlc | blueprint | 0.1 | plan/versions/agentic-sdlc-design-v0.2.md |
+| `plan/versions/agentic-sdlc-design-v0.2.md` | Agentic SDLC Orchestration — Design Document v0.2 | superseded | agentic-sdlc | adapter-sdlc | blueprint | 0.2 | plan/versions/agentic-sdlc-design-v0.3.md |
+| `plan/versions/agentic-sdlc-design-v0.3.md` | Agentic SDLC Orchestration — Design Document v0.3 | superseded | agentic-sdlc | adapter-sdlc | blueprint | 0.3 | plan/versions/agentic-sdlc-design-v0.4.md |
+| `plan/versions/agentic-sdlc-design-v0.4.md` | Agentic SDLC Orchestration — Design Document v0.4 | superseded | agentic-sdlc | adapter-sdlc | blueprint | 0.4 | plan/agentic-sdlc-design-v0.5.md |

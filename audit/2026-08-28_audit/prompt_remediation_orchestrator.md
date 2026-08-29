@@ -3,6 +3,7 @@ title: Orchestrator Prompt
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Orchestrator Prompt

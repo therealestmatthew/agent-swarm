@@ -3,6 +3,7 @@ title: Calibration and Measurement
 status: live
 part_of: agentic-sdlc
 doc_type: companion
+layer: core
 ---
 
 # Calibration and Measurement

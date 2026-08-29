@@ -3,6 +3,7 @@ title: Agentic SDLC Orchestration
 status: live
 part_of: repo-meta
 doc_type: guide
+layer: repo-meta
 ---
 
 # Agentic SDLC Orchestration

@@ -3,6 +3,7 @@ title: Infrastructure Triage Matrix
 status: live
 part_of: agentic-sdlc
 doc_type: companion
+layer: adapter-sdlc
 ---
 
 # Infrastructure Triage Matrix

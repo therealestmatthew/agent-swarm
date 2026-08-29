@@ -3,6 +3,7 @@ title: Agentic Architecture Manifest
 status: live
 part_of: repo-meta
 doc_type: manifest
+layer: repo-meta
 ---
 
 # Agentic Architecture Manifest

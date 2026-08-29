@@ -3,6 +3,7 @@ title: Agentic SDLC Orchestration — Design Document v0.5
 status: live
 part_of: agentic-sdlc
 doc_type: blueprint
+layer: shared
 version: "0.5"
 ---
 

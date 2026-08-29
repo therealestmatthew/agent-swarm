@@ -3,6 +3,7 @@ title: v0.1 → v0.4 Regression Analysis
 status: live
 part_of: agentic-sdlc
 doc_type: analysis
+layer: adapter-sdlc
 ---
 
 # v0.1 → v0.4 Regression Analysis

@@ -3,6 +3,7 @@ title: Agent Taxonomy
 status: draft
 part_of: agentic-sdlc
 doc_type: companion
+layer: shared
 ---
 
 # Agent Taxonomy

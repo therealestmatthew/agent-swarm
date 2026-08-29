@@ -100,7 +100,13 @@ def _version_chain() -> dict[str, str]:
     return chain
 
 
-def infer_defaults(rel_path: str, body: str, superseded_by: dict[str, str]) -> dict:
+def infer_defaults(rel_path: str, body: str, superseded_by: dict[str, str],
+                   declared: dict | None = None) -> dict:
+    """`declared` is the front matter the file already carries. It is used only to decide
+    whether to warn about a missing curated doc_type -- this function's docstring promise is
+    that setting doc_type explicitly makes the warning stop, and warning unconditionally (as
+    this did) breaks that promise and trains readers to ignore the whole warning channel."""
+    declared = declared or {}
     parts = Path(rel_path).parts
     if parts[0] == "archive":
         part_of, status = "glass-box", "archived"
@@ -115,7 +121,8 @@ def infer_defaults(rel_path: str, body: str, superseded_by: dict[str, str]) -> d
     doc_type = CURATED_DOC_TYPES.get(rel_path)
     if doc_type is None:
         doc_type = "reference"
-        print(f"  ! {rel_path}: no curated doc_type, defaulting to 'reference' -- set explicitly")
+        if not declared.get("doc_type"):
+            print(f"  ! {rel_path}: no curated doc_type, defaulting to 'reference' -- set explicitly")
 
     fields: dict = {"status": status, "part_of": part_of, "doc_type": doc_type}
 
@@ -137,7 +144,7 @@ def process(path: Path, superseded_by: dict[str, str], check_only: bool) -> tupl
     text = path.read_text(encoding="utf-8")
     fields, body, had_fm = fm.parse(text)
 
-    defaults = infer_defaults(rel, body, superseded_by)
+    defaults = infer_defaults(rel, body, superseded_by, declared=fields)
     merged = dict(fields)
     changed = False
     for key, value in defaults.items():
@@ -157,6 +164,17 @@ def process(path: Path, superseded_by: dict[str, str], check_only: bool) -> tupl
     if merged.get("doc_type") not in fm.DOC_TYPES and merged.get("doc_type") != "reference":
         print(f"  ! {rel}: unrecognized doc_type '{merged['doc_type']}' (not enforced, just noting)")
 
+    # part_of and layer drive the manifest's summary tables, which are rendered by iterating the
+    # known tuples. An unrecognized value there used to be dropped from those tables with no
+    # warning -- the file still appeared in the per-file listing, but the counts silently stopped
+    # adding up. Principle 7: say so. Still not a hard failure, matching doc_type's posture.
+    if merged.get("part_of") not in fm.PART_OF:
+        print(f"  ! {rel}: unrecognized part_of '{merged['part_of']}' -- add it to "
+              f"frontmatter.PART_OF or fix the value (not enforced, just noting)")
+    if "layer" in merged and merged["layer"] not in fm.LAYERS:
+        print(f"  ! {rel}: unrecognized layer '{merged['layer']}' -- add it to "
+              f"frontmatter.LAYERS or fix the value (not enforced, just noting)")
+
     if not had_fm or changed:
         if not check_only:
             fm.rewrite(path, merged, body)
@@ -170,6 +188,17 @@ def write_manifest(rows: list[tuple[str, dict]]) -> None:
     by_status = Counter(f.get("status", "?") for _, f in rows)
     by_part_of = Counter(f.get("part_of", "?") for _, f in rows)
     by_doc_type = Counter(f.get("doc_type", "?") for _, f in rows)
+    by_layer = Counter(f.get("layer", "(unclassified)") for _, f in rows)
+
+    def count_table(heading: str, known: tuple[str, ...], counts: Counter) -> list[str]:
+        """Rows for every known value, then any value that actually occurred but isn't known.
+        Rendering only `known` would drop an unrecognized value from the table entirely and
+        leave the counts quietly failing to sum to the file total."""
+        out = [f"| {heading} | Count |", "|---|---|"]
+        out += [f"| {value} | {counts.get(value, 0)} |" for value in known]
+        out += [f"| {value} (unrecognized) | {count} |"
+                for value, count in sorted(counts.items()) if value not in known]
+        return out
 
     lines = [
         "---",
@@ -177,6 +206,7 @@ def write_manifest(rows: list[tuple[str, dict]]) -> None:
         "status: live",
         "part_of: repo-meta",
         "doc_type: manifest",
+        "layer: repo-meta",
         "generated: true",
         "---",
         "",
@@ -189,23 +219,20 @@ def write_manifest(rows: list[tuple[str, dict]]) -> None:
         "",
         "## Summary",
         "",
-        "| Status | Count |",
-        "|---|---|",
     ]
-    for status in fm.STATUSES:
-        lines.append(f"| {status} | {by_status.get(status, 0)} |")
-    lines += ["", "| Part of | Count |", "|---|---|"]
-    for part in fm.PART_OF:
-        lines.append(f"| {part} | {by_part_of.get(part, 0)} |")
+    lines += count_table("Status", fm.STATUSES, by_status)
+    lines += [""] + count_table("Part of", fm.PART_OF, by_part_of)
+    lines += [""] + count_table("Layer", fm.LAYERS, by_layer)
     lines += ["", "| Doc type | Count |", "|---|---|"]
     for doc_type, count in sorted(by_doc_type.items(), key=lambda t: -t[1]):
         lines.append(f"| {doc_type} | {count} |")
 
-    lines += ["", "## Every file", "", "| Path | Title | Status | Part of | Doc type | Version | Supersedes |", "|---|---|---|---|---|---|---|"]
+    lines += ["", "## Every file", "", "| Path | Title | Status | Part of | Layer | Doc type | Version | Supersedes |", "|---|---|---|---|---|---|---|---|"]
     for rel, fields in sorted(rows):
         lines.append(
             f"| `{rel}` | {fields.get('title', '')} | {fields.get('status', '')} | "
-            f"{fields.get('part_of', '')} | {fields.get('doc_type', '')} | "
+            f"{fields.get('part_of', '')} | {fields.get('layer', '')} | "
+            f"{fields.get('doc_type', '')} | "
             f"{fields.get('version', '')} | {fields.get('superseded_by', '')} |"
         )
 

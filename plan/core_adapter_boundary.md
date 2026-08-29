@@ -3,6 +3,7 @@ title: Core / Adapter Boundary
 status: live
 part_of: agentic-sdlc
 doc_type: companion
+layer: shared
 ---
 
 # Core / Adapter Boundary

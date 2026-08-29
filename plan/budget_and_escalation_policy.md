@@ -3,6 +3,7 @@ title: Budget & Escalation Policy
 status: live
 part_of: agentic-sdlc
 doc_type: companion
+layer: core
 ---
 
 # Budget & Escalation Policy

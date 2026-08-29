@@ -3,6 +3,7 @@ title: "Remediation H1: Calibration Loop Can't Close (Downstream Attribution is 
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Remediation H1: Calibration Loop Can't Close (Downstream Attribution is Impractical)

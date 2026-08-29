@@ -3,6 +3,7 @@ title: Implementation Roadmap — Design to Execution
 status: live
 part_of: agentic-sdlc
 doc_type: roadmap
+layer: adapter-sdlc
 version: "1.1"
 ---
 

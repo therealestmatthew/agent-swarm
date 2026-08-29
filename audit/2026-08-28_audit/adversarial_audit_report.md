@@ -3,6 +3,7 @@ title: "Adversarial Audit: SDLC Agentic Development System (v0.5)"
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Adversarial Audit: SDLC Agentic Development System (v0.5)

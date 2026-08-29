@@ -3,6 +3,7 @@ title: Agentic SDLC Orchestration — Design Document v0.2
 status: superseded
 part_of: agentic-sdlc
 doc_type: blueprint
+layer: adapter-sdlc
 version: "0.2"
 superseded_by: plan/versions/agentic-sdlc-design-v0.3.md
 ---

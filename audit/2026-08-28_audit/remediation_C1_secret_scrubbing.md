@@ -3,6 +3,7 @@ title: "Remediation Plan: C1 Security — In-Unit Secret Scrubbing is Defeatable
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Remediation Plan: C1 Security — In-Unit Secret Scrubbing is Defeatable

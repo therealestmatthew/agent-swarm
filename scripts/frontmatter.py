@@ -12,8 +12,11 @@ Schema (see FRONTMATTER_MANIFEST.md for the live catalogue of what every doc act
 
     title:          str,  required
     status:         "live" | "superseded" | "archived",  required
-    part_of:        "agentic-sdlc" | "glass-box" | "repo-meta",  required
+    part_of:        "agentic-sdlc" | "optimization" | "glass-box" | "repo-meta",  required
     doc_type:       str, required — see DOC_TYPES for the known set (unknown values warn, not fail)
+    layer:          str, optional — see LAYERS; which side of the Core/Adapter boundary a doc
+                    sits on. Absent means unclassified, which is honest for a doc nobody has
+                    triaged yet; a *wrong* value is caught, an absent one is only reported.
     version:        str, optional — only versioned blueprint docs
     superseded_by:  str, optional — path, only on a superseded blueprint version
     generated:      bool, optional, default false — true only for files a script fully produces
@@ -29,20 +32,33 @@ FM_DELIM = "---"
 FM_BLOCK_RE = re.compile(r"\A---\n(.*?)\n---\n?", re.DOTALL)
 
 REQUIRED_FIELDS = ("title", "status", "part_of", "doc_type")
-STATUSES = ("live", "superseded", "archived")
-PART_OF = ("agentic-sdlc", "glass-box", "repo-meta")
+STATUSES = ("live", "draft", "superseded", "archived")
+# `audit` is deliberately undated. The 2026-08-28 tree originally declared
+# `part_of: audit-2026-08-28`, which would need a new entry here per audit and was silently
+# dropped from the manifest's summary table until the unrecognized-value warning was added.
+PART_OF = ("agentic-sdlc", "optimization", "audit", "glass-box", "repo-meta")
 # Known doc_types. Not enforced as a hard failure -- an unrecognized value is a warning, so a
 # genuinely new kind of document doesn't need this file edited before it can be committed.
 DOC_TYPES = (
     "blueprint", "companion", "analysis", "glossary-notes", "guide", "manifest", "schema",
     "design-spec", "agent-contracts", "runbook", "demo-script", "payload-spec",
     "review-prompt", "review-findings", "archive-notice", "roadmap",
+    "agent-card", "agent-type", "card-schema", "classification",
+    "tracker", "handoff",
+)
+
+# Which side of the Core/Adapter boundary a document sits on. `core` is the universal
+# orchestrator; each `adapter-*` is one domain's declared nouns; `shared` is a doc that
+# genuinely spans both and says so per-section; `repo-meta` is repo housekeeping that
+# classifies neither. See plan/core_vs_adapter.md for the per-file verdicts and the evidence.
+LAYERS = (
+    "core", "adapter-sdlc", "adapter-personal", "adapter-team", "shared", "repo-meta",
 )
 
 # Stable output order, independent of insertion order, so regenerated front matter is
 # diff-stable rather than reordering itself every run.
 FIELD_ORDER = (
-    "title", "status", "part_of", "doc_type", "version", "superseded_by", "generated",
+    "title", "status", "part_of", "doc_type", "layer", "version", "superseded_by", "generated",
 )
 
 

@@ -3,6 +3,7 @@ title: Agentic SDLC Glossary
 status: live
 part_of: agentic-sdlc
 doc_type: reference
+layer: shared
 ---
 
 # Agentic SDLC Glossary

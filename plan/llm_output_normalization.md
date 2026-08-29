@@ -3,6 +3,7 @@ title: LLM Output Normalization
 status: live
 part_of: agentic-sdlc
 doc_type: companion
+layer: core
 ---
 
 # LLM Output Normalization
