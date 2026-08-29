@@ -149,7 +149,10 @@ REGISTRY: list[Count] = [
         t("AGENTIC_ARCHITECTURE_MANIFEST.md", r"defined terms spanning (\d+) categories"),
     ]),
     Count("tracked_file_count", tracked_file_count, [
-        t("AGENTIC_ARCHITECTURE_MANIFEST.md", r"(\d+) tracked files, spanning two projects"),
+        # Was anchored on "... tracked files, spanning two projects" -- but the second project
+        # (archive/glass-box/) was deleted in f2ba9fe, so the anchor phrase was itself the stale
+        # claim. Re-anchored to the corrected sentence.
+        t("AGENTIC_ARCHITECTURE_MANIFEST.md", r"(\d+) tracked files: the live design"),
     ]),
     Count("live_principle_count", live_principle_count, [
         t("AGENTIC_ARCHITECTURE_MANIFEST.md", r"(\d+) principles → \d+-agent roster"),
@@ -163,6 +166,11 @@ REGISTRY: list[Count] = [
     Count("companion_file_count", companion_file_count, [
         t("plan/agentic-sdlc-design-v0.5.md", r"mechanics live in (\d+) companion files"),
         t("CLAUDE.md", r"now (\d+) companion files, not five"),
+        # A second assertion of the same count, in CLAUDE.md's "Where things live" preamble.
+        # It read "Now 11 companion files" while the tracked one read 13: the original pattern
+        # is case-sensitive, so the capital-N sentence was never managed and drifted silently
+        # for two revisions. Distinct wording, so each target matches exactly one place.
+        t("CLAUDE.md", r"set now holds (\d+) SDLC companion files"),
     ]),
     Count("agent_card_count", agent_card_count, [
         t("plan/agents/README.md", r"5 Executors = (\d+)\."),
