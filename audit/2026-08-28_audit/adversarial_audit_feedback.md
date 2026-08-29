@@ -1,3 +1,10 @@
+---
+title: "Adversarial Audit Feedback: SDLC Agentic Development System (v0.5)"
+status: live
+part_of: repo-meta
+doc_type: reference
+---
+
 # Adversarial Audit Feedback: SDLC Agentic Development System (v0.5)
 
 **Date:** 2026-08-28  

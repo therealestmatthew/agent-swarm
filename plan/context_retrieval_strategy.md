@@ -58,3 +58,7 @@ Chunks that don't make the top-K by score are compressed to a one-line digest (f
 
 ### 2.4 Overflow handling
 If total context exceeds budget even after summarization, the Context Gatherer surfaces an explicit warning to the Core Orchestrator (or the relevant human gate) rather than silently truncating. Silent truncation is exactly the class of invisible failure the rest of this pipeline is built to avoid everywhere else — Baseline Guard's anti-deletion check, `GateResult`'s explicit pass/fail, deterministic-first triage. The Context Gatherer shouldn't be the one place in the system that fails quietly.
+
+## 3. Lexical/Symbol Bypass Strategy
+
+When a consumer explicitly knows the exact file path and symbol name (e.g., a specific function or class to read), it bypasses the search heuristics (vector/git search) entirely by supplying an `ExactSymbolLookup`. The system directly extracts the requested target, guaranteeing precise retrieval without relying on semantic similarity scoring or search fallback.

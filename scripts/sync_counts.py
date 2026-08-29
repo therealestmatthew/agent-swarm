@@ -48,17 +48,15 @@ class Count(NamedTuple):
     targets: list[Target]
 
 
-def _glossary_rows() -> list[list[str]]:
-    with open(ROOT / "plan" / "agentic_sdlc_glossary.csv", newline="", encoding="utf-8") as f:
-        return list(csv.reader(f))[1:]
-
-
 def glossary_term_count() -> int:
-    return len(_glossary_rows())
+    text = (ROOT / "plan" / "agentic_sdlc_glossary.md").read_text(encoding="utf-8")
+    return len(re.findall(r"^## .+$", text, re.M))
 
 
 def glossary_category_count() -> int:
-    return len({row[2] for row in _glossary_rows()})
+    text = (ROOT / "plan" / "agentic_sdlc_glossary.md").read_text(encoding="utf-8")
+    categories = re.findall(r"\*\*Category:\*\* (.*?) \|", text)
+    return len(set(categories))
 
 
 def tracked_file_count() -> int:

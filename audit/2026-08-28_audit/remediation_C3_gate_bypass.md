@@ -1,3 +1,10 @@
+---
+title: "Remediation Plan: Finding C3 - The NOT_APPLICABLE Gate Bypass"
+status: live
+part_of: repo-meta
+doc_type: reference
+---
+
 # Remediation Plan: Finding C3 - The NOT_APPLICABLE Gate Bypass
 
 ## 1. Finding Summary

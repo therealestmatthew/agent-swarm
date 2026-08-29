@@ -1,3 +1,10 @@
+---
+title: "Remediation Plan: C2 - Deadlock Potential in Smart Mutex Rejection"
+status: live
+part_of: repo-meta
+doc_type: reference
+---
+
 # Remediation Plan: C2 - Deadlock Potential in Smart Mutex Rejection
 
 ## 1. Finding Summary

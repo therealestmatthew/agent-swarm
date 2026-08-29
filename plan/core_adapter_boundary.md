@@ -8,8 +8,8 @@ doc_type: companion
 # Core / Adapter Boundary
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §4 (Shared-File Governance) · §6 (Failure Triage) ·
-§8 (Execution Isolation) · `implementation_roadmap.md` Stage 0 · `agent_interface_contracts.py`
-(`RepoDeclaration`, `GovernancePolicy`)
+§8 (Execution Isolation) · `implementation_roadmap.md` Stage 0 · `plan/contracts/governance.py`
+(`RepoDeclaration`, `GovernancePolicy`) · `plan/llm_output_normalization.md` (§3 dispatch path)
 
 ## Purpose
 
@@ -34,14 +34,21 @@ It is not a dependency of the Core, and nothing in Stage 0 through Stage 2 of
 | Agent roles | Maker/Checker pairing, validator asymmetry, bounded loops, escalation ladder, Shadow Mode calibration and the verdict ledger |
 | Governance | The intent lock, serialization, the rejection protocol and its blocking-context envelope, conflict counters, registry promotion logic |
 | Verification | The *engine* that evaluates ordered rules first-match-wins, the LLM-fallback edge, anti-deletion baseline guards, gate evaluation and `GateResult` routing |
-| Safety | Budget metering and the ceiling halt, secret resolution and boundary scrubbing, evidence retention |
+| Safety | Budget metering and the ceiling halt, secret resolution and egress scrubbing, evidence retention |
 
-### 1.2 Adapter — declared per target repo
+### 1.2 Adapter — declared per target repo (Progressive Onboarding)
+
+Adapters onboard in stages (Levels 0 through 3). A repo does not need a full schema to start.
+
+- **Level 0 (Ad-Hoc / Chat):** No adapter needed. The agent acts as a simple chat assistant with read access.
+- **Level 1 (Execution):** Minimal adapter. Declares the image reference, basic bootstrap commands, and Tier 1 (Unit) tests.
+- **Level 2 (State & Triage):** Adds Tier 2 (Integration) tests, Reset Strategies (e.g., transaction rollbacks), and telemetry/triage rules for structured failure handling.
+- **Level 3 (Full Intent & Pooling):** Adds Tier 3 (Browser) tests with warm pools (`browser_pool_checkout`), Additive Intent operations, custom hooks, and fixture hydration.
 
 | Area | Adapter declares |
 |---|---|
 | Execution | Isolation unit (worktree or container), image reference, bootstrap commands, port bindings, per-unit resource footprint |
-| Verification | Test tiers, their commands, whether each is hermetic, and the reset strategy wrapping each test — what it recreates, what host resources it needs, and what it costs |
+| Verification | Test tiers (`execution_tier`), their commands, whether each is hermetic, and the reset strategy wrapping each test — what it recreates, what host resources it needs, and what it costs |
 | Vocabulary | Its Additive Intent operations, their collision keys, and the transformer that applies each |
 | Telemetry | The signals its harness can capture, and the ordered triage rules written over those signals |
 | Hydration | Named fixture states and the hooks that apply, verify, and tear them down |
@@ -58,20 +65,69 @@ that would be wrong for every codebase, it is Core code.
 Three places where "Core owns the mechanism, adapter owns the specifics" is not sufficient on its
 own. Each of these is a decision, not a detail.
 
-### 2.1 Collision detection is not fully universal
+### 2.1 Collision detection is not fully universal — the Two-Layer Collision Model
 
 The lock, the serialization, and the rejection protocol are Core. **Whether two intents collide is
 not** — it is a semantic question about a vocabulary Core has never seen. `AddRoute(path="/x")`
-twice is an obvious collision on `path`; two `AddSelector` intents with different names pointing at
-the same DOM element collide semantically while sharing no key.
+twice is an obvious collision on `path`; two `AddRoute` intents on `/users/:id` and `/users/new`
+overlap semantically while sharing no literal key; two `AddSelector` intents with different names
+pointing at the same DOM element collide semantically while sharing no key at all.
 
-**Resolution:** every declared operation carries a **collision key set**
-(`IntentOpSpec.collision_keys`). Core arbitrates by exact match on those keys and nothing else. That
-makes arbitration deterministic and repo-independent, at the cost of being deliberately
-under-powered: an adapter that needs richer collision semantics expresses it by choosing keys that
-capture it, or accepts that the residue surfaces at integration as an ordinary conflict and
-increments the file's counter. **Core does not accept an adapter-supplied predicate function** —
-that would move arbitration logic into untrusted repo-declared code, which §4 exists to prevent.
+**Resolution: a Two-Layer Collision Model.** Layer 1 is Core's deterministic key match. Layer 2 is
+an optional adapter-declared static analyzer, sandboxed inside the repo's isolation unit. Both run
+inside the same synchronous Intent Service call, and either can reject an intent — but for
+different reasons and with different override semantics. Audit finding H7
+(`audit/2026-08-28_audit/remediation_H7_collision_semantics.md`) drove this from a Layer-1-only
+design; the pre-H7 shape is preserved as the additive-default behavior when a repo declares no
+analyzers.
+
+**Layer 1 — deterministic key match (Core, universal, unchanged).** Every declared operation
+carries a **collision key set** (`IntentOpSpec.collision_keys`, `plan/contracts/governance.py`).
+Core arbitrates by exact match on those keys and nothing else. That makes Layer 1 deterministic and
+repo-independent, at the cost of being deliberately under-powered: an adapter that needs richer
+collision semantics expresses it by choosing keys that capture it, by declaring a Layer 2 analyzer,
+or by accepting that the residue surfaces at integration as an ordinary conflict and increments the
+file's counter. **Core does not accept an adapter-supplied predicate function inside its own
+process** — that would move arbitration logic into untrusted repo-declared code, which §4 exists to
+prevent. A Layer-1 collision returns `IntentRejection.reason = "collision"` and is not overrideable
+through the submission envelope: it is a factual claim about pending intents, not a judgement.
+
+**Layer 2 — adapter-declared semantic analyzer (sandboxed, per-op, opt-in).** A repo declares zero
+or more analyzers via `RepoDeclaration.semantic_analyzers`
+(`SemanticAnalyzerSpec` — `plan/contracts/governance.py`), each an executable command plus an
+`IsolationUnit`. Every `IntentOpSpec` that needs semantic checking cites the analyzers it needs by
+`semantic_analyzer_ids`; multiple ops MAY share an `analyzer_id`. Empty `semantic_analyzer_ids` on
+an op means Layer 2 is skipped for that op and Core runs Layer 1 only. A repo that declares no
+analyzers at all keeps the pre-H7 arbitration shape.
+
+Ordering is fixed and per-intent synchronous. Inside one Intent Service call: Layer 1 evaluates
+first; on a Layer-1 pass Core dispatches the op's mapped analyzers as subprocesses inside the
+declared `IsolationUnit` (per the `execution_isolation.md` §7.6 subprocess-only invariant),
+aggregates their structured JSON verdicts, and either applies the intent or returns
+`IntentRejection.reason = "semantic_collision"` with `semantic_feedback` and `override_key`
+populated. No batching, no Phase-4-boundary rollback, no `shared/`-branch rewind path: on a
+semantic_collision the intent is simply not applied (`IntentOutcome.applied = False`), and the
+submitting agent sees one outcome per submission just as it did pre-H7.
+
+**Egress crosses the trust boundary** (SECURITY). The analyzer's JSON verdict leaves the isolation
+unit on its way back to Core and therefore passes through the §5 credential scrubber like any other
+egress artifact — reusing `EgressPayload` / `ScrubbedEgressPayload`, no new schema. An analyzer
+that echoes a secret it observed inside the unit is redacted at the boundary, exactly as a log line
+would be.
+
+**Override semantics.** A Layer-2 rejection is not final. The rejection carries `override_key`,
+and an agent may resubmit the same intent through the `IntentSubmission` envelope
+(`plan/contracts/orchestration.py`) with that key placed in `override_semantic_collisions`. The
+wrapper is the seam — the intent members (`AddRoute`, `AddExport`, `AddProviderBinding`,
+`RenameExport`, `MoveRoute`, `DeprecateExport`) stay untouched, so the vocabulary is not polluted
+by submission-side governance metadata. An honored override converts the analyzer's block into a
+hypothesis that Phase 5 integration testing will still catch if the analyzer was correct. Repeated
+`semantic_collision` on the same `(rejected_task, blocking_task, resource_key)` tuple accrues
+against `GovernancePolicy.max_mutex_rejections` and degrades to `deadlock_cycle` on breach — a
+stuck override loop is caught by the same ceiling that catches a stuck Layer-1 loop
+(design doc §4.5). This is deliberately non-overlapping with the structural-change tiers: a
+semantic_collision stays inside the Intent Service's per-intent verdict loop and is neither a
+Tier 2 (`structural_change_runbook.md` §1) nor a Tier 3 trigger.
 
 ### 2.2 Telemetry cannot be adapter fields on a `extra="forbid"` model
 
@@ -102,11 +158,25 @@ LLM Investigator, with the deliberate-fallthrough guarantee intact. The **rules 
 reclassified from *the engine* to *the reference rule set for a browser-automation adapter* — which
 is what it has always actually been.
 
+### 2.4 Agent output normalization
+
+Agent-produced JSON (Validator verdicts, additive intents) enters Core as raw JSON strings.
+Core's **normalization layer** is the first mechanism applied to this inbound payload: it
+recursively strips hallucinated extra fields, logs each removal as a `NormalizationEvent`
+(`plan/contracts/verification.py`), and then hands the cleaned data to strict Pydantic
+validation (`extra="forbid"`). Only validated, typed objects enter the downstream pipeline.
+
+This is an *inbound* data-cleaning path, distinct from the *outbound* credential-scrubbing
+egress path in §5: normalization handles what agents produce; scrubbing handles what leaves an
+isolation unit. Both are Core-owned deterministic mechanisms. See
+`plan/llm_output_normalization.md` for the full specification, including model categories
+(which schemas cross this boundary) and escalation interaction.
+
 ---
 
 ## 3. The adapter contract: two artifacts, two trust levels
 
-Schemas: `agent_interface_contracts.py`. The contract is deliberately **not** one file. A target
+Schemas: `plan/contracts/governance.py`. The contract is deliberately **not** one file. A target
 repo declares facts about itself; the control plane owns what the pipeline will tolerate. They have
 different authors, different change cadences, and different blast radii on compromise.
 
@@ -240,27 +310,58 @@ Hydration and baseline are therefore the same concept viewed twice:
   *the declared post-hydration state*, never against empty and never against the previous test's end
   state.
 
-The full-teardown mandate (`test_harness_architecture.md` §1.2) survives unchanged and gets
-stronger: a reused environment cannot be re-hydrated to a known state any more reliably than it can
-be cleared to an empty one.
+The tiered reset mandates (`test_harness_architecture.md` §1.2) govern what the baseline is captured against: for Tier 1 and Tier 2, construction is always fresh; for Tier 3, in-place cleaning via a warm pool is permitted, with state-leakage protection via the deterministic triage table. In all tiers, a reused environment that has not been verifiably reset cannot be re-hydrated to a known state any more reliably than it can be cleared to an empty one — the baseline is the declared post-hydration state, never an assumed empty.
+Furthermore, Adapters should cache state resets based on target isolation requirements (such as matching isolation unit boundaries) rather than re-computing them indiscriminately, provided doing so does not compromise hermeticity guarantees.
 
 ---
 
-## 5. Credential injection
+## 5. Credential injection and egress scrubbing
 
-The adapter declares **names and scopes**. Values never appear in a manifest, never appear on a
-worktree filesystem, and never pass through an agent's context.
+The adapter declares **names and scopes**. Values never appear in a `RepoDeclaration`, never appear
+on a worktree filesystem, and never pass through an agent's context. **Core holds resolved values in
+memory for exactly one task's duration** — the scrubbing trust boundary — and nowhere else.
+
+### 5.1 Credential resolution
 
 - **Core owns** a `CredentialProvider` interface: `resolve(names, scope)` injects resolved values
   into the environment of an isolation unit at start, scoped to the phase that needs them.
 - A repo needing a live tenant credential and one needing a local dummy string use the same
   interface. The difference is which provider is configured, not which code path runs.
 
-**Scrubbing runs inside the isolation unit, at the boundary.** This is the non-obvious part: a
-redaction filter must know the values it is redacting, which conflicts with Core never holding them.
-So Core supplies the scrubber, the scrubber executes inside the unit where the values already exist,
-and it filters every artifact — logs, screenshots, DOM dumps, HARs — on the way out. Nothing that
-has not passed the scrubber becomes an `evidence_ref` target.
+### 5.2 Egress scrubbing
+
+**The scrubber runs in Core, at the Core/adapter trust boundary — not inside the isolation unit.**
+Every log line, screenshot filename, DOM dump, HAR file, git commit message, and network payload
+leaving the unit passes through it as an `EgressPayload` (`plan/contracts/governance.py`) and
+returns as a `ScrubbedEgressPayload` (`plan/contracts/governance.py`). Nothing that has not been
+transformed is admissible as an `evidence_ref` target or as a network egress destination.
+
+The scrubber holds active values via `SecretScrubberConfig` (`plan/contracts/governance.py`),
+populated at task start from `GovernancePolicy.granted_secrets`. Instances live only in Core memory
+for the task's duration and are never persisted, logged, or serialized into the `RunManifest` event
+log.
+
+Network egress is constrained by a Core-operated egress proxy with a **strict allow-list of
+destination domains** derived from the adapter's declared external services. Deep packet inspection
+on the egress stream is a possible extension for adapters that need finer-grained control, but is
+not the design's baseline stance: allow-listing sidesteps the MITM-cert-install surface a DPI proxy
+would require inside every container.
+
+Isolation implication: because the egress proxy is a network boundary, container isolation is a
+floor for any task consuming a credential. See `execution_isolation.md` §5.4 for the derivation
+rule.
+
+### 5.3 Why the trust boundary moved
+
+Earlier drafts of this design placed the scrubber **inside** the isolation unit, on the argument
+that a redaction filter must know its values, which conflicts with Core never holding them. Audit
+finding C1 (`audit/2026-08-28_audit/adversarial_audit_report.md`) established that in-unit
+scrubbing is defeatable: an agent with `src/` write access can tamper with the scrubber, encode
+credentials in filenames or commit messages, or exfiltrate them via network calls the scrubber never
+sees. The trade-off changed. **Core-memory exposure of raw values for one task's duration is a
+smaller attack surface than in-unit tamperability under an adversarial agent.** Principle 12 —
+enforce with permissions, not prompts — puts security controls outside the trust boundary they
+defend.
 
 ---
 

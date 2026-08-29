@@ -1,3 +1,10 @@
+---
+title: "Remediation Plan: Finding C5 (Design/Build Phase Contradiction)"
+status: live
+part_of: repo-meta
+doc_type: reference
+---
+
 # Remediation Plan: Finding C5 (Design/Build Phase Contradiction)
 
 ## 1. Finding Summary

@@ -20,7 +20,7 @@ questions, not silently dropped a second time.
 |---|---|---|
 | Validator asymmetry | Absent since v0.1 | **Reinstated:** Principle 11 — a validator sees the spec and the artifact, never the generator's rationale |
 | Write-scope enforcement | Stated as an outcome | **Reinstated:** Principle 12 — enforced by permission/config, not by instructing an agent not to |
-| Core Orchestrator state | Undefined | **Reinstated:** `RunManifest` schema (`agent_interface_contracts.py`); §3 names it as the orchestrator's entire context alongside the event log |
+| Core Orchestrator state | Undefined | **Reinstated:** `RunManifest` schema (`plan/contracts/orchestration.py`); §3 names it as the orchestrator's entire context alongside the event log |
 | Concurrent execution isolation | Absent since v0.1 | **Reinstated:** one git worktree per task — new companion, `execution_isolation.md` |
 | Weakened-assertion detection | Absent since v0.1 | **Reinstated:** diff-scoped mutation testing — `test_harness_architecture.md` §3 |
 | Consolidated gate tables | Never relocated from v0.1 | **Reinstated:** §9 — deterministic, agent, and human gates in one place |
@@ -36,7 +36,7 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 
 | File | Owns |
 |---|---|
-| `agent_interface_contracts.py` | Every schema in the system — additive intents, `InvariantScope`, `FailureSignature`, `GateResult` — single source of truth |
+| `plan/contracts/` | Every schema exchanged between agents, decomposed by domain into `orchestration.py`, `governance.py`, `verification.py`, and `reference_adapter/` — single source of truth |
 | `core_adapter_boundary.md` | **New.** What the universal Core owns vs. what a target repo declares for itself — the `RepoDeclaration`/`GovernancePolicy` adapter contract, capability negotiation, hydration, and credential injection |
 | `test_harness_architecture.md` | Baseline capture mechanics for `dom_state_diff_from_baseline`; Protocol-fake test double standards; diff-scoped mutation testing (§3) |
 | `execution_isolation.md` | **New.** One git worktree per task — why disjoint write ownership alone doesn't isolate reads |
@@ -44,7 +44,7 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 | `context_retrieval_strategy.md` | Context Gatherer search heuristics (git history vs. vector search) and token budget management |
 | `budget_and_escalation_policy.md` | Exact loop ceilings, the escalation ladder rung-by-rung, and Budget Accountant cost ceilings |
 | `infra_triage_matrix.md` | Deterministic failure-classification rules engine |
-| `structural_change_runbook.md` | Human-gated SOP for non-additive shared-file changes |
+| `structural_change_runbook.md` | Three-tier structural change governance: Tier 1 auto-resolves; Tier 2 queues for async human review; Tier 3 triggers the full synchronous SOP |
 
 ---
 
@@ -58,7 +58,7 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 6. **Model escalation on repeated failure.** Agents that fail review repeatedly are re-run on a stronger model rather than retried indefinitely (exact ladder: `budget_and_escalation_policy.md`).
 7. **Budget and circuit-breaking.** Enforcement and forecasting are separated. A **deterministic Budget Enforcer** checks every phase transition against `GovernancePolicy.budget_ceilings` and refuses the transition on breach; a **Budget Accountant** agent forecasts spend trend advisorily and gates nothing. A circuit breaker that is itself an LLM can be slow, wrong, or unavailable at exactly the moment a runaway swarm is burning fastest — so nothing that must fire is left to judgment. The same philosophy governs individual loop-back edges (exact thresholds and the enforcement point: `budget_and_escalation_policy.md`).
 8. **Merge conflicts are decomposition errors.** A merge conflict is evidence the Task Decomposer drew task boundaries incorrectly — never punted to the PR Reviewer. Repeated conflicts on the same seam escalate as a boundary failure, not an infinite retry loop.
-9. **Shared state is governed, not merged.** Files that are legitimately shared across tasks are modified only through a closed vocabulary of typed, additive operations applied by a deterministic service (§4; schemas in `agent_interface_contracts.py`).
+9. **Shared state is governed, not merged.** Files that are legitimately shared across tasks are modified only through a closed vocabulary of typed structural intents (additive and structural-but-safe Tier 1) applied by a deterministic service (§4; schemas in `plan/contracts/`).
 10. **Deterministic classification before LLM judgment.** Wherever a failure or event can be classified from structured signals alone, it is. An LLM is only invoked for the residue that doesn't cleanly match a deterministic rule. Governs both the Shared-File Intent Service (§4) and failure triage (§6, `infra_triage_matrix.md`).
 11. **Validator asymmetry.** *(Reinstated from v0.1 — absent v0.2 through v0.4.)* A validator only adds signal if its inputs differ from the generator's. Concretely: information asymmetry (the reviewer sees the spec and the artifact, never the generator's own rationale — a validator that reads the builder's justification is grading the persuasion, not the artifact); tooling asymmetry (a validator can execute — run the tests, run the type checker, grep for callers — a review that only reads is a style pass); model asymmetry (a different tier from the builder, at minimum). Applies to every Maker/Checker pair in §2, most concretely Plan Writer/Plan Reviewer and Task Dev/Code Reviewer.
 12. **Enforce with permissions, not prompts.** *(Reinstated from v0.1 — stated in v0.4 as an outcome, e.g. "Test Author... never touches implementation," without this as its stated mechanism.)* A write-scope boundary (Principle 4) or a role restriction (Test Author writes no implementation) is a permission or a filesystem/config-level constraint, never an instruction an agent is asked to reason its way past. An instruction can be argued with; a permission cannot.
@@ -93,28 +93,33 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 | Budget Enforcer | Deterministic | Middleware in the dispatch path; checks each transition against `GovernancePolicy.budget_ceilings` and refuses on breach. Never an LLM (`budget_and_escalation_policy.md` §4) |
 | Budget Accountant | Utility (advisory) | Forecasts spend trend across all agents and raises advisory findings; **gates nothing** — separated from enforcement so a slow or wrong forecast cannot fail open |
 
-Every Validator agent returns a `GateResult` (`agent_interface_contracts.py`) — a standardized verdict with blocking vs. advisory findings and an evidence reference, so the Core Orchestrator can route on a consistent shape regardless of which Validator produced it. A verdict carries an **applicability** alongside its pass/fail, because a gate that can be scoped out of a given diff needs a way to say "I did not run" that is neither a green check nor a block on work it never examined.
+Every Validator agent returns a `GateResult` (`plan/contracts/verification.py`) — a standardized verdict with blocking vs. advisory findings and an evidence reference, so the Core Orchestrator can route on a consistent shape regardless of which Validator produced it. A verdict carries an **applicability** alongside its pass/fail, because a gate that can be scoped out of a given diff needs a way to say "I did not run" that is neither a green check nor a block on work it never examined.
 
 ---
 
 ## 3. Phase-by-Phase Architecture
 
-The Core Orchestrator's entire state across all eight phases is a `RunManifest` (schema: `agent_interface_contracts.py`) plus a reference to the event log — never a plan body, never a diff. *(Reinstated from v0.1 §3.1, absent v0.2 through v0.4; the original resumability argument is preserved in `plan/versions/agentic-sdlc-design-v0.1.md` §3.1.)* The manifest persists after every phase transition, so a crashed run resumes from the last recorded phase rather than restarting. Because every model in this system is immutable (see `agent_interface_contracts.py`'s header), a transition produces a *new* `RunManifest` instance rather than mutating the old one — the same additive discipline Shared-File Governance (§4) applies to shared files applies here to orchestrator state.
+The Core Orchestrator's entire state across all eight phases is a `RunManifest` (schema: `plan/contracts/orchestration.py`) plus a reference to the event log — never a plan body, never a diff. *(Reinstated from v0.1 §3.1, absent v0.2 through v0.4; the original resumability argument is preserved in `plan/versions/agentic-sdlc-design-v0.1.md` §3.1.)* The manifest persists after every phase transition, so a crashed run resumes from the last recorded phase rather than restarting. Because every model in this system is immutable (see `plan/contracts/__init__.py`'s `BaseContract`), a transition produces a *new* `RunManifest` instance rather than mutating the old one — the same additive discipline Shared-File Governance (§4) applies to shared files applies here to orchestrator state.
+
+Agent-produced outputs (Validator verdicts, additive intents) pass through a **normalization layer** before entering Core's typed pipeline. This layer recurses through the graph, stripping and logging hallucinated extra fields before strict validation. See `plan/llm_output_normalization.md` for full specification.
+
+### Step 0: Startup Reconciliation
+Before entering any phase, the `StartupReconciler` executes the Crash Recovery protocol to handle abandoned runs, orphans, and resume decisions. See `crash_recovery.md` for the full Startup Reconciliation Protocol.
 
 ### Phase 1 — Planning & Context (Gating)
-Context Gatherer pulls targeted context into a separate context window (`context_retrieval_strategy.md`). Plan Writer produces a plan; Plan Reviewer adversarially reviews it (bounded loop, §7). Security Review runs a plan-time pass. The Invariant Curator injects relevant constraints into the approval step. A human gate approves the plan.
+Context Gatherer pulls targeted context into a separate context window using heuristic searches or precise lexical/symbol bypasses (`context_retrieval_strategy.md`). Plan Writer produces a plan; Plan Reviewer adversarially reviews it (bounded loop, §7). Security Review runs a plan-time pass. The Invariant Curator injects relevant constraints into the approval step. A human gate approves the plan.
 
 ### Phase 2 & 3 — Decomposition & TDD (Verification Green)
 The Task Decomposer produces disjoint tasks with interface maps and ownership assignments. A human Contract Freeze gate reviews the interface contracts — including any Protocol definitions for shared dependencies (`test_harness_architecture.md` §2.3) and any anticipated shared-file changes — and flags tasks that need the Structural Change SOP instead of the standard swarm flow. The Test Author then writes failing tests (`tests/**` only) ahead of any implementation.
 
 ### Phase 4 — Parallel Swarm & Shared-File Governance
-Task Dev agents work disjoint `src/**` slices in parallel. Code Reviewer runs in shadow mode on each branch, escalating to a stronger model after repeated failed reviews (bounded, §7). Any change to a registered shared file is emitted as a typed intent (§4), applied by the Shared-File Intent Service and re-materialized into every live worktree before the agent continues (§4.7; mechanics in `execution_isolation.md` §7). A task that turns out to need a structural, non-additive change exits the swarm via `structural_change_runbook.md`.
+Task Dev agents work disjoint `src/**` slices in parallel. Code Reviewer runs in shadow mode on each branch, escalating to a stronger model after repeated failed reviews (bounded, §7), subject to the specific cost unit budget constraints of the Code Review loop. Any change to a registered shared file is emitted as a typed intent (§4), applied by the Shared-File Intent Service and re-materialized into every live worktree before the agent continues (§4.7; mechanics in `execution_isolation.md` §7). A task that turns out to need a Tier 2 or Tier 3 change routes through `structural_change_runbook.md` (Tier 2: async human review, run continues; Tier 3: synchronous full pause).
 
 ### Phase 5 — Integration (Clean Merge)
 The Integrator merges completed branches. Because shared-file changes were resolved in Phase 4, this phase only resolves genuine git-level conflicts on disjoint code. A conflict is treated per Principle 8: bounded retries, then escalation to the Decomposer as a boundary failure. The Integrator also increments the lifetime conflict counter for any ungoverned file involved (§4.6).
 
 ### Phase 6 — Verification & Cleanup
-Test Runner executes the full suite. Baseline Guard checks for anti-deletion regressions. Failures are classified via the deterministic triage table (`infra_triage_matrix.md`) first; only signatures that don't cleanly match a rule reach the Test Investigator (§6). CI Cleanup runs lint/formatting, with a re-review pass.
+Test Runner executes the full suite. Baseline Guard checks for anti-deletion regressions. Coverage-family gates (`tests.diff_covered`, `mutation.diff_scoped`) run first; the Core Orchestrator then explicitly runs the `gate_coverage.minimum` meta-gate which consumes their `GateResult`s together with `RunManifest.diff_classification` to catch the case where every coverage-family gate honestly scoped out of a `NON_TRIVIAL_CODE` diff (§9.1, §10). Failures are classified via the deterministic triage table (`infra_triage_matrix.md`) first; only signatures that don't cleanly match a rule reach the Test Investigator (§6). CI Cleanup runs lint/formatting, with a re-review pass.
 
 ### Phase 7 & 8 — Promotion & Observation
 Draft PR is generated; PR Reviewer and a diff-time Security Reviewer evaluate it. Approved PRs merge automatically from Dev to QA; QA to Production requires a human approval gate. In production, the Log Monitor watches continuously; the Error Analyzer pattern-matches findings, initiating rollback authorization on critical ones.
@@ -126,8 +131,14 @@ Draft PR is generated; PR Reviewer and a diff-time Security Reviewer evaluate it
 ### 4.1 Problem
 A small set of files — DI containers, routers, export barrels — are inherently shared across tasks that are otherwise disjoint. Treating them as ordinary merge targets recreates the failure mode the swarm's ownership model exists to avoid: two agents can produce textually non-overlapping, git-clean changes that are still semantically incompatible.
 
-### 4.2 Typed, additive intents
-Task Dev agents never edit a registered shared file directly. They emit typed intents (`AddExport`, `AddRoute`, `AddProviderBinding` — full schemas in `agent_interface_contracts.py`). The vocabulary is deliberately closed and additive-only; a genuine structural change (splitting a router, restructuring a DI graph) exits via `structural_change_runbook.md` instead.
+### 4.2 Typed structural intents
+Task Dev agents never edit a registered shared file directly. They emit typed intents — full schemas in `plan/contracts/reference_adapter/web_intents.py`, organized by tier:
+
+- **Tier 1 (auto-resolved, synchronous):** `AddExport`, `AddRoute`, `AddProviderBinding` (additive), plus `RenameExport`, `MoveRoute`, `DeprecateExport` (structural-but-safe). All handled by the Intent Service with no human gate. A Tier 1 intent that passes Layer 1 (Core's deterministic `collision_keys` match) may still be rejected by Layer 2 (an adapter-declared semantic analyzer sandboxed inside the repo's isolation unit) when the op declares `semantic_analyzer_ids`; the rejection returns `IntentRejection.reason = "semantic_collision"` and is overrideable via `IntentSubmission.override_semantic_collisions` — a per-intent verdict loop inside the Intent Service, not a Tier 2 or Tier 3 escalation. The Two-Layer Collision Model, its egress trust boundary, and the override semantics live in `core_adapter_boundary.md` §2.1.
+- **Tier 2 (async human review):** Not a new intent type — when a task exceeds `GovernancePolicy.max_intents_per_shared_file` against the same file, or proposes a well-formed split/merge, the Intent Service returns `IntentRejection.reason = "pending_tier2_review"`. The agent parks the dependent sub-task and continues other work; the run does not halt.
+- **Tier 3 (synchronous full pause):** High-blast-radius changes exit via `structural_change_runbook.md`. The Intent Service returns `reason = "structural"`.
+
+The vocabulary is deliberately closed. An operation not in this set is either Tier 2 (queued for async review) or Tier 3 (full SOP).
 
 ### 4.3 Shared-File Registration
 Before a file can accept intents, a one-time registration step maps its structural insertion points: an agent proposes the map, a human confirms it once, and it's cached for reuse.
@@ -136,7 +147,21 @@ Before a file can accept intents, a one-time registration step maps its structur
 Applying an intent is a mechanical AST transform wherever possible — `libcst` for Python, `ts-morph`/Babel for TypeScript/JS — with no LLM in the loop for the non-conflicting case.
 
 ### 4.5 Smart Mutex Rejection
-A colliding intent is rejected back to the submitting agent with the blocking context (what the other agent already claimed), so it can resolve in one shot rather than restarting a planning cycle.
+A colliding intent is rejected back to the submitting agent with the blocking context (what the other agent already claimed), so it can resolve in one shot rather than restarting a planning cycle. The rejection envelope (`IntentRejection`, `plan/contracts/orchestration.py`) carries `blocking_task_id`, `blocking_op`, and the collision-key values the other agent held — enough to re-plan the intent without a fresh Context Gatherer pass.
+
+Single-shot rejection is the common case. The failure mode it does not cover is a mutual rejection loop: task A rejected because task B holds a lock, task B rejected because task A holds one, both re-plan and re-submit, both bounce again. Left unchecked, that pattern burns Phase 4 budget until the run's cost ceiling halts it — exactly the "silent budget exhaustion" Principle 5 exists to prevent, and exactly the case where the failure signal (a cost halt) fingers the wrong subsystem.
+
+The Intent Service therefore maintains a **rejection graph** alongside the intent log: every rejection adds a `RejectionEdge(rejected_task, blocking_task, resource_key, timestamp)`, and a bounded-depth walk from the new node detects graph cycles (A→B→A, A→B→C→A, longer). A cycle fires immediately — an unambiguous structural incompatibility that no amount of re-planning by the tasks themselves will resolve.
+
+Some deadlocks never close a full cycle — two tasks that repeatedly collide on the same resource without either holding a lock the other observes, for example. To catch those, the service also maintains a per-`(rejected_task, blocking_task, resource_key)` counter; when the counter exceeds `GovernancePolicy.max_mutex_rejections` (illustrative default: 3), the tuple is classified as a `deadlock_cycle` even without a full graph cycle. Policy-tunable per repo, because the appropriate threshold depends on how the adapter's intent vocabulary shapes retry semantics.
+
+The counter is layer-agnostic: repeated `semantic_collision` rejections (Layer 2 of the Two-Layer Collision Model — `core_adapter_boundary.md` §2.1) on the same `(rejected_task, blocking_task, resource_key)` tuple accrue against the same ceiling as Layer-1 `collision` rejections. A stuck override loop — an agent cycling `IntentSubmission.override_semantic_collisions` against an analyzer that keeps returning a new `override_key` — degrades to `deadlock_cycle` on breach exactly like a stuck Layer-1 loop. This closes the failure mode where an override mechanism would otherwise let a single agent burn its retry budget against one analyzer indefinitely.
+
+On detection, the Intent Service returns `IntentRejection` with `reason = "deadlock_cycle"` and `deadlock_cycle` populated with the involved task IDs to every task in the cycle. Those tasks fail via the existing per-task failure path — they drop out of `RunManifest.active_task_ids`, their worktrees are torn down, and the failure is recorded in the event log. Other swarm tasks continue unaffected: this is a boundary failure scoped to the deadlocked set, not a run-level halt. `HaltReason.BOUNDARY_FAILURE` is only raised if the cascade empties `active_task_ids` or otherwise blocks phase progress. `RejectionEdge`s are persisted on `RunManifest.rejection_graph_edges` so a crashed-and-resumed run cannot silently re-enter a deadlock it had already detected (see H8 crash recovery). Edges lock in phase-boundary decay: edges older than a phase boundary are stale evidence and discarded (`crash_recovery.md`).
+
+This is deliberately distinct from `structural_change_runbook.md` §1 Tier 3 trigger 5 (escalation from the Intent Service on non-cyclic slow-boil friction). A graph cycle or `max_mutex_rejections` breach is C2's detector: fast, mechanical, task-scoped termination with no human in the loop. Slow-boil non-cyclic repeated collisions between the same agents on the same file — where blocking-context resolution is genuinely converging but slowly, or where the underlying interface itself needs redesign — remain the SOP's Tier 3 trigger, and route through the human-gated procedure. The two signals are non-overlapping by construction: the SOP does not fire on graph cycles or counter breaches, and the deadlock detector does not fire on non-cyclic slow-boil friction.
+
+Model-tier escalation is deliberately skipped for this loop; a structural deadlock is not a stochastic miss the next model tier would improve. See `budget_and_escalation_policy.md` §2.2.
 
 ### 4.6 Self-expanding governance
 Promotion is driven by a **cumulative, lifetime conflict counter per file** — not a per-phase count. Every git-level conflict the Integrator resolves on an ungoverned file increments that file's counter; three lifetime conflicts (`>2`) queue it for promotion. The counter decays by 1 per clean integration phase, floored at 0 — distinguishing chronic friction from an isolated heavy refactor that happened to touch the file three times in one phase. **Promotion still requires human confirmation**, identical to initial registration — the counter is evidence for a proposal, not an automatic action.
@@ -144,11 +169,16 @@ Promotion is driven by a **cumulative, lifetime conflict counter per file** — 
 ### 4.7 Materialization
 
 A registered shared file is never tracked in a task's worktree. The Intent Service is the sole
-writer of a canonical `shared/` branch; applied content is re-materialized into every live
-worktree's working directory, where the interpreter sees it and git does not; the Integrator
-fast-forwards that branch as the final commit. This is what "applied synchronously" in §4.2 means
-concretely, and it is why §9.1's `merge.no_conflict` gate is honest rather than quietly exempted for
-these files — task branches carry no shared-file changes to conflict over.
+writer of a canonical `shared/` branch; the **proposing** agent's worktree is updated during its
+blocking Intent Service call (that agent has no subprocess of its own running, so it is at a safe
+sync boundary by construction), while **sibling** worktrees are reconciled lazily at each sibling
+agent's next subprocess boundary via an unconditional pre-subprocess `WorktreeSyncRequest`
+(`plan/contracts/adapter_surface.py`); the Integrator fast-forwards the `shared/` branch as the
+final commit. This is what "applied synchronously" in §4.2 means concretely for the proposing
+agent, and it is why §9.1's `merge.no_conflict` gate is honest rather than quietly exempted for
+these files — task branches carry no shared-file changes to conflict over. The subprocess-only
+invariant that makes lazy sibling reconciliation safe against language-level import caches lives
+in `execution_isolation.md` §7.6.
 
 Because the shared-file content is then absent from every task's diff, Core synthesizes a
 per-PR **shared-file delta view** from the intent log, attributing each hunk to the intent and the
@@ -159,7 +189,7 @@ intent transport: `execution_isolation.md` §7.
 
 ## 5. Invariant Curator — Deprecation Flow
 
-Every invariant is tagged `repo_local` or `enterprise_wide` (`InvariantScope`, `agent_interface_contracts.py`). Each tracks whether the Context Gatherer actually retrieves and uses it — but the zero-hit window is evaluated **within the invariant's own scope**: a `repo_local` invariant's disuse is measured against that one repo; an `enterprise_wide` invariant's disuse is measured across every repo the manifest serves, so a single repo's disinterest doesn't flag a constraint that's firing constantly elsewhere.
+Every invariant is tagged `repo_local` or `enterprise_wide` (`InvariantScope`, `plan/contracts/verification.py`). Each tracks whether the Context Gatherer actually retrieves and uses it — but the zero-hit window is evaluated **within the invariant's own scope**: a `repo_local` invariant's disuse is measured against that one repo; an `enterprise_wide` invariant's disuse is measured across every repo the manifest serves, so a single repo's disinterest doesn't flag a constraint that's firing constantly elsewhere.
 
 Zero-hit invariants are never auto-deleted. They route to a human review queue — the same standard of review their creation implicitly had.
 
@@ -215,8 +245,9 @@ one place instead of reconstructed from scattered phase prose.
 | `intent.no_collision` | Parallel Swarm | Yes | Smart Mutex Rejection (§4.5); rejection returns blocking context, not a halt |
 | `tests.diff_covered` | Verification | Yes | Every changed line covered by at least one tier; runs **before** mutation, since an uncovered line's mutant survives by construction (`test_harness_architecture.md` §3.5) |
 | `mutation.diff_scoped` | Verification | Yes, where applicable | Surviving mutants on changed **lines** covered by a **hermetic** tier — see `test_harness_architecture.md` §3.4. Lines covered only non-hermetically return `NOT_APPLICABLE`, never a green check (§3.6) |
+| `gate_coverage.minimum` | Verification | Yes | Meta-gate over the **coverage family** (`tests.diff_covered` + `mutation.diff_scoped`), explicitly run by the Core Orchestrator. Reads `RunManifest.diff_classification` (rule: `test_harness_architecture.md` §3.9). A `NON_TRIVIAL_CODE` diff whose coverage-family gates all returned anything other than `APPLIED` with `passed=True` is a **boundary failure** (Principles 4/5), task-scoped: the task drops from `RunManifest.active_task_ids`, same mechanism §4.5's deadlock detector uses. Closes the adversarial "shape the diff to duck coverage" bypass (§10) that §3.6's per-line DEGRADE branch would let through when the *whole diff* is untested by construction. Runs **after** both coverage-family gates, so it can read their `GateResult` verdicts. Expanding the family (adding a third coverage-family gate later) is an explicit edit to the meta-gate's constant list of member gates AND to this table row — no tag or registry mechanism |
 | `merge.no_conflict` | Integration | Yes | The No-Conflict Gate (Agent Roster, Integrator row); a conflict here is a Boundary Failure (Principle 8), never resolved in place |
-| `tests.baseline_delta` | Verification | Yes | Baseline Guard; the anti-deletion check (`agentic_sdlc_glossary.csv`, Baseline Delta) |
+| `tests.baseline_delta` | Verification | Yes | Baseline Guard; the anti-deletion check (`agentic_sdlc_glossary.md`, Baseline Delta) |
 | `triage.deterministic` | Verification | Yes (routing only) | `infra_triage_matrix.md`'s rules engine; only non-matches reach the Test Investigator |
 | `budget.within_ceiling` | Every transition | Yes | Budget **Enforcer** — deterministic middleware, not the Accountant agent; halts the run, never silently |
 
@@ -257,7 +288,8 @@ the cheapest path to green is not always the honest one.
 |---|---|
 | Delete or skip a failing test | `tests.baseline_delta` (§9.1) — any reduction in test count, skip count, or coverage is a blocking gate failure, not a review comment |
 | Declare a mutant "equivalent" to retire a blocking finding | The equivalent-mutant registry is human-signed (`test_harness_architecture.md` §3.8); an agent may propose an equivalence, never record one |
-| Weaken an assertion (`>` quietly becomes `>=`) | `mutation.diff_scoped` (§9.1) — a test that still passes under mutation is theater. Scoped per line to hermetic coverage, so it cannot be evaded by moving code behind a non-hermetic tier: that path returns `NOT_APPLICABLE` and takes the policy branch, not a pass (`test_harness_architecture.md` §3.6) |
+| Weaken an assertion (`>` quietly becomes `>=`) | `mutation.diff_scoped` (§9.1) — a test that still passes under mutation is theater. Scoped per line to hermetic coverage, so it cannot be evaded by moving code behind a non-hermetic tier: that path returns `NOT_APPLICABLE` and takes the policy branch, not a pass (`test_harness_architecture.md` §3.6). Complemented per-diff by `gate_coverage.minimum` — this row catches the per-line, per-gate attack; the next row catches the whole-diff aggregate |
+| Shape the diff so every coverage gate returns `NOT_APPLICABLE` | `gate_coverage.minimum` (§9.1) — modify code paths the hermetic tiers do not cover so `tests.diff_covered` and `mutation.diff_scoped` both scope out, then walk past a silent green built out of honest per-line scope-outs. A `NON_TRIVIAL_CODE` diff (rule: `test_harness_architecture.md` §3.9) with no `APPLIED` + `passed=True` result in the coverage family is a **boundary failure**, task-scoped (`RunManifest.active_task_ids` drop), never a warning or a recorded adjustment. Distinct from the `mutation.diff_scoped` row above (per-line, per-gate); this is the per-diff aggregate — the last line of defense when the per-gate policy is `DEGRADE` |
 | Write a test the implementation trivially satisfies | Test Author has a disjoint write scope from Task Dev (Principle 12) |
 | Mock away the behavior under test | Protocol fakes checked by strict mypy (`test_harness_architecture.md` §2); an `Any`-shaped mock is invisible to the type checker |
 | Silence a type error to reach green | CI Cleanup's diff-shape check forbids `cast(Any, ...)`, `# type: ignore`, and bare `except: pass` |
@@ -285,10 +317,21 @@ Verdict ledger schema, promotion thresholds, and agent-spec versioning: `calibra
 - **Enterprise invariant arbitration.** If two repos' Context Gatherers generate opposing signals about whether an `enterprise_wide` invariant still holds, who arbitrates — a designated owner per enterprise invariant, or does every conflict go to the same human review queue as deprecation? *(Carried forward from v0.3 — still unresolved.)*
 - **Decay tuning.** The §4.6 decay rule (−1 per clean integration phase, floored at 0) is a reasonable starting point but untested — worth revisiting once there's real promotion data on false-positive/false-negative rates.
 - **Structural Change SOP cadence.** Repeated triggering of `structural_change_runbook.md` against the same file or subsystem may itself be a signal worth feeding back into governance — a file that keeps needing structural intervention might need a heavier redesign rather than another round of the SOP.
-- **Modular file versioning.** Now that mechanics live in 8 companion files, do they carry
+- **Crash Recovery Scope.** Are there any scenarios where `StartupReconciler` should prompt the user instead of relying on the resume decision tree?
+- **Modular file versioning.** Now that mechanics live in 12 companion files, do they carry
   independent version numbers, or do they always track the core document's version? Matters once one
   companion file needs to change without the others. *(The question grows more pressing this version:
   two companions were just added.)*
+- **Glossary extraction.** Should we eventually extract glossary terms directly from docstrings of key Pydantic schemas to guarantee perfect synchronization with code?
+- **Lexical index rebuild cadence.** How frequently should the lexical index be rebuilt during an active execution pipeline to ensure agents have up-to-date symbol resolution without exceeding cost budgets?
+- **AST-diffing fallback.** What is the fallback mechanism if AST-diffing fails to accurately identify dependent tests for a modified file when scoping hermeticity verification?
+- **Triviality heuristic upgrade.** The `test_harness_architecture.md` §3.9 rule that
+  `gate_coverage.minimum` reads is illustrative and extension-only — path suffixes plus
+  `RepoDeclaration.trivial_path_globs`. A future revision may add AST-aware detection
+  (whitespace/comment-only Python hunks, docstring-only changes) or per-language rules so a
+  `.py` file whose diff is comment-only does not force a `NON_TRIVIAL_CODE` classification.
+  Extension-only is the honest starting point; it will misclassify a comment-only source-file
+  edit as `NON_TRIVIAL_CODE`, which fails safe (blocks) rather than open.
 
 **Re-listed, carried forward from v0.1 §10 and dropped without resolution at v0.2 — not previously
 tracked in any subsequent Open Questions section:**
@@ -305,7 +348,7 @@ tracked in any subsequent Open Questions section:**
   little and the review loop does work the human could have done in one sentence.
 - **Run manifest location.** Repo-local (e.g. `.runs/`) or out of tree? In-tree gives free versioning
   and PR-visible provenance but puts run state in the diff. Now directly relevant: §3 and
-  `agent_interface_contracts.py`'s `RunManifest` need somewhere to actually live.
+  `plan/contracts/orchestration.py`'s `RunManifest` need somewhere to actually live.
 - **Secrets posture.** Which agents get which credentials, and does anything in the build phase need
   more than read access to the repo?
 

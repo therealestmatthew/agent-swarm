@@ -63,6 +63,8 @@ reads and writes only inside that tree for the duration of the task.
 6. The worktree is torn down after its branch merges or its task is abandoned. Nothing about
    worktree teardown is itself a gate — the merge (`merge.no_conflict`, design doc §9.1) is.
 
+> **Crash Recovery Pointer:** If a run crashes during task execution, the `StartupReconciler` handles orphan cleanup for these worktrees. See `crash_recovery.md` for the full lifecycle.
+
 ## 5. The isolation unit is derived, not discovered
 
 This section previously read *"containers are not required — yet ... revisit the moment a task's
@@ -71,6 +73,8 @@ instinct expressed as an escape condition someone has to notice — and the whol
 design is that a constraint which binds should be a fact about a run rather than a discovery at
 runtime. It is also, for any browser-driven repo, already true on day one: a WebDriver reset spawns
 a process, binds a port, and needs a profile directory no sibling task may share.
+
+> **Crash Recovery Pointer:** To ensure orphan detection, containers are labeled with `run_id`. Lingering containers from crashed runs are cleaned up by the `StartupReconciler`. See `crash_recovery.md`.
 
 ### 5.1 The derivation
 
@@ -106,6 +110,25 @@ a single test runs, so swarm width for a browser-tier repo is bound by memory lo
 bound by API rate limits. That is the answer to design doc §12's concurrency-ceiling question for
 this class of repo, and it falls out of the same declaration rather than needing a separate one.
 
+### 5.4 Credential-bearing tasks floor to `CONTAINER`
+
+**A task whose resolved `granted_secrets` set is non-empty floors to `CONTAINER`, independent of
+what its `ResetStrategy.requires` values are.** The resource-based derivation of §5.1 and this
+credential-based derivation are orthogonal sources; whichever is stronger wins.
+
+The reason is not test-suite hygiene but network scope: the egress scrubber and its proxy
+(`core_adapter_boundary.md` §5.2) rely on the container's network boundary to interpose on outbound
+traffic. A worktree does not scope network egress; a container does. A task that can reach the
+network unmediated is a task whose credentials can leave through a channel the scrubber never sees,
+which is the exact failure mode C1 moved the scrubber to Core to prevent.
+
+**The edge case is deliberate.** A task with a local-dummy credential provider still floors to
+`CONTAINER`. The trust posture is a property of the code path, not the value provided to it — a
+provider swap must not change the isolation guarantee, or a repo could weaken its own boundary by
+declaring a dummy provider it later replaces. A container for dummy-credential tasks is cheap
+insurance, and it keeps the derivation deterministic: two tasks with identical declarations resolve
+to the same unit regardless of which provider is currently wired in.
+
 ## 6. Merge order is planned, not emergent
 
 Design doc §3 already states this for the swarm as a whole; it's restated here because it's the
@@ -139,16 +162,25 @@ interpreter leaves the agent writing code against a route its own test run canno
    outside the agent's write scope at the filesystem layer. The agent cannot commit the file, and
    cannot edit it — Principle 12, a permission rather than an instruction, and checkable as a
    precondition before the swarm spawns.
-3. **Applied intents are re-materialized into every live worktree.** On successful application, Core
-   writes the new file content into each running worktree's working directory. `skip-worktree` keeps
-   git silent about it: the interpreter sees current content, `git status` stays clean, and the diff
-   the task eventually produces contains none of it. The write is a temp-file-plus-`rename`, which
-   is atomic on POSIX — a concurrent test run reads the old content or the new one, never half of
-   either.
+3. **Applied intents are materialized pull-based, at each agent's next subprocess boundary.** On
+   successful application, Core writes the new file content into the **proposing** agent's worktree
+   only — that agent is at a safe sync boundary by construction, since it is blocked awaiting the
+   Intent Service's response and no subprocess of its own is running. Sibling worktrees are **not**
+   written to at this point; a sibling that is mid-execution has caches (module import caches, file
+   watchers) that a mid-run byte-swap would corrupt at the runtime layer even where the filesystem
+   layer stays atomic (§7.3, §7.6). Instead, every agent's runtime unconditionally calls
+   `WorktreeSyncRequest` (`plan/contracts/adapter_surface.py`) before spawning any subprocess. That
+   call is a local filesystem reconciliation between the worktree's local `shared/` branch head and
+   its working directory — atomic per-file via temp-file-plus-`rename`, idempotent when nothing has
+   changed. `skip-worktree` behavior is unchanged: git stays silent about the reconciled paths, the
+   interpreter (in the fresh subprocess) sees current content, `git status` stays clean, and the
+   task's eventual diff contains none of it.
 4. **Integration order is unchanged.** Task branches merge first, carrying no shared-file changes —
    which makes `merge.no_conflict` (design doc §9.1) an honest gate rather than one that has been
    quietly exempted. The Integrator then fast-forwards `shared/` as the final commit. It is a
    fast-forward, never a merge: the service was the only writer, so there is nothing to reconcile.
+
+> **Crash Recovery Pointer:** The `shared/` branch semantics interact with the crash reset protocol; branch integrity is guaranteed via `git reset --hard`. See `crash_recovery.md`.
 
 This is what §4.2's "applied synchronously before the agent continues" was always describing. It is
 now a mechanism rather than an assertion.
@@ -165,6 +197,15 @@ An applied intent is not an in-progress edit. It has already been through collis
 deterministic application; it is the agreed content of a file both tasks depend on. Isolating an
 agent from it would mean the agent codes against a shared file it knows to be stale, and discovers
 the divergence at integration — which is the failure mode §4 exists to remove.
+
+**Where the guarantee is honored.** The read-view guarantee is honored *at process execution
+boundaries*, not in mid-run. Filesystem-level atomicity (temp-file-plus-`rename`) is a necessary
+condition, not a sufficient one: an in-process cache — a Python `sys.modules` entry, a Node
+`require.cache` entry, a Ruby `$LOADED_FEATURES` entry, or a file watcher observing worktree files —
+is not isolated from an applied intent while the agent's own runtime process persists. §7.6 is the
+mechanism that eliminates this failure mode by forbidding in-process execution of target-system
+code: the fresh subprocess is the boundary at which "current content on disk" becomes "current
+content in the interpreter's caches."
 
 ### 7.4 Reviewability: the synthesized diff
 
@@ -203,8 +244,73 @@ Three constraints on any such transport, each a real failure mode rather than a 
   op, the colliding keys, and the owning task id, rendered by the receiving side.
 - **Reads stay local.** Because §7.2 puts current content on disk, a transport outage blocks new
   submissions but does not break a running suite. A design that served shared-file *reads* over the
-  wire would make service availability a dependency of every test run.
+  wire would make service availability a dependency of every test run. The pre-subprocess
+  `WorktreeSyncRequest` call (§7.6) is a Core-internal reconciliation between the worktree's local
+  `shared/` branch head and its working directory, **not** a wire read: a transport outage during a
+  sibling agent's execution still does not break its next subprocess boundary, because the local
+  `shared/` branch already holds the last-applied content on disk.
 
 The intent service is therefore built as a library with a lock, with transport as an adapter over
 it. That keeps the Stage 2 conformance work free of a protocol dependency it does not need — and
 Stages 1 and 2 have no LLM agents in the loop to talk to a tool server in the first place.
+
+### 7.6 Materialization Window Protocol
+
+Filesystem atomicity is a necessary condition for §7.3's read-view guarantee, but it is not a
+sufficient one. Every widely-used target-system runtime maintains in-process caches that survive
+past the moment a file changes on disk: Python's `sys.modules` retains the previously-imported
+module object; Node's `require.cache` retains the previously-resolved module; Ruby's
+`$LOADED_FEATURES` records what has already been `require`d and will not reload it. A shared-file
+byte-swap that lands under any of those caches leaves the runtime observing a mixed state — some
+modules from the old bytes, some from the new — and no atomic rename downstream of that cache can
+repair it.
+
+The invariant is therefore expressed in terms of the boundary at which those caches are
+constructed, not in terms of a language:
+
+> **Target-system code MUST execute in a subprocess distinct from the agent's own runtime, so that
+> materialization at the process boundary yields a fresh module/import cache.**
+
+The language-specific caches above (`sys.modules`, `require.cache`, `$LOADED_FEATURES`) are
+illustrative examples of what "fresh module/import cache" resolves to on the runtimes agents in
+this pipeline will most often drive; the rule is orthogonal to which runtime a target repo happens
+to be. An agent may itself be written in any language; what it may not do is import the target
+system into its own interpreter and run tests there.
+
+**How the invariant is honored operationally.** The agent's runtime hooks the sync call at every
+subprocess-spawn site: before spawning a test runner, a script, a linter, or any other target-code
+process, the runtime unconditionally issues a `WorktreeSyncRequest`
+(`plan/contracts/adapter_surface.py`) and waits for the `WorktreeSyncResult`. Safe materialization
+windows are therefore exactly the moments a fresh subprocess is about to start — which are also
+exactly the moments the receiving cache does not yet exist. The `was_noop=True` case is the normal
+steady-state result and costs nothing beyond a stat comparison; the `was_noop=False` case writes
+the changed bytes and returns the `source_commit_hash` the caller can log for audit. Unconditional
+call is why no `SharedStateUpdatedEvent` schema exists in this design: with the sync issued at
+every boundary regardless of whether Core signaled anything, there is nothing for a missed event
+to lose.
+
+**Interaction with the C1 credential container.** This subprocess-only invariant is complementary
+to §5.4's credential-bearing floor to `CONTAINER`. The container the credential rule requires is
+also the enforcement boundary Core has for this rule: a Core-controlled container makes it
+tractable to check that target-code execution actually crosses a process boundary the agent's own
+runtime does not straddle, in the same way it makes egress scrubbing tractable. The two
+requirements land at the same layer for the same structural reason — a boundary Core owns is a
+boundary Core can enforce.
+
+### 7.7 Sync starvation
+
+The materialization-window protocol assumes an agent will eventually reach a subprocess boundary
+and issue the sync call there. An agent that has entered a long-running debug session, a
+daemonized service, or a hung LLM-generation loop may go arbitrarily long without one — and every
+shared-file intent Core applies during that stretch fails to reach the starved worktree, no matter
+how faithfully the protocol is otherwise being followed.
+
+`GovernancePolicy.max_seconds_without_sync` (`plan/contracts/governance.py`) bounds that stretch.
+It is illustrative and adapter-tunable: `None` means the bound is off. When Core observes that a
+task has gone longer than this since its last `WorktreeSyncResult`, it treats the task as
+materialization-starved and issues a task-scoped boundary failure — dropping the task from
+`RunManifest.active_task_ids`, using the same mechanism C2 (structural-intent deadlocks) and C3
+(coverage-family gaps) already use. See `budget_and_escalation_policy.md` §2.2 for the escalation
+posture: sync starvation is boundary-type, skips rung 3, and terminates without model escalation
+for the same reason the other boundary-type loops do — a stronger model does not resolve a
+structural violation of the materialization-window protocol.

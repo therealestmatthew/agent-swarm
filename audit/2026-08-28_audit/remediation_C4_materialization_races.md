@@ -1,3 +1,10 @@
+---
+title: "Remediation Plan: Finding C4 - Race Conditions in Shared-File Materialization"
+status: live
+part_of: repo-meta
+doc_type: reference
+---
+
 # Remediation Plan: Finding C4 - Race Conditions in Shared-File Materialization
 
 ## 1. Finding Summary

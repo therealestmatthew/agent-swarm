@@ -7,7 +7,7 @@ doc_type: companion
 
 # Test Harness Architecture
 
-**Referenced by:** `agentic-sdlc-design-v0.5.md` §6 (Test Investigator & Failure Triage) · §9.1 (`mutation.diff_scoped`) · `infra_triage_matrix.md` §1 (`FailureSignature.dom_state_diff_from_baseline`) · `agent_interface_contracts.py`
+**Referenced by:** `agentic-sdlc-design-v0.5.md` §6 (Test Investigator & Failure Triage) · §9.1 (`mutation.diff_scoped`, `gate_coverage.minimum`) · §10 (anti-reward-hacking, the coverage-bypass row) · `infra_triage_matrix.md` §1 (`FailureSignature.dom_state_diff_from_baseline`) · `plan/contracts/`
 
 ## Purpose
 
@@ -18,56 +18,24 @@ This file owns the mechanics of the verification layer that the core design docu
 ## 1. Baseline Management
 
 ### 1.1 The problem this solves
-`FailureSignature.dom_state_diff_from_baseline` (see `agent_interface_contracts.py`) is only trustworthy if "baseline" is unambiguous and the mechanism that produces it can't itself leak state. This section defines both.
+`FailureSignature.dom_state_diff_from_baseline` (see `plan/contracts/verification.py`) is only trustworthy if "baseline" is unambiguous and the mechanism that produces it can't itself leak state. This section defines both.
 
-### 1.2 Capture rule: construct fresh, never clean in place
+### 1.2 Execution Tiers and Reset Mandates
 
-**The universal rule:** every test gets a **freshly constructed instance** of whatever holds its
-state. Reusing an instance and clearing it is explicitly disallowed as the sole isolation mechanism,
-at any scope.
+The previous strict mandate of "construct fresh, never clean in place" has been relaxed in favor of tiered execution. Some environments (like Selenium) face start-up times in seconds rather than milliseconds. Instead of universally enforcing a slow cold-start per test, testing is organized into tiers (`TestTier.execution_tier`):
 
-**Why, and why it generalizes:** clearing routines only reach what they explicitly enumerate. In a
-browser, service workers, cache storage, IndexedDB, open native dialogs, and in-flight download
-state routinely fall outside that enumeration and persist silently. The same shape recurs everywhere
-— a reused Python process leaks module globals, import side effects, and monkeypatches; a reused
-database connection leaks session settings and transaction state; a reused temp directory leaks
-files. A leaky clearing mechanism doesn't just cause occasional flakiness: it undermines the
-clean-state signal the triage matrix depends on, and `infra_triage_matrix.md`'s rule ordering
-(state-leakage checked *before* timing) collapses if that signal can be wrong.
+- **Tier 1 (Unit):** (`tier1_unit`) Fully hermetic. Fast, in-process or pure-memory resets.
+- **Tier 2 (Integration):** (`tier2_integration`) Transaction rollbacks or local service state resets.
+- **Tier 3 (Browser/E2E):** (`tier3_browser`) May utilize a warm **browser pool** (via the `browser_pool_checkout` strategy) to dramatically lower per-test cost. In-place cleaning is permitted here.
 
-**What is *not* universal is the mechanism.** This section previously mandated:
+**State Leakage Protection:** To prevent the classic problem of state leakage from in-place cleaning (e.g., lingering service workers, IndexedDB, or leaked database connections), we rely entirely on the deterministic triage table (`infra_triage_matrix.md`). If a test passes in isolation but fails when run in the suite, the triage matrix automatically classifies it as state leakage. This makes the relaxed rule safe: the system functionally catches and flags leaky state resets rather than statically banning them at the cost of high overhead.
 
-```
-before each test:  browser.new_context()
-after each test:   context.close()
-```
-
-That is Playwright's API, hard-coded into a document that governs every repo. **Selenium has no
-`new_context()`.** Its nearest honest equivalent is a fresh WebDriver process with a fresh
-`--user-data-dir`; `delete_all_cookies()` plus a `localStorage.clear()` is precisely the in-place
-clearing this rule forbids, and a new session against a reused browser process still shares the
-profile, the cache, and any registered service worker. The rule survives; the mechanism was one
-framework's, and one framework's price:
-
-| Mechanism | Cost per test | Genuinely clean? |
-|---|---|---|
-| Playwright `browser.new_context()` | milliseconds | Yes |
-| Selenium: clear cookies + storage in place | ~0 | **No** — forbidden as sole mechanism |
-| Selenium: new session, reused browser process | tens of ms | **No** — shares profile, cache, service workers |
-| Selenium: new driver process + fresh `--user-data-dir` | ~1–3 **seconds** | Yes |
-
-§1.2 previously stated the cost tradeoff as "accepted deliberately." That acceptance was priced for
-milliseconds. At seconds per test it is a different decision — a 500-test browser suite spends
-minutes on browser startup alone — and it interacts directly with the wall-clock ceiling
-(`budget_and_escalation_policy.md` §3) and the concurrency derivation
-(`core_adapter_boundary.md` §3.6). Pretending the two cost the same is how a design accepts a
-tradeoff it never actually made.
+**Hermeticity Verification Scope:** To control compute cost, hermeticity verification now enforces dependency-graph based scoped test execution rather than full suite randomization, driven by the `HermeticityTestScope` schema which bounds maximum permutations and limits testing only to subsets affected by changes.
 
 ### 1.3 Reset strategies are declared, not assumed
 
-The mechanism is therefore adapter data: `ResetStrategy` in `agent_interface_contracts.py`, named
-per tier by `TestTier.reset_strategy_id`. A strategy declares what it recreates, what the host must
-give it (`ResetResource`), what it costs, and what its clean-state check actually inspects.
+The mechanism is therefore adapter data: `ResetStrategy` in `plan/contracts/governance.py`, named
+per tier by `TestTier.reset_strategy_id`. A strategy declares its `strategy_type` (e.g., `browser_pool_checkout`), `pool_size` if applicable, what it recreates, what the host must give it (`ResetResource`), what it costs, and what its clean-state check actually inspects.
 
 `typical_cost_ms` is load-bearing rather than documentation. Core feeds it into the wall-clock
 estimate and the concurrency ceiling, so a two-second reset is a budget fact the pipeline reasons
@@ -82,7 +50,7 @@ Baseline is the **declared clean state** — which, once hydration exists, means
 *post-hydration* state, not canonical emptiness (`core_adapter_boundary.md` §4). It is captured
 **immediately after instance construction and hydration, before the test's first action**. The
 clean-state signal is the comparison of actual state at that t=0 moment against the declaration —
-never against the previous test's end state, which per §1.2 should not exist.
+never against the previous test's end state — which for Tier 1 and Tier 2 does not exist (fresh instance per test), and for Tier 3 is guarded against by the triage matrix's state-leakage classification (`infra_triage_matrix.md` rule 1) rather than by construction.
 
 The reference browser adapter's checks, which is what this table always was:
 
@@ -93,6 +61,10 @@ The reference browser adapter's checks, which is what this table always was:
 | Open dialog/modal count | Nonzero |
 | Active WebSocket / pending fetch count | Nonzero |
 | Viewport dimensions | Differ from configured default |
+
+
+**DOM Quiescence and Filtering:**
+For browser testing, baseline capture must mandate a `DOMCaptureConfig`. "Quiescence" is defined strictly by a hard timeout on `await_hydration_ms` rather than subjective event loops. Volatile dynamic elements must be explicitly filtered out via `ignore_selectors` to prevent baseline false positives.
 
 A backend adapter's list is different in every row and identical in shape: open connections, temp
 files, registered signal handlers, module-registry delta. Any single mismatch sets the strategy's
@@ -141,7 +113,7 @@ Because Test Author writes tests before implementation exists (TDD-first, Princi
 Protocol definitions for shared dependencies are produced at **Contract Freeze** (design doc §3, Phase 2 & 3) as part of the interface map — not invented ad hoc by whichever Test Author or Task Dev agent happens to need a fake first. Two agents independently inventing two slightly different Protocols for the same dependency reintroduces, at the type level, the same kind of semantic drift the Shared-File Intent Service (design doc §4) exists to prevent for shared files.
 
 ### 2.4 Fixture data
-Where a fake needs to return structured data — not just satisfy a call signature — that data is constructed from the same Pydantic models in `agent_interface_contracts.py` that the real code uses, not parallel dict literals or ad hoc dataclasses. A fixture built from the shared schema can't silently drift from what the real code actually produces; a hand-rolled one can.
+Where a fake needs to return structured data — not just satisfy a call signature — that data is constructed from the same Pydantic models in `plan/contracts/` that the real code uses, not parallel dict literals or ad hoc dataclasses. A fixture built from the shared schema can't silently drift from what the real code actually produces; a hand-rolled one can.
 
 ---
 
@@ -256,3 +228,54 @@ Decomposer drew too large. That is the same signal as the additive-intent thresh
 (`structural_change_runbook.md` §4) and task granularity (design doc §12) — three ceilings that are
 three views of one knob, which is why D13 records that resolving any of them alone will produce
 numbers that contradict the other two.
+
+### 3.9 Diff triviality classification
+
+§3.6 and §3.7 answer, per line and per repo, what the mutation gate does when nothing hermetic
+covers the code. Both branches can honestly return `NOT_APPLICABLE` or `DEGRADED` on every line
+of a diff — and under `absent_capability_policy = DEGRADE` (the default), that is a merge with
+the shortfall named in the PR rather than a block. That is the right call for a genuinely trivial
+change; it is the wrong call for an adversarial diff shaped so *every* changed line lands where the
+hermetic tiers do not run. Design doc §10 names the attack: modify code paths the hermetic tiers do
+not cover so `mutation.diff_scoped` and `tests.diff_covered` both scope out, then walk past a silent
+green built out of honest per-line scope-outs.
+
+The `gate_coverage.minimum` meta-gate (design doc §9.1) is the answer, and it needs one input this
+section owns: whether the *diff itself* is code that the coverage family should have applied to.
+That label is `DiffClassification` (`plan/contracts/verification.py`), computed once by Core before
+Phase 6 begins from the task's write-scope diff and carried on `RunManifest.diff_classification`
+(`plan/contracts/orchestration.py`), the same place the §4.5 rejection graph lives so H8 crash
+recovery preserves both together.
+
+**The starting rule (illustrative, per CLAUDE.md convention):**
+
+- `TRIVIAL_DOCS` iff **every** changed path in the task's write-scope diff matches Core's
+  built-in extension allow-list (`.md`, `.rst`, `.txt`) **or** matches one of
+  `RepoDeclaration.trivial_path_globs` (`plan/contracts/governance.py`) — adapter-tunable, so
+  a repo whose `docs/**` tree, `CHANGELOG.*`, or `LICENSE` file is trivial by construction can
+  extend the rule without editing Core.
+- `NON_TRIVIAL_CODE` otherwise.
+
+This is extension-only and deliberately conservative. A source file whose diff is comment-only
+classifies as `NON_TRIVIAL_CODE` under this rule, because Core has no AST-aware detection in the
+starting version. That is a **fail-safe misclassification**: it forces the coverage family to
+apply to a change that likely does not need it, which costs a re-plan or a policy-recorded
+degrade — never a silent pass. AST-aware detection (whitespace-only Python hunks, docstring-only
+changes, per-language rules for header/import blocks) is a defensible upgrade and is deferred to
+design doc §12's open questions rather than smuggled into the starting rule.
+
+**How this differs from §3.6 and §3.7.** Both prior sections are line-level or capability-level
+policy answers: one line has no hermetic tier over it (§3.6), or the whole repo has no hermetic
+tier declared (§3.7). §3.9 is the *diff-level aggregate* — the observation that even when every
+line's policy branch is legitimately `DEGRADE`, the *whole diff* is untested by construction, and
+that is a task-scoped boundary failure rather than a recorded adjustment. §3.6 says "this line
+lacks hermetic coverage — degrade or refuse per policy"; §3.9 says "the whole `NON_TRIVIAL_CODE`
+diff has no `APPLIED`-and-passing coverage-family result — task drops from
+`RunManifest.active_task_ids`, same mechanism §4.5's deadlock detector uses." The two never fire on
+the same evidence: §3.6 governs per-line policy, §3.9 governs per-diff aggregate.
+
+**Cross-references:** design doc §9.1 (`gate_coverage.minimum` row), §10 (the attack row this
+guard closes), §12 (the triviality-heuristic upgrade open question);
+`plan/contracts/verification.py` (`DiffClassification`); `plan/contracts/orchestration.py`
+(`RunManifest.diff_classification`); `plan/contracts/governance.py`
+(`RepoDeclaration.trivial_path_globs`).

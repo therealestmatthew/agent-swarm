@@ -1,3 +1,10 @@
+---
+title: "Remediation Plan: Finding H5 (Structural Change SOP Creates a Human Bottleneck)"
+status: live
+part_of: repo-meta
+doc_type: reference
+---
+
 # Remediation Plan: Finding H5 (Structural Change SOP Creates a Human Bottleneck)
 
 ## 1. Finding Summary

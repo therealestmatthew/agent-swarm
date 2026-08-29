@@ -17,26 +17,27 @@ The thesis is that agent pipelines fail in predictable ways — context rot, mer
 those has a structural answer rather than a prompt-engineering one. The design encodes those
 answers.
 
-**We are in design, not build.** `plan/` is the source of truth and the current work is refining it.
-Do not start implementing agents, services, or schemas until the design settles and this line
-changes.
+**We are in the structural design phase.** `plan/` is the source of truth and the current work is refining it.
+- **Permitted:** Defining, refining, and modularizing Pydantic schemas, system contracts, glossary definitions, and interface boundaries. Schema relocation is design.
+- **Forbidden:** Implementing agent logic, service execution code, internal pipeline routing logic, or API integrations. Do not build application logic until the design settles and this phase gate changes.
 
 ## Where things live
 
 | Path | What it is |
 |---|---|
 | `plan/agentic-sdlc-design-v0.5.md` | The orchestration blueprint — principles, agent roster, the eight phases. **Read first.** |
-| `plan/agent_interface_contracts.py` | Every schema exchanged between agents. Single source of truth. |
+| `plan/contracts/` | Every schema exchanged between agents, organized by domain (`orchestration.py`, `governance.py`, `verification.py`, `reference_adapter/`). Single source of truth. |
 | `plan/implementation_roadmap.md` | Design → build sequence: backlog critique, cross-file defects found, and the six stages. **Read second.** |
 | `plan/core_adapter_boundary.md` | The universal Core vs. the per-repo Adapter Layer — the `RepoDeclaration`/`GovernancePolicy` contract split and its governance, capability negotiation, hydration, credentials |
 | `plan/infra_triage_matrix.md` | The deterministic failure-classification rules engine |
 | `plan/test_harness_architecture.md` | Baseline capture, Protocol-fake test double standards, diff-scoped mutation testing |
 | `plan/context_retrieval_strategy.md` | Context Gatherer search heuristics and token budgets |
 | `plan/budget_and_escalation_policy.md` | Loop ceilings, the escalation ladder, cost ceilings |
+| `plan/crash_recovery.md` | Startup Reconciliation Protocol, orphan cleanup, shared/ branch integrity, resume decision tree |
 | `plan/structural_change_runbook.md` | Human-gated SOP for non-additive shared-file changes |
 | `plan/execution_isolation.md` | Why disjoint write ownership alone doesn't isolate reads; one worktree per task; shared-file materialization (§7) |
 | `plan/calibration_and_measurement.md` | Verdict ledger, Shadow Mode promotion criteria, agent-spec versioning |
-| `plan/agentic_sdlc_glossary.csv` | Term definitions used across the set — 64 terms, with Category and Tags columns |
+| `plan/agentic_sdlc_glossary.md` | Term definitions used across the set — 64 terms, with Category and Tags columns |
 | `plan/versions/` | Superseded design versions (v0.1–v0.4) and `REGRESSION.md`, the analysis behind v0.5 |
 | `archive/glass-box/` | The hackathon project this grew out of. Frozen — see its README. |
 | `AGENTIC_ARCHITECTURE_MANIFEST.md` | Every tracked file in the repo, one row each — description, summary, purpose. A snapshot: re-check it against `git ls-files` after any file is added or removed. |
@@ -47,7 +48,7 @@ changes.
 The blueprint deliberately splits mechanics out into companion files. Keep that split: if a
 threshold, schema, or capture rule is being written into the core document, it belongs in a
 companion instead. v0.5 added two companions (`execution_isolation.md`,
-`calibration_and_measurement.md`) for exactly this reason rather than growing §1's principle text.
+`calibration_and_measurement.md`) for exactly this reason rather than growing §1's principle text. Now 11 companion files, not five.
 
 ## Principles that shape every decision
 
@@ -76,11 +77,9 @@ wins unless the proposal argues explicitly for changing it.
 
 - **Docs before build.** The current phase is plan refinement. Changes land as design edits, not
   code.
-- **Schemas live in one place.** `plan/agent_interface_contracts.py` is the only home for a schema.
-  Two agents inventing two slightly different shapes for one thing is the drift the whole
-  shared-file design exists to prevent — don't reintroduce it at the type level.
+- **Schemas live in `plan/contracts/`.** The package is the single home for a schema, organized by domain: `orchestration.py` for Core state, `governance.py` for the adapter contract, `verification.py` for validator outputs, `reference_adapter/` for concrete adapter vocabulary. Each module's docstring names its scope so a new schema has an obvious home. `plan/contracts/__init__.py` re-exports every public model, so consumers can import canonically from the top level (`from plan.contracts import GateResult`) even though the definition lives in `verification.py`. Two agents inventing two slightly different shapes for one thing is the drift the whole shared-file design exists to prevent — don't reintroduce it at the type level.
 - **Pydantic v2, `extra="forbid"`, `frozen=True`** on every model. Agents produce new instances
-  rather than mutating shared state.
+  rather than mutating shared state. Agent-produced models (Validator outputs, additive intents) are routed through the normalization layer (`plan/llm_output_normalization.md`) which strips and logs hallucinated extra fields before strict validation. Core-internal models are instantiated directly. Each contract module's docstring declares its parsing discipline.
 - **Say what's unresolved.** Several thresholds in the set are explicitly illustrative
   (cost ceilings, context budgets, the additive-intent threshold, decay tuning). Don't present them
   as decided, and don't quietly harden one without saying so.
@@ -104,7 +103,7 @@ Tracked in `plan/agentic-sdlc-design-v0.5.md` §12, and live:
   promotion data.
 - **Structural Change SOP cadence** — repeated triggering against one file may itself be a
   governance signal.
-- **Modular file versioning** — now 8 companion files, not five. Do they version independently
+- **Modular file versioning** — now 12 companion files, not five. Do they version independently
   of the blueprint?
 - **Four more, carried forward from v0.1 and dropped without resolution at v0.2** (task granularity,
   Plan Writer dialogue depth, run manifest location, secrets posture) — see §12 for the full
