@@ -360,3 +360,18 @@ class GovernancePolicy(BaseContract):
     # resource that would otherwise burn task budget indefinitely without ever completing an
     # edge back to its origin.
     max_mutex_rejections: int = 3
+    # Illustrative — no default numeric value is chosen (`None` means "off"), and the
+    # threshold is adapter-tunable per CLAUDE.md convention. Semantics: an agent that has
+    # gone this long since its last `WorktreeSyncResult` is starved from materialization
+    # progress — its next subprocess boundary is arbitrarily far away, so any shared-file
+    # intent Core applied in the meantime has not landed on disk in this worktree.
+    # (`execution_isolation.md` §7.6 requires target-system code to run in a fresh
+    # subprocess for exactly this materialization-window reason; §7.7 states this bound.)
+    # On breach, Core issues a task-scoped boundary failure using the same mechanism C2 and
+    # C3 introduced: the involved task drops from `RunManifest.active_task_ids`, no new
+    # `HaltReason` value, no rung 3 escalation (`budget_and_escalation_policy.md` §2.2).
+    # Interaction with retry ceilings: the retry ceiling in
+    # `budget_and_escalation_policy.md` §1 caps rounds of work, whereas this caps
+    # continuous execution without crossing a subprocess boundary. Both may fire on a
+    # single task; whichever fires first wins.
+    max_seconds_without_sync: float | None = None

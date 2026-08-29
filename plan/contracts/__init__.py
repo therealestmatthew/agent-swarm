@@ -24,6 +24,11 @@ schemas should be added to the module whose scope they fit):
                             RejectionEdge).
   - governance.py        -- The adapter contract: RepoDeclaration,
                             GovernancePolicy, and every sub-model they compose.
+  - adapter_surface.py   -- Verbs Core invokes on the adapter runtime, or the
+                            adapter runtime invokes into Core, at the process
+                            boundary (currently WorktreeSyncRequest /
+                            WorktreeSyncResult; opened for further
+                            adapter-surface schemas).
   - verification.py      -- Validator return shapes, failure-triage captures,
                             invariant governance scopes.
   - reference_adapter/   -- Concrete adapter contracts. Core does not import
@@ -62,6 +67,10 @@ from plan.contracts.governance import (
     SignalSpec,
     TestTier,
     TriageRule,
+)
+from plan.contracts.adapter_surface import (
+    WorktreeSyncRequest,
+    WorktreeSyncResult,
 )
 from plan.contracts.orchestration import (
     HaltReason,
@@ -107,6 +116,9 @@ __all__ = [
     "SecretScrubberConfig",
     "EgressPayload",
     "ScrubbedEgressPayload",
+    # Adapter surface
+    "WorktreeSyncRequest",
+    "WorktreeSyncResult",
     # Verification
     "DiffClassification",
     "Finding",

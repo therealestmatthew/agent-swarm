@@ -158,11 +158,16 @@ Promotion is driven by a **cumulative, lifetime conflict counter per file** — 
 ### 4.7 Materialization
 
 A registered shared file is never tracked in a task's worktree. The Intent Service is the sole
-writer of a canonical `shared/` branch; applied content is re-materialized into every live
-worktree's working directory, where the interpreter sees it and git does not; the Integrator
-fast-forwards that branch as the final commit. This is what "applied synchronously" in §4.2 means
-concretely, and it is why §9.1's `merge.no_conflict` gate is honest rather than quietly exempted for
-these files — task branches carry no shared-file changes to conflict over.
+writer of a canonical `shared/` branch; the **proposing** agent's worktree is updated during its
+blocking Intent Service call (that agent has no subprocess of its own running, so it is at a safe
+sync boundary by construction), while **sibling** worktrees are reconciled lazily at each sibling
+agent's next subprocess boundary via an unconditional pre-subprocess `WorktreeSyncRequest`
+(`plan/contracts/adapter_surface.py`); the Integrator fast-forwards the `shared/` branch as the
+final commit. This is what "applied synchronously" in §4.2 means concretely for the proposing
+agent, and it is why §9.1's `merge.no_conflict` gate is honest rather than quietly exempted for
+these files — task branches carry no shared-file changes to conflict over. The subprocess-only
+invariant that makes lazy sibling reconciliation safe against language-level import caches lives
+in `execution_isolation.md` §7.6.
 
 Because the shared-file content is then absent from every task's diff, Core synthesizes a
 per-PR **shared-file delta view** from the intent log, attributing each hunk to the intent and the
