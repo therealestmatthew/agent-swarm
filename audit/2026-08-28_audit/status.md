@@ -54,7 +54,7 @@ they touch entirely different files.
 | 9 | **H1** | completed | `da6bec1` | 3 (see below) | Tier 1/2/3 metrics, CPIC metric, CI window/overlap heuristics locked. |
 | 10 | **H3+H4** | completed | `401e24e` | 4 (see below) | Tiered execution (Tiers 1-3), Level 0-3 progressive onboarding, schema integration locked. |
 | 11 | **H5** | completed | `5e2bb40` | 6 + 17 frontmatter (see below) | Three-tier structural change governance. SharedFileIntent rename, pending_tier2_review, max_intents_per_shared_file. |
-| 12 | H7 | not_started | — | — | — |
+| 12 | **H7** | completed | `a3e5213` | 7 (see below) | Two-Layer Collision Model. SemanticAnalyzerSpec, IntentSubmission, `semantic_collision` reason. No followups surfaced. |
 | 13 | M1–M6 | not_started | — | — | Medium findings, internally parallelizable |
 
 ## Per-remediation detail
@@ -336,6 +336,85 @@ exist as separate files rather than sections of a monolith.
   **`a31e6c4`** (Maker/Checker pair, PASS) resolved all critical items. Remaining
   design smell: `VerdictLedgerEntry.reviewer_spec_version` is now redundant
   since `gate_result: GateResult` already carries it → logged as **F13**.
+
+### H7 — Collision key semantics (completed 2026-08-28)
+
+One commit (`a3e5213`) with Maker/Checker sub-agent pair. Net: schema
+additions + prose in 7 files. Checker verdict: MINOR-ISSUES-ONLY, accepted
+without a revise round.
+
+- **`a3e5213`** two-layer collision model: introduces Layer 2 semantic
+  analysis for shared-file intents alongside the existing Layer 1
+  deterministic key match. New `SemanticAnalyzerSpec` in
+  `plan/contracts/governance.py` (adapter-declared, sits next to
+  `SignalSpec`/`TriageRule`); `RepoDeclaration.semantic_analyzers` and
+  `IntentOpSpec.semantic_analyzer_ids` provide per-op linkage. New
+  `IntentSubmission` wrapper in `plan/contracts/orchestration.py` carries
+  `override_semantic_collisions: list[str]` so the `SharedFileIntent` union
+  members stay a pure vocabulary. `IntentRejection.reason` extended from 7
+  to 8 values by adding `semantic_collision` (Layer-2 sub-status of a
+  Tier-1 intent, distinct from `collision`/`pending_tier2_review`/
+  `structural`); new optional `semantic_feedback` and `override_key`
+  fields on `IntentRejection`. `SharedFileIntent` union in
+  `web_intents.py` untouched (verified by Checker: empty diff on that
+  file). Prose: `core_adapter_boundary.md` §2.1 rewritten as the
+  Two-Layer Collision Model with an explicit egress-scrubber note
+  (analyzer output crosses the isolation-unit boundary and reuses C1's
+  `EgressPayload`/`ScrubbedEgressPayload` — no new schema);
+  `agentic-sdlc-design-v0.5.md` §4.2 extended with the Layer-2 rejection
+  path in the Tier 1 bullet, §4.5 extended with the layer-agnostic
+  `max_mutex_rejections` coverage (repeated `semantic_collision` on the
+  same tuple degrades to `deadlock_cycle`); `structural_change_runbook.md`
+  §1 non-overlap sentence stating `semantic_collision` is neither Tier 2
+  nor Tier 3. Manifest rows updated for `governance.py`,
+  `orchestration.py`, and `core_adapter_boundary.md`.
+
+**Design decisions locked in during human gate:**
+- **Per-op linkage over global-only or inline.** Analyzers declared once
+  on `RepoDeclaration.semantic_analyzers`, referenced per op via
+  `IntentOpSpec.semantic_analyzer_ids`. Matches the existing
+  declarative pattern in `governance.py` (`SignalSpec`, `TriageRule`);
+  keeps analyzer cost proportional to op relevance.
+- **Per-intent synchronous timing over batching.** Layer 2 runs inside
+  the same synchronous Intent Service call as Layer 1. No batching, no
+  rollback path on `shared/`, no retroactive agent contract. Matches
+  the existing Smart Mutex Rejection contract. Adapter can pool analyzer
+  daemons to amortize startup cost.
+- **`IntentSubmission` wrapper over per-intent field.** Override state
+  lives on a wrapper next to `IntentOutcome`, symmetric on the way in
+  and out. `SharedFileIntent` members (all 6) stay a pure vocabulary;
+  future members do not need to remember an override field.
+- **Layer-2 sub-status of Tier 1, not a new tier.** `semantic_collision`
+  is an 8th value on `IntentRejection.reason`, positioned as a
+  Layer-2 verdict on what remains a Tier-1 intent. False positives
+  bypass via `override_key` and are checked by Phase 5 tests; no human
+  gate, no new `HaltReason`, no new runbook section.
+- **`max_mutex_rejections` covers both layers.** A repeated
+  `semantic_collision` on the same `(rejected_task, blocking_task,
+  resource_key)` tuple degrades to `deadlock_cycle` via the existing
+  detector; the counter is layer-agnostic.
+- **Egress-scrubber note is prose, not a new schema.** Analyzer JSON
+  output reuses `EgressPayload`/`ScrubbedEgressPayload` from C1. Stated
+  explicitly in `core_adapter_boundary.md` §2.1.
+
+**Minor items accepted without revise round:**
+- §4.5 schema-module cite is implicit (names `override_semantic_collisions`,
+  `override_key`, `deadlock_cycle` as fields but does not hyperlink
+  `plan/contracts/orchestration.py`). Field references are unambiguous.
+- `semantic_collision` inserted at union index 1 (next to `collision`)
+  rather than appended at index 7. Relative order of the 7 pre-existing
+  values is preserved; the locked "no reorder" decision holds.
+- Intentional side-tidy: `IntentOutcome.intent` inline comment updated
+  from `AdditiveIntent` to `SharedFileIntent` (one-word substitution,
+  H5-rename hygiene, aligns sibling comments).
+
+**Follow-ups surfaced:** None. F2, F3, F6, F11, F13 remain pending but are
+not in H7 scope.
+
+**Downstream impact:** M1–M6 (glossary, manifests, context, triage) may
+update the glossary to reflect the new Two-Layer Collision Model and
+add `SemanticAnalyzerSpec` / `IntentSubmission` term entries. No other
+remediations touched.
 
 ### H5 — Structural change tiers (completed 2026-08-28)
 
