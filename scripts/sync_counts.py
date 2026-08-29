@@ -98,11 +98,33 @@ def companion_file_count() -> int:
     the blueprint alongside the companions and both count assertions have always included it."""
     plan_dir = ROOT / "plan"
     counted = {"companion", "runbook"}
+
+    def is_sdlc_companion(path) -> bool:
+        fields = fm.parse(path.read_text(encoding="utf-8"))[0]
+        # part_of, not just doc_type: the assertion this feeds says the *blueprint's* mechanics
+        # live in N companions. A companion belonging to another adapter would inflate a claim
+        # about the SDLC design. The glob is non-recursive, so plan/optimization/ and
+        # plan/agents/ are already excluded -- this guards a flat plan/ file declaring a
+        # different part_of, which is otherwise indistinguishable here.
+        return (fields.get("doc_type") in counted
+                and fields.get("part_of") == "agentic-sdlc")
+
     return len([
         p for p in plan_dir.glob("*.md")
-        if not p.name.startswith("agentic-sdlc-design")
-        and fm.parse(p.read_text(encoding="utf-8"))[0].get("doc_type") in counted
+        if not p.name.startswith("agentic-sdlc-design") and is_sdlc_companion(p)
     ])
+
+
+def agent_card_count() -> int:
+    """One card per agent in plan/agents/. README.md is the index and card_schema.md is the
+    schema -- neither describes an agent. types/ is a subdirectory and so is already excluded
+    by the non-recursive glob. Whether each card corresponds to a real roster row is
+    scripts/check_agent_cards.py's job; this only counts them."""
+    cards_dir = ROOT / "plan" / "agents"
+    if not cards_dir.is_dir():
+        return 0
+    excluded = {"README.md", "card_schema.md"}
+    return len([p for p in cards_dir.glob("*.md") if p.name not in excluded])
 
 
 def live_human_gate_count() -> int:
@@ -127,7 +149,10 @@ REGISTRY: list[Count] = [
         t("AGENTIC_ARCHITECTURE_MANIFEST.md", r"defined terms spanning (\d+) categories"),
     ]),
     Count("tracked_file_count", tracked_file_count, [
-        t("AGENTIC_ARCHITECTURE_MANIFEST.md", r"(\d+) tracked files, spanning two projects"),
+        # Was anchored on "... tracked files, spanning two projects" -- but the second project
+        # (archive/glass-box/) was deleted in f2ba9fe, so the anchor phrase was itself the stale
+        # claim. Re-anchored to the corrected sentence.
+        t("AGENTIC_ARCHITECTURE_MANIFEST.md", r"(\d+) tracked files: the live design"),
     ]),
     Count("live_principle_count", live_principle_count, [
         t("AGENTIC_ARCHITECTURE_MANIFEST.md", r"(\d+) principles → \d+-agent roster"),
@@ -141,6 +166,16 @@ REGISTRY: list[Count] = [
     Count("companion_file_count", companion_file_count, [
         t("plan/agentic-sdlc-design-v0.5.md", r"mechanics live in (\d+) companion files"),
         t("CLAUDE.md", r"now (\d+) companion files, not five"),
+        # A second assertion of the same count, in CLAUDE.md's "Where things live" preamble.
+        # It read "Now 11 companion files" while the tracked one read 13: the original pattern
+        # is case-sensitive, so the capital-N sentence was never managed and drifted silently
+        # for two revisions. Distinct wording, so each target matches exactly one place.
+        t("CLAUDE.md", r"set now holds (\d+) SDLC companion files"),
+    ]),
+    Count("agent_card_count", agent_card_count, [
+        t("plan/agents/README.md", r"5 Executors = (\d+)\."),
+        t("plan/agents/README.md", r"(\d+) agents: \d+ in"),
+        t("plan/agent_taxonomy.md", r"23 existing agents \+ 2 proposed = \*\*(\d+) total\*\*"),
     ]),
     Count("live_human_gate_count", live_human_gate_count, [
         t("plan/implementation_roadmap.md", r"(\d+) human gates exist; nothing lets a human"),

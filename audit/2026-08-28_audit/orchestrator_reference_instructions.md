@@ -3,6 +3,7 @@ title: Remediation Orchestrator — Reference & Operating Instructions
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Remediation Orchestrator — Reference & Operating Instructions

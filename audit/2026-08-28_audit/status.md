@@ -1,8 +1,9 @@
 ---
 title: Audit v0.5 Remediation Execution Status
 status: live
-part_of: audit-2026-08-28
+part_of: audit
 doc_type: tracker
+layer: adapter-sdlc
 ---
 
 # Audit v0.5 Remediation — Execution Status

@@ -3,6 +3,7 @@ title: "Remediation Plan: Finding H5 (Structural Change SOP Creates a Human Bott
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Remediation Plan: Finding H5 (Structural Change SOP Creates a Human Bottleneck)

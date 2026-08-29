@@ -3,6 +3,7 @@ title: Session Kickoff Prompt
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Session Kickoff Prompt

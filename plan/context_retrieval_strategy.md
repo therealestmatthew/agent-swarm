@@ -3,6 +3,7 @@ title: Context Retrieval Strategy
 status: live
 part_of: agentic-sdlc
 doc_type: companion
+layer: core
 ---
 
 # Context Retrieval Strategy

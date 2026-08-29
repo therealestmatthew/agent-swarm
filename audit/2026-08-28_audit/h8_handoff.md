@@ -1,8 +1,9 @@
 ---
 title: H8 Remediation Handoff
 status: live
-part_of: audit-2026-08-28
+part_of: audit
 doc_type: handoff
+layer: adapter-sdlc
 ---
 
 # H8 Remediation — Handoff Summary

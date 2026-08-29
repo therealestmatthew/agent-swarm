@@ -3,6 +3,7 @@ title: Crash Recovery
 status: live
 part_of: agentic-sdlc
 doc_type: companion
+layer: core
 ---
 
 # Crash Recovery

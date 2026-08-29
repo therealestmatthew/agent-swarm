@@ -3,6 +3,7 @@ title: Agentic SDLC Orchestration — Design Document v0.5
 status: live
 part_of: agentic-sdlc
 doc_type: blueprint
+layer: shared
 version: "0.5"
 ---
 
@@ -318,7 +319,7 @@ Verdict ledger schema, promotion thresholds, and agent-spec versioning: `calibra
 - **Decay tuning.** The §4.6 decay rule (−1 per clean integration phase, floored at 0) is a reasonable starting point but untested — worth revisiting once there's real promotion data on false-positive/false-negative rates.
 - **Structural Change SOP cadence.** Repeated triggering of `structural_change_runbook.md` against the same file or subsystem may itself be a signal worth feeding back into governance — a file that keeps needing structural intervention might need a heavier redesign rather than another round of the SOP.
 - **Crash Recovery Scope.** Are there any scenarios where `StartupReconciler` should prompt the user instead of relying on the resume decision tree?
-- **Modular file versioning.** Now that mechanics live in 12 companion files, do they carry
+- **Modular file versioning.** Now that mechanics live in 13 companion files, do they carry
   independent version numbers, or do they always track the core document's version? Matters once one
   companion file needs to change without the others. *(The question grows more pressing this version:
   two companions were just added.)*
@@ -332,6 +333,35 @@ Verdict ledger schema, promotion thresholds, and agent-spec versioning: `calibra
   `.py` file whose diff is comment-only does not force a `NON_TRIVIAL_CODE` classification.
   Extension-only is the honest starting point; it will misclassify a comment-only source-file
   edit as `NON_TRIVIAL_CODE`, which fails safe (blocks) rather than open.
+
+**Arising from the domain-generalization pass (`plan/core_vs_adapter.md`,
+`plan/optimization/charter.md`):**
+
+- **Closed enums as the next declared leak.** Six `Enum`/`Literal` constructs in Core cannot be
+  extended by an adapter — `Capability`, `IsolationUnit`, `TriageRule.routes_to`,
+  `ResetStrategy.strategy_type`, `TestTier.execution_tier`, `Phase.DECOMPOSITION_TDD`. Each needs
+  the `SignalSpec` treatment: a declared vocabulary rather than a fixed menu. All are non-additive
+  schema changes, so they exit through the Structural Change SOP. Roadmap D23/D24.
+- **Should `Phase` be adapter-declared?** The sharpest instance of the above.
+  `Phase.DECOMPOSITION_TDD` bakes one methodology into the universal phase enum, and a domain
+  without a TDD step has no correct value to route through. But a fully adapter-declared phase
+  sequence would move flow control — the thing Principle 2 keeps Core and minimal — into repo-declared
+  data. Neither answer is obviously right.
+- **Does a Maker always need a Checker in a domain with one human?** The Personal adapter has one
+  writer who is also the approver (`optimization/personal_adapter.md` §2). Principle 1's pairing
+  still applies, but most of the arbitration machinery has nothing to isolate against. Whether the
+  additive-only vocabulary is doing concurrency control or acting as a commitment device is the
+  open question that adapter exists to test.
+- **What replaces the oracle where the actor is the only witness?** Evidence binding proves internal
+  consistency, not correspondence, when the same person writes both the records and the claims about
+  them (`optimization/personal_adapter.md` §5). No mechanism in the current design closes this.
+- **Does the conformance kit need a domain-neutrality case?** An adapter declaring a vocabulary with
+  no software nouns at all. Without one the kit certifies portability across repositories only —
+  which is exactly the gap §6.1 of `core_adapter_boundary.md` names.
+- **Calibrating a Checker with no natural override event.** The promotion criterion in
+  `calibration_and_measurement.md` §2 assumes verdict volume that the Error Analyzer (fills only on
+  production incidents) and the Vault Checker (no human disposition on a Vault commit) will not
+  reach. Surfaced by writing their agent cards.
 
 **Re-listed, carried forward from v0.1 §10 and dropped without resolution at v0.2 — not previously
 tracked in any subsequent Open Questions section:**

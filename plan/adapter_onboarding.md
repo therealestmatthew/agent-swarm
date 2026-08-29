@@ -3,6 +3,7 @@ title: Adapter Onboarding
 status: live
 part_of: agentic-sdlc
 doc_type: companion
+layer: adapter-sdlc
 ---
 
 # Adapter Onboarding

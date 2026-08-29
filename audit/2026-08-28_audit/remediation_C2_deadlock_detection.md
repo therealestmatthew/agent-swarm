@@ -3,6 +3,7 @@ title: "Remediation Plan: C2 - Deadlock Potential in Smart Mutex Rejection"
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Remediation Plan: C2 - Deadlock Potential in Smart Mutex Rejection

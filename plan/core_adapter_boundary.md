@@ -3,6 +3,7 @@ title: Core / Adapter Boundary
 status: live
 part_of: agentic-sdlc
 doc_type: companion
+layer: shared
 ---
 
 # Core / Adapter Boundary
@@ -377,11 +378,34 @@ Two mechanisms keep the claim honest:
    certified when it passes, and a Core change that breaks an adapter breaks the kit first.
 2. **Two dissimilar reference adapters.** The second one is the falsification test, and it is only
    worth building if it is deliberately unlike the first: different language, different transformer
-   engine, different isolation unit, different signal set, one with hydration and one without. Two
-   similar adapters prove nothing that one proves.
+   engine, different isolation unit, different signal set, one with hydration and one without, and
+   — added below — a **different task domain**. Two similar adapters prove nothing that one proves.
 
 Both are Stage 2 deliverables in `implementation_roadmap.md`, and the second adapter is the exit
 criterion — not a nice-to-have after it.
+
+### 6.1 The domain axis
+
+Every dissimilarity axis above varies the *technology* and holds the *task* fixed. So does §1's
+criterion, which quantifies over "every codebase" — repositories, languages, test runners — and
+never over task domains. Abstraction pressure has been applied along one axis only, and a Core that
+is universal across every repository may still be universal only across software delivery.
+
+The criterion restated to close that gap:
+
+> A mechanism is Core if it would be wrong in the same way for every *task domain* — not merely for
+> every codebase.
+
+The **Personal and Team Optimization adapters** (`optimization/charter.md`) are the second and third
+reference adapters under this widened standard. They are the strongest available falsifier because
+the SDLC adapter's most load-bearing nouns — a test suite, a git worktree, a diff — have no
+counterpart in them at all. Each must supply its own answer to *what is the isolation unit*, *what
+is the governed artifact*, and *what is the oracle* before it can run.
+
+`core_vs_adapter.md` applies the restated criterion to the existing set and records six closed
+`Enum`/`Literal` constructs in Core that an adapter cannot extend by declaration. Those are §2.2's
+own argument about `extra="forbid"` models, never generalized from fields to enums — and they are
+the concrete, falsifiable prediction of what a non-software adapter will hit first.
 
 ---
 

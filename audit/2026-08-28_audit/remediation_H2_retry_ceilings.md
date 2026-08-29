@@ -3,6 +3,7 @@ title: "Remediation: Finding H2 - Blanket `max_retries=3` is Too Coarse"
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Remediation: Finding H2 - Blanket `max_retries=3` is Too Coarse

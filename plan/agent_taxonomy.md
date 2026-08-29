@@ -3,6 +3,7 @@ title: Agent Taxonomy
 status: draft
 part_of: agentic-sdlc
 doc_type: companion
+layer: shared
 ---
 
 # Agent Taxonomy
@@ -131,7 +132,17 @@ Executor is the correct type. If a future version adds a predictive LLM pass, re
 
 ## §2 — Full Roster Mapped to Types
 
-23 existing agents + 1 proposed = **24 total**.
+23 existing agents + 2 proposed = **25 total**.
+
+**Per-agent detail lives in `plan/agents/`**, one card per row of this table. This file stays
+authoritative for the *type vocabulary* and the boundaries between types; the cards are
+authoritative for everything else about an individual agent. `scripts/check_agent_cards.py` enforces
+that every card's declared type matches this table.
+
+> **Corrected.** This line previously read "23 existing agents + 1 proposed = **24 total**", which
+> contradicted the type counts below (they sum to 25) and undercounted the proposals — the table
+> proposes *two* agents, Vault Scribe and Vault Checker. Writing the 25 cards surfaced the
+> discrepancy. The type counts were right; both summary figures were wrong.
 
 | Agent | Type | Notes |
 |---|---|---|
@@ -140,10 +151,10 @@ Executor is the correct type. If a future version adds a predictive LLM pass, re
 | Plan Writer | Maker | Paired with Plan Reviewer |
 | Task Decomposer | Maker | Paired with implicit structural review; owns Structural Change SOP |
 | Test Author | Maker | Paired with Baseline Guard |
-| Task Dev (Swarm) | Maker | Paired with Code Reviewer; emits shared-file intents rather than direct edits |
+| Task Dev Swarm | Maker | Paired with Code Reviewer; emits shared-file intents rather than direct edits |
 | CI Cleanup | Maker | Lint/format pass; reviewed implicitly by Code Reviewer |
 | Plan Reviewer | Checker | Paired with Plan Writer |
-| Security Reviewer (plan-time) | Checker | Paired with Plan Writer at plan-approval gate |
+| Security Review (plan-time) | Checker | Paired with Plan Writer at plan-approval gate |
 | Code Reviewer | Checker | Paired with Task Dev; Shadow Mode during calibration |
 | Baseline Guard | Checker | Paired with Test Author; anti-deletion enforcement |
 | Test Investigator | Checker | Judgment fallback for ambiguous `FailureSignature`; paired with Test Runner output |

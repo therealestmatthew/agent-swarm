@@ -3,13 +3,16 @@ title: Agentic Architecture Manifest
 status: live
 part_of: repo-meta
 doc_type: manifest
+layer: repo-meta
 ---
 
 # Agentic Architecture Manifest
 
 A complete inventory of every file in this repository, as of `plan/agentic-sdlc-design-v0.5.md`.
-58 tracked files, spanning two projects: the live Agentic SDLC design (`plan/`) and the frozen
-hackathon project it grew out of (`archive/glass-box/`). Repo history runs 2026-08-25 to present.
+104 tracked files: the live design (`plan/`), its agent cards (`plan/agents/`), the two
+non-software adapters (`plan/optimization/`), the adversarial audit (`audit/`), and repo tooling.
+The frozen hackathon project this grew out of is no longer in this tree — see the last section.
+Repo history runs 2026-08-25 to present.
 
 **Reading this table:** *Description* is what the file literally is (form/type). *Summary* is what's
 actually in it. *Purpose* is the job it does in the larger system — why it exists at all.
@@ -74,6 +77,9 @@ schemas, capture rules) belong in a companion file, never inline in the core blu
 | `test_harness_architecture.md` | Markdown companion | Baseline capture rules (tiered: fresh-instance for Tier 1/2, warm-pool in-place cleaning for Tier 3 with triage-matrix protection), Protocol-fake test double standards, diff-scoped mutation testing (new in v0.5), and (§3.9) the diff-triviality classification rule the `gate_coverage.minimum` meta-gate reads | Owns the verification-layer mechanics that make a passing test mean something |
 | `adapter_onboarding.md` | Markdown companion | Progressive onboarding Levels 0–3 (ad-hoc chat → execution → state & triage → full intent & pooling), browser pool lifecycle and cost attribution, Python Web App starter template illustrating the `RepoDeclaration`/`GovernancePolicy` split | Guides a target repo from zero adapter to full tiered execution without requiring a complete schema on day one |
 | `llm_output_normalization.md` | Markdown companion | Normalization layer for LLM outputs: two-pass strategy (strip extra keys, then validate), model categories (strict vs agent-produced), integration, and escalation interaction | The structural answer to `extra="forbid"` parsing failures when evaluating LLM-generated models |
+| `agent_taxonomy.md` | Markdown companion, draft | The 6 agent types (Orchestrator, Maker, Checker, Provider, Archivist, Executor), the full roster mapped to them, and the proposed Vault subsystem | Names the types the blueprint implied but never assigned; the summary layer above `plan/agents/` |
+| `core_vs_adapter.md` | Markdown, classification | Per-file, per-section and per-module Core/adapter verdicts; the restated boundary criterion quantified over task domains; the 6 closed enums that block a non-software adapter | Turns "the Core is reusable" from a claim into a table someone can argue with |
+| `work_packet_contract.md` | Markdown companion | The 15 fields of a dispatch envelope — scope, approved sources as an enumerated allowlist, freshness, permissions, output schema, evidence and reviewer requirements | Names something the design specified in pieces and never in one place; a Core gap found by an external review |
 
 ---
 
@@ -92,61 +98,64 @@ got here.
 | `agentic-sdlc-design-v0.4.md` | Markdown, versioned design doc | Pure reorganization: relocates schemas, thresholds, and capture rules out of the blueprint into `agent_interface_contracts.py` and four new companion files, changing no content | Established the "relocate mechanics, keep the blueprint legible" convention that `plan/`'s current structure — and this manifest's own organization — follows |
 
 ---
+## `plan/agents/` — Agent Cards
 
-## `archive/glass-box/` — Frozen Hackathon Project
+One card per agent, filling `card_schema.md`. `plan/agent_taxonomy.md` stays the summary layer and
+owns the 6-type vocabulary; the cards own everything else about an individual agent.
 
-**Status: frozen.** Built for a 90-minute hackathon on the themes *agent swarms, always-on,
-looping*; demoed in three minutes; won. Nothing here is live guidance for the current design work —
-see `archive/glass-box/README.md` for what's worth reusing (four things) versus what's tied to demo
-constraints that no longer apply.
-
-### Documents
-
-| File | Description | Summary | Purpose |
-|---|---|---|---|
-| `README.md` | Markdown, archive notice | Why it's frozen, what still runs, four reusable ideas, what not to carry forward, one flagged design gap (no concept of phase or human gate) | The entry point for anyone (or any agent) wondering why a working, award-winning project sits unused |
-| `00-MASTER-PLAN.md` | Markdown, original plan | Architecture (one JSONL event log, pure-fold renderer), how the three hackathon themes land in one build, scope discipline, risk register | The founding document — states the "nothing renders from live agent state" invariant everything else depends on |
-| `01-EVENT-SCHEMA.md` | Markdown, schema spec | The event envelope (8 fields), the full event-type table, five invariants, the reference `EventLog` implementation, concurrency options | The contract every emitter and the renderer both have to agree on |
-| `02-DASHBOARD-DESIGN.md` | Markdown, visual design spec | The ATC dispatch-rack design direction, color/type tokens, layout, strip states and motion, replay modes | Documents the visual identity so it doesn't get silently redesigned |
-| `03-AGENT-CONTRACTS.md` | Markdown, agent prompt templates | Dispatcher/Worker/Verifier/Reducer roles defined by the events each emits, plus filled prompt templates | Defines each swarm role by its event contract, not its internals — portable onto any payload |
-| `04-TOMORROW-RUNBOOK.md` | Markdown, build runbook | Minute-by-minute plan for the 90-minute build, triage table, the one rule ("stop building at T+75") | Time-boxes the build so scope discipline survives contact with an actual clock |
-| `05-DEMO-SCRIPT.md` | Markdown, demo script | Five-beat, 3-minute script with target timing per beat, on-stage failure fallbacks, anticipated Q&A | What was actually said on stage, word for word in places |
-| `06-PAYLOAD-A-REPO-SWEEP.md` | Markdown, payload spec | Eight-lens repo risk sweep (Secrets, Validation, Error Paths, etc.), filled worker/verifier/reducer prompts, how the seeded verification failure was guaranteed | The primary demo payload actually used |
-| `07-PAYLOAD-B-BUDGET-FALLBACK.md` | Markdown, payload spec | Budget-variance-hunt fallback payload, slice map, planted anomalies table, the "honeypot" timing-shift trap | The fallback payload prepared but not used — its honeypot finding is flagged as stronger than Payload A's |
-| `08-ADVERSARIAL-REVIEW-PROMPT.md` | Markdown, review prompt | The exact prompt pasted into Claude Code to adversarially review the plan before building | Deliberately seeks the plan's own weaknesses rather than validating it |
-| `09-REVIEW-FINDINGS.md` | Markdown, review findings | Response to `08`: kill shots (the agent_id="dispatch" bug, replay pacing, a seq-restart freeze, the payload-swap parachute cost), concrete defects, a cut list, deferred dependency enumeration | First adversarial pass; every finding here was verified against the code and (mostly) fixed in the same session |
-| `10-SECOND-PASS.md` | Markdown, second review pass | A second adversarial pass (barred from re-reporting `09`'s findings) plus a design/visualization pass, both re-verified | Catches what the first review missed — 8 more silent failure modes, 4 places the board contradicted the demo script |
-| `QUICKSTART.md` | Markdown, quickstart guide | Zero-install run commands, verified test/render claims, symptom table for common failures | The first file a new machine should run to confirm the parachute still works |
-
-### Code
+**Deviation from this manifest's one-row-per-file rule, stated rather than silent:** the 25 agent
+cards are listed collectively below rather than individually. `plan/agents/README.md` is itself the
+per-agent index table — agent, type, layer, pairing, link — so a row each here would be a second
+copy of it, and a second copy that nothing keeps in sync is exactly the drift this repo's tooling
+exists to prevent. `scripts/check_agent_cards.py` enforces card-set completeness on every commit.
 
 | File | Description | Summary | Purpose |
 |---|---|---|---|
-| `dashboard.html` | Single-file HTML/CSS/JS, ~478 KB (fonts embedded) | The board: a pure `state = events.reduce(apply, initialState())` fold, keyed-DOM renderer, live-poll and seeked-replay transports | The actual mission-control board — no build step, no dependencies, no network |
-| `pyproject.toml` | Python project file | Declares the `glassbox` package with zero required dependencies; `validate` extra pulls in pydantic v2 | Makes `uv run` and a bare `python3 -m glassbox...` both work without an install step |
-| `glassbox/__init__.py` | Python package init | Three-line package marker | Makes `glassbox` importable as a package |
-| `glassbox/events.py` | Python module, dual pydantic-v2/dataclass implementation | `Event` model (frozen either way), `EventLog` writer (`emit`, `drain_outbox`), `read_log` | The event contract's actual implementation — degrades gracefully with no pydantic installed |
-| `glassbox/simulate.py` | Python module, synthetic swarm | Generates a realistic 8-agent run with staggered spawns, a seeded verification failure and retry, a reducer pass, and an always-on second cycle | Produces the golden log — the entire dev loop and the demo parachute's source |
-| `tests/fold.test.mjs` | Node test script, 18 assertions | Extracts the state fold straight out of `dashboard.html` at run time and asserts log integrity, schema invariants, purity, transport robustness, and seq-restart handling | Turns every "verified" claim in the docs into a command that can actually fail |
-| `tools/beats.py` | Python CLI | Scans a run log and prints the `&from=<seq>` seek URL for every demo beat | Removes the need to hand-derive seek points from a JSONL file under stage pressure |
-| `tools/save-parachute.sh` | Bash script | Saves `runs/current` to `logs/backup-live.jsonl`, keeps the previous parachute, refuses to overwrite a good one with a non-run | Turns the runbook's "save a real run as the parachute" step into one command |
-| `tools/build-mobile-preview.py` | Python build script | Inlines the golden log and layers a narrow-viewport stylesheet plus touch playback controls onto a copy of `dashboard.html` | Produces `build/glassbox-mobile.html` — a phone-viewable, no-server-needed copy for review off a laptop |
-| `tools/emit.mjs` | JavaScript module, paste-able emitter | `EventLog` class matching `glassbox/events.py`'s contract exactly, `agent_id` required and documented as "the agent this event is about, never whoever is writing it" | The nine-line emitter the docs promise for a non-Python starter repo |
-| `tools/emit.ts` | TypeScript module, paste-able emitter | Same contract as `emit.mjs`, fully typed | TypeScript equivalent, for a starter repo that's typed |
+| `README.md` | Markdown, index | The 25-agent table (type, layer, pairing), type and layer distributions, and the 5 findings that writing the cards surfaced | The entry point to the card set, and the per-agent index this manifest deliberately does not duplicate |
+| `card_schema.md` | Markdown, schema | The fields every card fills — type, pairing, purpose, typed inputs/outputs, write scope as a permission, layer, and the conditional loop/gate/calibration/budget sections | One home for the card format, for the same reason `plan/contracts/` is one home for the schemas |
+| `types/*.md` | Markdown, 6 type exemplars | One per type (Orchestrator, Maker, Checker, Provider, Archivist, Executor); each states which fields its type requires, forbids or marks N/A, plus that type's standing constraint | Keeps per-type discipline in 6 files instead of repeated across 25 cards |
+| `<agent>.md` | Markdown, 25 agent cards | One per roster row, plus the draft Vault Scribe and Vault Checker. Depth scales with the agent | The specification for each agent — nothing else in the set defines one individually |
 
-### Data
+---
+
+## `plan/optimization/` — The Non-Software Adapters
+
+The Personal and Team Optimization adapters: the second and third reference adapters under
+`core_adapter_boundary.md` §6.1's widened dissimilarity standard, which now includes task domain.
 
 | File | Description | Summary | Purpose |
 |---|---|---|---|
-| `fallback/generate_budget.py` | Python script, deterministic generator | Builds a 338-row budget-vs-actuals dataset with six planted anomalies (runaway overtime, unbudgeted spend, a duplicate posting, a credit misposting, an orphan account code, and a timing-shift "honeypot") | Regenerates Payload B's dataset byte-identically from one fixed seed |
-| `fallback/budget_actuals.csv` | CSV, 338 rows | Program → Cost Center → Account → Period budget-vs-actual figures, six months, eight cost centers | The Payload B dataset workers actually read |
-| `fallback/account_master.csv` | CSV, 7 rows | Valid account codes and categories | The join that makes an orphan-account-code finding mechanically checkable |
-| `fallback/budget_actuals.xlsx` | Excel workbook | Same data as `budget_actuals.csv`, spreadsheet form | Excel-native copy of the same dataset |
-| `fallback/account_master.xlsx` | Excel workbook | Same data as `account_master.csv`, spreadsheet form | Excel-native copy of the same dataset |
+| `charter.md` | Markdown, companion | Scope, the two-adapter split, and the three substitutions that define the adapters — isolation unit, governed artifact, oracle — plus what is deliberately not adopted from the external review | The anchor document; states what is claimed and, in §6, what explicitly is not |
+| `project_state_model.md` | Markdown, companion | The 8 governed registers, the additive intent vocabulary and collision keys, the non-additive ops that exit through the Structural Change SOP, source precedence, freshness | The Team adapter's governed shared artifact — what the Intent Service writes when the domain is project delivery |
+| `routing_standard.md` | Markdown, companion | Four scoring axes and a 6-rule ordered routing table, with refusal as a first-class outcome | The one genuinely new mechanism from the external review: Core routes between phases, nothing routed at the entry point |
+| `delivery_pulse_runbook.md` | Markdown, runbook | The 8-step recurring status workflow, the Omission Guard, the human-attention queue, and the calibration loop through the Verdict Ledger | The first end-to-end Optimization workflow — the domain equivalent of the roadmap's Stage 3 |
+| `personal_adapter.md` | Markdown, companion | The single-writer adapter and how it differs from Team; two findings — most arbitration machinery has nothing to isolate, and evidence binding is weaker where the actor is the only witness | Exists to be dissimilar: "two similar adapters prove nothing that one proves" |
+| `agents/*.md` | Markdown, 5 agent cards | Evidence Retriever, Project-State Validator, Status Synthesizer, Quality Reviewer, Continuity Assistant — same schema as the SDLC cards | The schema-neutrality check: a required field only an SDLC agent could fill would be a Core leak hiding in the card format |
 
-### Generated (gitignored patterns exist for these; committed anyway where noted)
+---
 
-| File | Description | Summary | Purpose |
-|---|---|---|---|
-| `logs/golden.jsonl` | JSONL, 96 events | The synthetic run `glassbox/simulate.py` produces — 14 agents, 17 findings, 1 rejection, 1 retry, 1 watch trigger, every demo beat timed to land inside `05-DEMO-SCRIPT.md`'s window | The board's replay parachute — committed deliberately, unlike a real-run parachute, since it's the fixture the whole demo was built and rehearsed against |
-| `build/glassbox-mobile.html` | Single-file HTML, ~1,086 lines rendered, log inlined | Generated by `tools/build-mobile-preview.py`; renders correctly over `file://` with no server | Tracked (not gitignored) so the phone-viewable board serves straight from a checkout with no build step — goes stale if `dashboard.html` or the golden log change without a rebuild |
+## `audit/2026-08-28_audit/` — Adversarial Audit
+
+The audit report, its feedback and question responses, and 13 remediation records keyed `C1`–`C5`,
+`H1`–`H8`, `M1`–`M6`, plus session trackers and prompts. A second finding register, independent of
+the roadmap's `D`/`R` IDs — the two have never been reconciled against each other, which is itself
+worth noting.
+
+Listed collectively, for the same reason as the agent cards above: the records are named by their
+finding ID and `status.md` already indexes them, so a row each here would be a second index nothing
+keeps in sync. **These are the only two places this manifest departs from one row per file**, and
+both say so.
+
+---
+
+## `archive/glass-box/` — Removed
+
+**Not in this tree.** The frozen hackathon project this repo grew out of was removed in `f2ba9fe`
+and is gitignored; it survives on the `archive/glass-box` branch. This section is kept as a pointer
+because three documents referenced the directory as though it were present after it was deleted —
+`CLAUDE.md`, this manifest, and `implementation_roadmap.md` S5-4 — and a reader following those
+references needs to land somewhere rather than nowhere.
+
+Its reusable ideas are listed in that branch's `README.md`. The flagged design gap is still the
+relevant one: the board has no concept of a phase or a human gate, both of which an ops dashboard
+for this pipeline would need.

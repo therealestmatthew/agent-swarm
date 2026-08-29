@@ -3,6 +3,7 @@ title: Implementation Roadmap — Design to Execution
 status: live
 part_of: agentic-sdlc
 doc_type: roadmap
+layer: adapter-sdlc
 version: "1.1"
 ---
 
@@ -114,6 +115,11 @@ design set is where they get fixed.
 | D19 | `v0.5` §4.5, security | A rejection tells one agent what **another agent** claimed. Free-form prose on that path is a prompt-injection channel between agents inside the swarm — the one trust boundary the design never examined, because both parties are "our" agents. Closed by making blocking context structured data only (`blocking_task_id`, `blocking_op`, `blocking_keys`), rendered by the receiving side rather than replayed as a message. | Resolved |
 | D20 | Deployment, arising from intent transport | If intent submission is served per-agent-session — the default shape for an MCP server — the swarm gets **N writers and no mutex**, and it appears to work until two agents collide. The arbitration in §4.5 is only arbitration if every worktree's agent talks to one long-lived process. Recorded as a hard constraint on any transport (`execution_isolation.md` §7.5) rather than left to discovery. | Resolved |
 | D13 | `structural_change_runbook.md` §4 vs. `v0.5` §12 | The runbook's "additive-intent-count threshold" and §12's "task granularity" are the same knob from opposite ends: a task needing many intents against one file *is* a task drawn too coarsely. Resolving them independently produces two contradictory numbers. | Medium |
+| D23 | `contracts/governance.py`, `contracts/orchestration.py` | **Six closed `Enum`/`Literal` constructs in Core that an adapter cannot extend by declaration.** `Capability` (4 of 5 values are testing/browser concepts), `IsolationUnit` (`WORKTREE` is a git noun), `TriageRule.routes_to` (a closed `Literal` of three development agents, inside a model that is otherwise pure adapter data), `ResetStrategy.strategy_type`, `TestTier.execution_tier`, and `Phase.DECOMPOSITION_TDD`. This is §2.2's own argument about `extra="forbid"` models — an adapter cannot add fields without forking the schema — never generalized from fields to enums. Full analysis in `core_vs_adapter.md` §6. | **Load-bearing** |
+| D24 | The same, as a pattern rather than a list | **The leak is reproducing, not historical.** The PR that split `agent_interface_contracts.py` into `contracts/` fixed both known field-level leaks — it relocated the web intent vocabulary to `reference_adapter/` (D2/S0-6) and collapsed `FailureSignature`'s two hard-coded browser fields into a declared `signals` map (§2.2/S0-7) — and in the same change introduced two new closed `Literal`s, `strategy_type` and `execution_tier`. The rule has been learned for fields and not for enums, so each schema growth reintroduces it. Needs a standing rule, not six fixes. | **Load-bearing** |
+| D25 | `core_adapter_boundary.md` §1 | The boundary criterion quantifies over "every **codebase**" — repositories, languages, test runners — and never over task domains. Every dissimilarity axis in §6 varies the technology and holds the task fixed. A Core universal across every repository may still be universal only across software delivery, and nothing in the set could have detected the difference. Closed by §6.1's restated criterion and the Optimization adapters as the second and third reference adapters. | Resolved |
+| D26 | `agent_taxonomy.md` §2 vs. `v0.5` §2 | Two files named the same agents differently — "Task Dev (Swarm)" vs "Task Dev Swarm", "Security Reviewer (plan-time)" vs "Security Review (plan-time)" — in a design whose central thesis is closed vocabularies. Nothing checked them against each other. Closed by normalizing to the roster and by `scripts/check_agent_cards.py`, which now fails a commit on any roster/taxonomy/card disagreement. | Resolved |
+| D27 | `agent_taxonomy.md` §2 | The taxonomy's summary read "23 existing agents + 1 proposed = **24 total**" while its own type counts summed to 25 and its table held 25 rows; it proposes *two* agents. Both summary figures were wrong and survived until the cards were written out one by one. Closed, and now covered by `agent_card_count` in `sync_counts.py`. | Resolved |
 
 ---
 
@@ -236,7 +242,8 @@ deliberately planted credential in a screenshot does not survive the scrubber.
 **S5-1** Parallel dispatch to the derived ceiling · **S5-2** Integrator, No-Conflict Gate,
 cumulative conflict counters · **S5-3** Structural Change SOP, first live trigger ·
 **S5-4** Swarm observability (**#7**) — correctly placed here, since there is nothing to observe
-until there is parallelism; reuse candidates in `archive/glass-box/README.md`, noting that board has
+until there is parallelism; reuse candidates in `README.md` on the `archive/glass-box` branch
+(removed from this tree in `f2ba9fe`), noting that board has
 no concept of a phase or a human gate · **S5-5** Task granularity, measured (**#2** revisited) — the
 empirical answer that replaces S0-12's provisional one.
 
@@ -355,6 +362,9 @@ snapshot — re-check it against `git log` if the set moves under it, the same d
 | D11 (naming drift) | `agentic-sdlc-design-v0.5.md` §4 heading and `agentic_sdlc_glossary.md`'s duplicate alias pair |
 | D12 (run abort semantics) | `budget_and_escalation_policy.md` §3's pause step, which currently says "pauses" without saying what that does to a live process |
 | D13 (granularity ↔ intent threshold) | `structural_change_runbook.md` §4 and `agentic-sdlc-design-v0.5.md` §12, together or not at all |
+| D23 (six closed constructs in Core) | `contracts/governance.py` and `contracts/orchestration.py`. Each needs the `SignalSpec` treatment — a declared, adapter-supplied vocabulary rather than a closed enum. Non-additive schema changes, so they exit through `structural_change_runbook.md` rather than landing incrementally |
+| D24 (the enum leak reproduces) | Not a file — a rule. Belongs in `core_adapter_boundary.md` §2 as a fourth declared leak, stated as a standing test applied whenever a Core model gains a field: *can an adapter express its own domain in this type?* |
+| D2x follow-on: adapter conformance kit | The kit (R10) must include a **domain-neutrality case** — an adapter declaring a vocabulary with no software nouns at all. Without it the kit certifies portability across repos only, which is the gap D25 named |
 
 ---
 

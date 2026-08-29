@@ -3,6 +3,7 @@ title: "Remediation Plan: Finding C5 (Design/Build Phase Contradiction)"
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Remediation Plan: Finding C5 (Design/Build Phase Contradiction)

@@ -3,6 +3,7 @@ title: Audit Questions & Responses
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Audit Questions & Responses

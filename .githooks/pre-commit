@@ -45,6 +45,10 @@ echo "== pre-commit: front matter =="
 run_step "front matter check" scripts/check_frontmatter.py
 
 echo
+echo "== pre-commit: agent cards =="
+run_step "agent card check" scripts/check_agent_cards.py
+
+echo
 echo "== pre-commit: count sync =="
 run_step "count sync" scripts/sync_counts.py
 

@@ -3,6 +3,7 @@ title: "Remediation Plan: Finding H6 (extra='forbid' + LLM Output = Chronic Pars
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Remediation Plan: Finding H6 (extra='forbid' + LLM Output = Chronic Parse Failures)

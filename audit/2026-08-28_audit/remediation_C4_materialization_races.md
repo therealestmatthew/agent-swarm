@@ -3,6 +3,7 @@ title: "Remediation Plan: Finding C4 - Race Conditions in Shared-File Materializ
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Remediation Plan: Finding C4 - Race Conditions in Shared-File Materialization

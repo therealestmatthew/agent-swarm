@@ -3,6 +3,7 @@ title: "Remediation Plan: Findings H3 & H4 (Tiered Execution & Onboarding)"
 status: live
 part_of: repo-meta
 doc_type: reference
+layer: adapter-sdlc
 ---
 
 # Remediation Plan: Findings H3 & H4 (Tiered Execution & Onboarding)
