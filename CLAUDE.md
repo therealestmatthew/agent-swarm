@@ -48,7 +48,7 @@ answers.
 The blueprint deliberately splits mechanics out into companion files. Keep that split: if a
 threshold, schema, or capture rule is being written into the core document, it belongs in a
 companion instead. v0.5 added two companions (`execution_isolation.md`,
-`calibration_and_measurement.md`) for exactly this reason rather than growing §1's principle text. Now 9 companion files, not five.
+`calibration_and_measurement.md`) for exactly this reason rather than growing §1's principle text. Now 11 companion files, not five.
 
 ## Principles that shape every decision
 

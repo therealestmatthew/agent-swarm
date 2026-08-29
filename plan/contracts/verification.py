@@ -187,7 +187,8 @@ class VerdictLedgerEntry(BaseContract):
     precision and compute Cost-per-Integration-Catch (CPIC).
     """
 
-    gate_result: str = Field(..., description="The original agentic GateResult (e.g., 'pass', 'fail')")
+    entry_id: str = Field(..., description="Unique identifier for this ledger entry. Dispatch-path metering tags costs to this ID so Cost-per-Verdict and CPIC calculations remain available whether or not the Budget Accountant is running (budget_and_escalation_policy.md §4.3).")
+    gate_result: GateResult = Field(..., description="The full GateResult produced by the validator — reviewer, passed, findings, applicability, and spec version. Stored in full so a later prompt change (§3) does not silently invalidate the precision data this row carries.")
     reviewer_spec_version: str = Field(..., description="Version of the prompts/rules used")
     human_override: Optional[str] = Field(None, description="Tier 1: Explicit human verdict overriding or confirming the agent")
     integration_catch_outcome: Optional[bool] = Field(None, description="Tier 2: True if integration tests caught an issue on the approved code within the CI window")

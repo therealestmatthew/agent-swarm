@@ -17,6 +17,8 @@ This file owns the exact thresholds the core design document only names in princ
 
 ## 1. Loop Ceilings
 
+Illustrative starting values — tune to your repo's observed retry distributions and cost tolerance before treating these as settled (same convention as §3 Cost Ceilings).
+
 | Loop-back edge | Ceiling | Target Budget (Cost Units) | On exhaustion |
 |---|---|---|---|
 | Plan Writer ↔ Plan Reviewer | `max_retries=2` | 2.00 | Escalate to human plan review |
@@ -40,7 +42,7 @@ An "iteration" is defined as a full traversal of the escalation ladder up to the
 Applies to: Plan Writer ↔ Plan Reviewer, Task Dev ↔ Code Reviewer.
 
 ### 2.2 Boundary-type loops skip model escalation
-The Merge Conflict → Task Decomposer loop does **not** use rung 3. A merge conflict is evidence of a decomposition error (Principle 8), not evidence the current model reasoned poorly — escalating model tier wouldn't address the actual cause. For this loop, "re-spec" (rung 2) *is* the corrective action: the Task Decomposer redefines the interface seam itself. After `max_retries=3` redefinition attempts, the loop halts directly to human escalation as a boundary failure, skipping rung 3 entirely.
+The Merge Conflict → Task Decomposer loop does **not** use rung 3. A merge conflict is evidence of a decomposition error (Principle 8), not evidence the current model reasoned poorly — escalating model tier wouldn't address the actual cause. For this loop, "re-spec" (rung 2) *is* the corrective action: the Task Decomposer redefines the interface seam itself. After `max_retries=2` redefinition attempts, the loop halts directly to human escalation as a boundary failure, skipping rung 3 entirely.
 
 **Structural-intent deadlocks** (detected by the Intent Service's cycle detector or a `GovernancePolicy.max_mutex_rejections` breach — see `agentic-sdlc-design-v0.5.md` §4.5) are the same class of failure and skip rung 3 for the same reason: an architectural incompatibility between two tasks' intents is not a stochastic miss a stronger model would resolve. Detection is task-scoped termination — the involved tasks drop out of `RunManifest.active_task_ids` and route to the Structural Change SOP (`structural_change_runbook.md`) or to human triage per the SOP's own procedure — with no rung 1 or rung 2 retry either, because the detector fires precisely when re-planning has already failed enough times to prove it will not resolve the collision on its own.
 

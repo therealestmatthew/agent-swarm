@@ -48,7 +48,7 @@ Baseline is the **declared clean state** — which, once hydration exists, means
 *post-hydration* state, not canonical emptiness (`core_adapter_boundary.md` §4). It is captured
 **immediately after instance construction and hydration, before the test's first action**. The
 clean-state signal is the comparison of actual state at that t=0 moment against the declaration —
-never against the previous test's end state, which per §1.2 should not exist.
+never against the previous test's end state — which for Tier 1 and Tier 2 does not exist (fresh instance per test), and for Tier 3 is guarded against by the triage matrix's state-leakage classification (`infra_triage_matrix.md` rule 1) rather than by construction.
 
 The reference browser adapter's checks, which is what this table always was:
 

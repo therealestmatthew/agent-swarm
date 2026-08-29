@@ -55,9 +55,11 @@ from plan.contracts.governance import (
     AbsentCapabilityPolicy,
     Capability,
     EgressPayload,
+    EscalationConfig,
     GovernancePolicy,
     IntentOpSpec,
     IsolationUnit,
+    LoopBudgetConfig,
     RepoDeclaration,
     ResetResource,
     ResetStrategy,
@@ -90,6 +92,7 @@ from plan.contracts.verification import (
     GateResult,
     InvariantScope,
     NormalizationEvent,
+    VerdictLedgerEntry,
 )
 
 __all__ = [
@@ -110,6 +113,8 @@ __all__ = [
     "IsolationUnit",
     "Capability",
     "AbsentCapabilityPolicy",
+    "EscalationConfig",
+    "LoopBudgetConfig",
     "ResetResource",
     "ResetStrategy",
     "TestTier",
@@ -131,4 +136,5 @@ __all__ = [
     "FailureSignature",
     "InvariantScope",
     "NormalizationEvent",
+    "VerdictLedgerEntry",
 ]

@@ -261,9 +261,7 @@ Hydration and baseline are therefore the same concept viewed twice:
   *the declared post-hydration state*, never against empty and never against the previous test's end
   state.
 
-The full-teardown mandate (`test_harness_architecture.md` §1.2) survives unchanged and gets
-stronger: a reused environment cannot be re-hydrated to a known state any more reliably than it can
-be cleared to an empty one.
+The tiered reset mandates (`test_harness_architecture.md` §1.2) govern what the baseline is captured against: for Tier 1 and Tier 2, construction is always fresh; for Tier 3, in-place cleaning via a warm pool is permitted, with state-leakage protection via the deterministic triage table. In all tiers, a reused environment that has not been verifiably reset cannot be re-hydrated to a known state any more reliably than it can be cleared to an empty one — the baseline is the declared post-hydration state, never an assumed empty.
 
 ---
 

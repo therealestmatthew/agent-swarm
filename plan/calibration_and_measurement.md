@@ -50,7 +50,7 @@ exception. It exists because you are the oracle on your own repo in a way you ar
 unfamiliar one — you can grade the graders here. That advantage is temporary; spend it during the
 shadow window rather than promoting on faith.
 
-To promote an agent from Shadow Mode to Active Blocking Mode, it must meet the following criteria over a rolling window of **N = 50** executions:
+To promote an agent from Shadow Mode to Active Blocking Mode, it must meet the following criteria over a rolling window of **N = 50** executions (illustrative — tune N and the thresholds to your repo's actual review volume and error rate before treating these as settled):
 *   **Tier 1 (Precision against human review):** $\ge 95\%$ agreement rate with human overrides/approvals.
 *   **Tier 2 (Integration catch rate on agent approvals):** $\le 5\%$ false positive approval rate (integration tests catch a defect the agent approved in fewer than 5% of cases).
 

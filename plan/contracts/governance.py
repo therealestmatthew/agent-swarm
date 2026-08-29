@@ -103,8 +103,7 @@ class ResetStrategy(BaseContract):
     test_harness_architecture.md §1.2 hard-coded `browser.new_context()` / `context.close()`
     into a universal document. Playwright has that call; Selenium does not, and its nearest
     honest equivalent -- a fresh driver process with a fresh profile directory -- costs
-    seconds rather than milliseconds. The *rule* (construct fresh, never clean in place) is
-    universal; the mechanism and its price are not, so the mechanism is declared.
+    seconds rather than milliseconds. The *rule* varies by tier (`TestTier.execution_tier`): Tier 1 and Tier 2 require fresh construction; Tier 3 permits in-place cleaning via a warm pool, with state-leakage protection provided by the deterministic triage table. In all cases, the mechanism and its price are declared here rather than assumed.
 
     `typical_cost_ms` is load-bearing rather than documentation: Core feeds it into the
     wall-clock ceiling estimate and the concurrency derivation (core_adapter_boundary.md §3.6).
