@@ -48,7 +48,7 @@ they touch entirely different files.
 | 3 | **H6** | completed | `2c33e7d` (+ C5 scaffolding: `cd34117`, `42c5ab4`, `cb53dda`) | 4 (see below) | Normalization boundary, Core ownership, cross-refs, F5 closure. ~80% pre-seeded by C5. |
 | 4 | **C2** | completed | `506ee85` | 7 (see below) | Cycle detection + threshold, task-scoped boundary failure. Two surfaced items → `followups.md` (F9, F10) |
 | 5 | **C3** | completed | `fe66305` | 8 (see below) | Meta-gate `gate_coverage.minimum` for NOT_APPLICABLE bypass. Two surfaced items → `followups.md` (F9 broadened, F11 new) |
-| 6 | C4 | not_started | — | — | — |
+| 6 | **C4** | completed | `477a2da` | 7 (see below) | Pull-based materialization at subprocess boundaries. New `adapter_surface.py` module, subprocess-only invariant, sync-starvation timeout. One surfaced item → `followups.md` (F12) |
 | 7 | H8 | not_started | — | — | — |
 | 8 | H2 | not_started | — | — | — |
 | 9 | H1 | not_started | — | — | — |
@@ -58,6 +58,74 @@ they touch entirely different files.
 | 13 | M1–M6 | not_started | — | — | Medium findings, internally parallelizable |
 
 ## Per-remediation detail
+
+### C4 — Materialization race fix (completed 2026-08-28)
+
+One commit with Maker/Checker sub-agent pair. Net: +219 / −17 across 7 files
+(1 new module + 6 modifications).
+
+- **`477a2da`** pull-based materialization: replaces the push-based
+  re-materialization mechanism (`execution_isolation.md` §7.2) that raced
+  against in-process module caches (`sys.modules`, `require.cache`,
+  `$LOADED_FEATURES`) during test execution. Atomic POSIX rename provided
+  filesystem-level atomicity but not runtime isolation. New Core-owned
+  adapter-surface schema module `plan/contracts/adapter_surface.py` holds
+  `WorktreeSyncRequest` and `WorktreeSyncResult` (fourth Core schema module
+  alongside `orchestration.py`, `governance.py`, `verification.py`). Sync is
+  idempotent by design (`was_noop=True` steady state) — event delivery is
+  not a correctness dependency; no `SharedStateUpdatedEvent` introduced. New
+  §7.6 in `execution_isolation.md` states the language-agnostic
+  subprocess-only invariant (Python/Node/Ruby cache examples are
+  parenthetical, not the rule). New §7.7 defines sync starvation semantics.
+  New `GovernancePolicy.max_seconds_without_sync` field (illustrative,
+  `None` means off). Boundary-type in `budget_and_escalation_policy.md`
+  §2.2. `agentic-sdlc-design-v0.5.md` §4.7 revised to distinguish proposing
+  agent (synchronous) from siblings (lazy pull at subprocess boundary).
+  `GateApplicability`, `GateResult`, `HaltReason`, `RunManifest.*`,
+  `DiffClassification`, and C1/C2/C3 fields all untouched — the pre-C5
+  remediation draft would have written schemas to the deleted
+  `plan/agent_interface_contracts.py`.
+
+**Design decisions locked in during human gate:**
+- **Sync trigger: unconditional pre-subprocess.** Agent's runtime calls
+  `SyncWorktree()` unconditionally before every subprocess execution.
+  Idempotent. Removes event-loss risk on agent crash/restart entirely; H8
+  does not need to persist unseen events.
+- **Schema home: new module `plan/contracts/adapter_surface.py`.** Fourth
+  Core schema module for adapter-facing verbs. Deliberately opened as the
+  future home for other adapter-surface schemas even though it holds one
+  verb today. Must not import from `orchestration.py`, `governance.py`, or
+  `reference_adapter/`.
+- **Language generalization: subprocess-only, not Python-specific.** Rule
+  is "target-system code MUST execute in a subprocess distinct from the
+  agent's own runtime, so that materialization at the process boundary
+  yields a fresh module/import cache." `sys.modules` becomes a parenthetical
+  example alongside `require.cache` (Node) and `$LOADED_FEATURES` (Ruby).
+- **Long-running executions: `max_seconds_without_sync` starvation
+  timeout.** New `GovernancePolicy` field (illustrative, adapter-tunable,
+  `None` means off). Task-scoped boundary failure via `active_task_ids`
+  drop — no new `HaltReason` value. Interaction with retry ceilings: both
+  may fire; whichever fires first wins.
+- **§7.5 "Reads stay local" preserved.** `SyncWorktree()` is a
+  Core-internal local reconciliation from the local `shared/` branch into
+  the local worktree — never a wire read. A transport outage still doesn't
+  break a running suite.
+
+**Follow-ups surfaced:** F12 (sync freshness proof at other checkpoints —
+`WorktreeSyncResult.source_commit_hash` docstring hints Core may use it to
+prove sync freshness at other checkpoints, but no consumer is specified;
+scoped to H8 since crash-recovery persistence is the natural home for
+sync-freshness-at-resume).
+
+**Downstream impact:** H8 (crash recovery) inherits an optional refinement
+via F12 — whether to persist last-known `source_commit_hash` and prove sync
+freshness on resume. H3+H4 (tiered execution & onboarding) may add more
+verbs to `adapter_surface.py`; the module's import-discipline note
+(no imports from `orchestration.py` or `governance.py`) may need revisiting
+if a future verb requires capability-negotiation-style schemas. C1 §5.4's
+container floor and C4 §7.6's subprocess-only rule are complementary — the
+container gives Core the enforcement boundary for both egress scrubbing
+and subprocess-only execution.
 
 ### C3 — NOT_APPLICABLE gate bypass detector (completed 2026-08-28)
 
