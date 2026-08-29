@@ -319,7 +319,7 @@ Verdict ledger schema, promotion thresholds, and agent-spec versioning: `calibra
 - **Decay tuning.** The §4.6 decay rule (−1 per clean integration phase, floored at 0) is a reasonable starting point but untested — worth revisiting once there's real promotion data on false-positive/false-negative rates.
 - **Structural Change SOP cadence.** Repeated triggering of `structural_change_runbook.md` against the same file or subsystem may itself be a signal worth feeding back into governance — a file that keeps needing structural intervention might need a heavier redesign rather than another round of the SOP.
 - **Crash Recovery Scope.** Are there any scenarios where `StartupReconciler` should prompt the user instead of relying on the resume decision tree?
-- **Modular file versioning.** Now that mechanics live in 12 companion files, do they carry
+- **Modular file versioning.** Now that mechanics live in 13 companion files, do they carry
   independent version numbers, or do they always track the core document's version? Matters once one
   companion file needs to change without the others. *(The question grows more pressing this version:
   two companions were just added.)*

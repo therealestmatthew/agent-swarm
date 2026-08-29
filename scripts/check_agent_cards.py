@@ -37,6 +37,11 @@ ROOT = Path(__file__).resolve().parent.parent
 BLUEPRINT = ROOT / "plan" / "agentic-sdlc-design-v0.5.md"
 TAXONOMY = ROOT / "plan" / "agent_taxonomy.md"
 CARDS_DIR = ROOT / "plan" / "agents"
+# Adapter agent cards. These have no row in the SDLC roster and never will -- they belong to a
+# different adapter -- so they are checked for schema conformance only. That check is the point:
+# these cards fill the same schema as the SDLC ones, and a required field only an SDLC agent can
+# fill would be a Core leak hiding in the card format. See optimization/charter.md §6.
+ADAPTER_CARD_DIRS = [ROOT / "plan" / "optimization" / "agents"]
 
 TYPES = ("Orchestrator", "Maker", "Checker", "Provider", "Archivist", "Executor")
 
@@ -164,6 +169,29 @@ def main() -> int:
         if missing:
             errors.append(f"{rel(path)}: missing required section(s): {', '.join(missing)}")
 
+    # 6. adapter cards: schema conformance only, no roster or taxonomy row expected.
+    adapter_count = 0
+    for directory in ADAPTER_CARD_DIRS:
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.glob("*.md")):
+            if path.name in NOT_A_CARD:
+                continue
+            adapter_count += 1
+            text = path.read_text(encoding="utf-8")
+            fields, _, _ = fm.parse(text)
+            if card_type(text) is None:
+                errors.append(f"{rel(path)}: no '## Type' section naming one of {', '.join(TYPES)}")
+            layer = fields.get("layer")
+            if not layer:
+                errors.append(f"{rel(path)}: no 'layer' in front matter")
+            elif layer not in fm.LAYERS:
+                errors.append(f"{rel(path)}: layer '{layer}' is not in frontmatter.LAYERS")
+            missing = [s for s in REQUIRED_SECTIONS
+                       if not re.search(rf"^## {re.escape(s)}\s*$", text, re.MULTILINE)]
+            if missing:
+                errors.append(f"{rel(path)}: missing required section(s): {', '.join(missing)}")
+
     if errors:
         print("Agent card check FAILED:")
         for e in errors:
@@ -171,7 +199,8 @@ def main() -> int:
         print("CHANGED:")
         return 1
 
-    print(f"Agent cards: {len(cards)} card(s), {len(roster)} roster row(s), all consistent.")
+    print(f"Agent cards: {len(cards)} card(s), {len(roster)} roster row(s), "
+          f"{adapter_count} adapter card(s), all consistent.")
     print("CHANGED:")
     return 0
 

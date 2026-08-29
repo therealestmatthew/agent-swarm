@@ -98,10 +98,20 @@ def companion_file_count() -> int:
     the blueprint alongside the companions and both count assertions have always included it."""
     plan_dir = ROOT / "plan"
     counted = {"companion", "runbook"}
+
+    def is_sdlc_companion(path) -> bool:
+        fields = fm.parse(path.read_text(encoding="utf-8"))[0]
+        # part_of, not just doc_type: the assertion this feeds says the *blueprint's* mechanics
+        # live in N companions. A companion belonging to another adapter would inflate a claim
+        # about the SDLC design. The glob is non-recursive, so plan/optimization/ and
+        # plan/agents/ are already excluded -- this guards a flat plan/ file declaring a
+        # different part_of, which is otherwise indistinguishable here.
+        return (fields.get("doc_type") in counted
+                and fields.get("part_of") == "agentic-sdlc")
+
     return len([
         p for p in plan_dir.glob("*.md")
-        if not p.name.startswith("agentic-sdlc-design")
-        and fm.parse(p.read_text(encoding="utf-8"))[0].get("doc_type") in counted
+        if not p.name.startswith("agentic-sdlc-design") and is_sdlc_companion(p)
     ])
 
 

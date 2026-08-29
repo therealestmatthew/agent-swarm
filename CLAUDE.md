@@ -104,7 +104,7 @@ Tracked in `plan/agentic-sdlc-design-v0.5.md` §12, and live:
   promotion data.
 - **Structural Change SOP cadence** — repeated triggering against one file may itself be a
   governance signal.
-- **Modular file versioning** — now 12 companion files, not five. Do they version independently
+- **Modular file versioning** — now 13 companion files, not five. Do they version independently
   of the blueprint?
 - **Four more, carried forward from v0.1 and dropped without resolution at v0.2** (task granularity,
   Plan Writer dialogue depth, run manifest location, secrets posture) — see §12 for the full
