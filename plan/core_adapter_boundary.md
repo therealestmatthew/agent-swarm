@@ -34,7 +34,7 @@ It is not a dependency of the Core, and nothing in Stage 0 through Stage 2 of
 | Agent roles | Maker/Checker pairing, validator asymmetry, bounded loops, escalation ladder, Shadow Mode calibration and the verdict ledger |
 | Governance | The intent lock, serialization, the rejection protocol and its blocking-context envelope, conflict counters, registry promotion logic |
 | Verification | The *engine* that evaluates ordered rules first-match-wins, the LLM-fallback edge, anti-deletion baseline guards, gate evaluation and `GateResult` routing |
-| Safety | Budget metering and the ceiling halt, secret resolution and boundary scrubbing, evidence retention |
+| Safety | Budget metering and the ceiling halt, secret resolution and egress scrubbing, evidence retention |
 
 ### 1.2 Adapter — declared per target repo (Progressive Onboarding)
 
@@ -311,6 +311,7 @@ Hydration and baseline are therefore the same concept viewed twice:
   state.
 
 The tiered reset mandates (`test_harness_architecture.md` §1.2) govern what the baseline is captured against: for Tier 1 and Tier 2, construction is always fresh; for Tier 3, in-place cleaning via a warm pool is permitted, with state-leakage protection via the deterministic triage table. In all tiers, a reused environment that has not been verifiably reset cannot be re-hydrated to a known state any more reliably than it can be cleared to an empty one — the baseline is the declared post-hydration state, never an assumed empty.
+Furthermore, Adapters should cache state resets based on target isolation requirements (such as matching isolation unit boundaries) rather than re-computing them indiscriminately, provided doing so does not compromise hermeticity guarantees.
 
 ---
 

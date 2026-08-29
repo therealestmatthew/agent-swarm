@@ -65,6 +65,7 @@ Global run constraints that trigger a ceiling halt. These targets map to abstrac
 | Dollar cost ceiling | Full run | Set per org budget policy |
 | Wall-clock ceiling | Full run | Set per SLA for the target repo |
 | Phase 4 (swarm) sub-budget | Parallel swarm specifically | Largest share of the total — the most token-intensive phase |
+| Hermeticity verification cap | Verification phase | Limits compute waste from test randomization |
 
 On breach of any global ceiling: the Budget **Enforcer** issues a ceiling halt (see §4 for why not the Accountant). The pipeline pauses, current state is snapshotted (same discipline as the Structural Change SOP's pause step, `structural_change_runbook.md` §3), and a human is notified to either raise the ceiling and resume or abort the run. **A ceiling halt is never silent and never auto-resumes.** This guarantees a "Preserve and Resume" branch under crash recovery (see `crash_recovery.md`).
 

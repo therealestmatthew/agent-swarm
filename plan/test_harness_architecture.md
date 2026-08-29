@@ -30,6 +30,8 @@ The previous strict mandate of "construct fresh, never clean in place" has been 
 
 **State Leakage Protection:** To prevent the classic problem of state leakage from in-place cleaning (e.g., lingering service workers, IndexedDB, or leaked database connections), we rely entirely on the deterministic triage table (`infra_triage_matrix.md`). If a test passes in isolation but fails when run in the suite, the triage matrix automatically classifies it as state leakage. This makes the relaxed rule safe: the system functionally catches and flags leaky state resets rather than statically banning them at the cost of high overhead.
 
+**Hermeticity Verification Scope:** To control compute cost, hermeticity verification now enforces dependency-graph based scoped test execution rather than full suite randomization, driven by the `HermeticityTestScope` schema which bounds maximum permutations and limits testing only to subsets affected by changes.
+
 ### 1.3 Reset strategies are declared, not assumed
 
 The mechanism is therefore adapter data: `ResetStrategy` in `plan/contracts/governance.py`, named
@@ -59,6 +61,10 @@ The reference browser adapter's checks, which is what this table always was:
 | Open dialog/modal count | Nonzero |
 | Active WebSocket / pending fetch count | Nonzero |
 | Viewport dimensions | Differ from configured default |
+
+
+**DOM Quiescence and Filtering:**
+For browser testing, baseline capture must mandate a `DOMCaptureConfig`. "Quiescence" is defined strictly by a hard timeout on `await_hydration_ms` rather than subjective event loops. Volatile dynamic elements must be explicitly filtered out via `ignore_selectors` to prevent baseline false positives.
 
 A backend adapter's list is different in every row and identical in shape: open connections, temp
 files, registered signal handlers, module-registry delta. Any single mismatch sets the strategy's

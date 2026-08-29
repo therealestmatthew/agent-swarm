@@ -10,7 +10,7 @@ Parsing discipline: mixed. GateResult and Finding are agent-produced (Validator 
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal, Optional
+from typing import Literal, Any, Optional
 
 from pydantic import Field
 
@@ -57,14 +57,7 @@ class FailureSignature(BaseContract):
     # capture; the triage rules that read them are adapter data too. This exists because an
     # adapter cannot add fields to an extra="forbid" model without forking the schema per
     # repo -- exactly the drift this file exists to prevent.
-    signals: dict[str, bool | int | str] = Field(default_factory=dict)
-
-    # The two fields below are one adapter's signals, currently hard-coded into the universal
-    # envelope. They belong in `signals`. Relocating them is a non-additive schema change and
-    # goes through structural_change_runbook.md like any other -- so `signals` lands first,
-    # additively, and these stay until that gate is cleared.
-    dom_state_diff_from_baseline: bool
-    network_calls_over_threshold: int
+    signals: dict[str, Any] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -189,7 +182,6 @@ class VerdictLedgerEntry(BaseContract):
 
     entry_id: str = Field(..., description="Unique identifier for this ledger entry. Dispatch-path metering tags costs to this ID so Cost-per-Verdict and CPIC calculations remain available whether or not the Budget Accountant is running (budget_and_escalation_policy.md §4.3).")
     gate_result: GateResult = Field(..., description="The full GateResult produced by the validator — reviewer, passed, findings, applicability, and spec version. Stored in full so a later prompt change (§3) does not silently invalidate the precision data this row carries.")
-    reviewer_spec_version: str = Field(..., description="Version of the prompts/rules used")
     human_override: Optional[str] = Field(None, description="Tier 1: Explicit human verdict overriding or confirming the agent")
     integration_catch_outcome: Optional[bool] = Field(None, description="Tier 2: True if integration tests caught an issue on the approved code within the CI window")
     downstream_outcome: Optional[str] = Field(None, description="Tier 3: Optional manual notation of a production bug attributed to this verdict")

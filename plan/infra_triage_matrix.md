@@ -23,8 +23,8 @@ Captured by the test harness itself at the moment of failure — not reconstruct
 
 ```python
 from enum import Enum
-from typing import Literal
-from pydantic import BaseModel, ConfigDict
+from typing import Literal, Any
+from pydantic import BaseModel, ConfigDict, Field
 
 class FailureSignature(BaseModel, frozen=True):
     model_config = ConfigDict(extra="forbid")
@@ -42,17 +42,13 @@ class FailureSignature(BaseModel, frozen=True):
     isolated_rerun_outcome: Literal["passed", "failed_again", "not_yet_run"]
     # result of the automatic isolated re-run (design doc §6, step 1)
 
-    dom_state_diff_from_baseline: bool
-    # True if localStorage, cookies, open-modal state, or other
-    # session artifacts differ from the expected clean-start baseline
-    # at the moment the test began (see "Baseline snapshot" note below)
-
-    network_calls_over_threshold: int
-    # count of network calls exceeding the configured per-call
-    # latency threshold during this test's execution window
+    # Adapter-declared telemetry (core_adapter_boundary.md §2.2). Keys and value types are
+    # declared by the target repo's RepoDeclaration.signals and validated against it on
+    # capture; the triage rules that read them are adapter data too. This exists because an
+    # adapter cannot add fields to an extra="forbid" model without forking the schema per
+    # repo -- exactly the drift this file exists to prevent.
+    signals: dict[str, Any] = Field(default_factory=dict)
 ```
-
-**Note on `dom_state_diff_from_baseline`:** the exact capture point and comparison method are finalized in `test_harness_architecture.md` §1 — full teardown/rebuild per test, captured immediately after context creation against a canonical empty state. This note previously called it unfinalized and pointed at the core design doc's open questions; that was stale as of v0.4, which resolved it (see `agentic-sdlc-design-v0.5.md` §12).
 
 ---
 
@@ -62,7 +58,7 @@ Rules are evaluated **in order**. The first matching rule wins; if none match, t
 
 | Order | Condition | Classification | Routes to |
 |---|---|---|---|
-| 1 | `dom_state_diff_from_baseline == True` | **Infra — state leakage** (evaluated first; polluted state at t=0 isn't a timing question and shouldn't be shadowed by a timeout check below) | Environment/Infra queue |
+| 1 | `dom_state_diff_from_baseline == True` (after applying `DOMCaptureConfig.ignore_selectors` to filter volatile elements) | **Infra — state leakage** (evaluated first; polluted state at t=0 isn't a timing question and shouldn't be shadowed by a timeout check below) | Environment/Infra queue |
 | 2 | `configured_timeout_ms` is not `None` AND `elapsed_ms` within 10% of `configured_timeout_ms` AND `isolated_rerun_outcome == "passed"` | **Infra — timing** | Environment/Infra queue |
 | 3 | `network_calls_over_threshold > 0` AND `isolated_rerun_outcome == "passed"` | **Infra — network** | Environment/Infra queue |
 | 4 | `dom_state_diff_from_baseline == False` AND no timeout proximity AND `isolated_rerun_outcome == "failed_again"` | **Logic** | Task Dev (bounded loop, design doc §7) |

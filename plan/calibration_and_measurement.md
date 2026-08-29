@@ -8,7 +8,7 @@ doc_type: companion
 # Calibration and Measurement
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §11 (Measurement and Calibration) · §9.2 (Agent
-Gates — `code.review` promotion) · `agentic_sdlc_glossary.csv` (Shadow Mode) · `plan/contracts/verification.py`
+Gates — `code.review` promotion) · `agentic_sdlc_glossary.md` (Shadow Mode) · `plan/contracts/verification.py`
 (`GateResult.reviewer_spec_version`) · `plan/llm_output_normalization.md`
 
 **Status:** reinstated from `agentic-sdlc-design-v0.1.md` §8, absent v0.2 through v0.4. See
@@ -19,7 +19,7 @@ baseline, ledger, or threshold defined anywhere else.
 ## Purpose
 
 Without this file, the validator agents are unfalsifiable. Shadow Mode (design doc Agent Roster;
-`agentic_sdlc_glossary.csv`) says a new validator "cannot gate or block progression until their
+`agentic_sdlc_glossary.md`) says a new validator "cannot gate or block progression until their
 accuracy is calibrated against a baseline" — but nothing else in the design set says what the
 baseline is, how it's measured, or what crossing it looks like. This file is that missing half.
 

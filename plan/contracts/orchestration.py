@@ -308,3 +308,9 @@ class RecoveryManifest(BaseContract):
     run_id: str
     strategy: RecoveryStrategy
     recovered_phase: Phase | None = None
+
+
+class ExactSymbolLookup(BaseContract):
+    file_path: str = Field(..., description="Exact relative path to the target file")
+    symbol_name: str = Field(..., description="Exact class, function, or variable name to retrieve")
+

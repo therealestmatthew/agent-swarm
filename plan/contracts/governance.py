@@ -352,6 +352,11 @@ class RepoDeclaration(BaseContract):
     requested_secrets: list[SecretSpec] = Field(default_factory=list)
 
 
+class HermeticityTestScope(BaseContract):
+    max_permutations: int = Field(3, description="Maximum test permutations to run")
+    target_changed_only: bool = Field(True, description="Limit randomization to changed subsets")
+
+
 class EscalationConfig(BaseContract):
     """Configuration for when a loop escalates to a more capable model tier or halts."""
     escalate_to_opus_at_retry: int = Field(..., description="Retry index at which to switch from the current model to a higher tier")

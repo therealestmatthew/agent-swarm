@@ -37,7 +37,7 @@ answers.
 | `plan/structural_change_runbook.md` | Human-gated SOP for non-additive shared-file changes |
 | `plan/execution_isolation.md` | Why disjoint write ownership alone doesn't isolate reads; one worktree per task; shared-file materialization (§7) |
 | `plan/calibration_and_measurement.md` | Verdict ledger, Shadow Mode promotion criteria, agent-spec versioning |
-| `plan/agentic_sdlc_glossary.csv` | Term definitions used across the set — 64 terms, with Category and Tags columns |
+| `plan/agentic_sdlc_glossary.md` | Term definitions used across the set — 64 terms, with Category and Tags columns |
 | `plan/versions/` | Superseded design versions (v0.1–v0.4) and `REGRESSION.md`, the analysis behind v0.5 |
 | `archive/glass-box/` | The hackathon project this grew out of. Frozen — see its README. |
 | `AGENTIC_ARCHITECTURE_MANIFEST.md` | Every tracked file in the repo, one row each — description, summary, purpose. A snapshot: re-check it against `git ls-files` after any file is added or removed. |

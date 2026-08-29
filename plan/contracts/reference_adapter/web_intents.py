@@ -110,3 +110,7 @@ SharedFileIntent = (
     AddExport | AddRoute | AddProviderBinding
     | RenameExport | MoveRoute | DeprecateExport
 )
+
+class DOMCaptureConfig(BaseContract):
+    await_hydration_ms: int = Field(5000, description="Minimum time to wait for quiescence")
+    ignore_selectors: list[str] = Field(default_factory=list, description="CSS selectors to exclude from baseline diff")

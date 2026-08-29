@@ -57,6 +57,7 @@ from plan.contracts.governance import (
     EgressPayload,
     EscalationConfig,
     GovernancePolicy,
+    HermeticityTestScope,
     IntentOpSpec,
     IsolationUnit,
     LoopBudgetConfig,
@@ -76,6 +77,7 @@ from plan.contracts.adapter_surface import (
     WorktreeSyncResult,
 )
 from plan.contracts.orchestration import (
+    ExactSymbolLookup,
     HaltReason,
     IntentOutcome,
     IntentRejection,
@@ -96,6 +98,9 @@ from plan.contracts.verification import (
     NormalizationEvent,
     VerdictLedgerEntry,
 )
+from plan.contracts.reference_adapter.web_intents import (
+    DOMCaptureConfig,
+)
 
 __all__ = [
     # Base class
@@ -110,6 +115,7 @@ __all__ = [
     "RecoveryManifest",
     "RecoveryStrategy",
     "RejectionEdge",
+    "ExactSymbolLookup",
     # Governance
     "RepoDeclaration",
     "GovernancePolicy",
@@ -129,6 +135,7 @@ __all__ = [
     "SecretScrubberConfig",
     "EgressPayload",
     "ScrubbedEgressPayload",
+    "HermeticityTestScope",
     # Adapter surface
     "WorktreeSyncRequest",
     "WorktreeSyncResult",
@@ -141,4 +148,6 @@ __all__ = [
     "InvariantScope",
     "NormalizationEvent",
     "VerdictLedgerEntry",
+    # Reference Adapter
+    "DOMCaptureConfig",
 ]
