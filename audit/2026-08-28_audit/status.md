@@ -51,7 +51,7 @@ they touch entirely different files.
 | 6 | **C4** | completed | `477a2da` | 7 (see below) | Pull-based materialization at subprocess boundaries. New `adapter_surface.py` module, subprocess-only invariant, sync-starvation timeout. One surfaced item → `followups.md` (F12) |
 | 7 | **H8** | completed | (pending commit) | 4 | Companion doc, orchestration.py, cross-refs, F9/F10/F12 fixes |
 | 8 | **H2** | completed | `2dd00b7` | 3 (see below) | Parameterized loop ceilings (`max_cost_units`), CEILING_HALT semantics locked. Resolved F1. |
-| 9 | H1 | not_started | — | — | — |
+| 9 | **H1** | completed | `da6bec1` | 3 (see below) | Tier 1/2/3 metrics, CPIC metric, CI window/overlap heuristics locked. |
 | 10 | H3+H4 | not_started | — | — | — |
 | 11 | H5 | not_started | — | — | — |
 | 12 | H7 | not_started | — | — | — |
@@ -339,3 +339,14 @@ One commit (`2dd00b7`). Net: +32 / -14 across 4 files.
 - Hitting a loop-specific cost ceiling before `max_retries` is reached immediately triggers a human `CEILING_HALT`, maintaining consistency with global cost ceilings.
 
 **Follow-ups resolved:** F1 (budget_ceilings missing from schema).
+
+### H1 — Calibration metrics (completed 2026-08-28)
+
+One commit (`da6bec1`). Net: +45 / -23 across 3 files.
+
+- **`da6bec1`** tiered calibration: Added `VerdictLedgerEntry` to `plan/contracts/verification.py`. Rewrote `calibration_and_measurement.md` to define Tiers 1-3, set the Shadow Mode promotion bar at N=50 with 95% Tier 1 / 5% Tier 2 thresholds, and redefined true-cost as Cost-per-Integration-Catch (CPIC). Updated `budget_and_escalation_policy.md` to tie dispatch metering to ledger entries.
+
+**Design decisions locked in during human gate:**
+- Schema (`VerdictLedgerEntry`) placed in `plan/contracts/verification.py`.
+- CI Window for Tier 2 evaluation defined purely by immediate post-merge CI pipeline success.
+- Tier 2 Attribution implemented via a simple overlap heuristic (modified files vs. failing test suite).
