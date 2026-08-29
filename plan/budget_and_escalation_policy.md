@@ -17,12 +17,12 @@ This file owns the exact thresholds the core design document only names in princ
 
 ## 1. Loop Ceilings
 
-| Loop-back edge | Ceiling | On exhaustion |
-|---|---|---|
-| Plan Writer ↔ Plan Reviewer | `max_retries=3` | Escalate to human plan review |
-| Task Dev ↔ Code Reviewer | `max_retries=3` | Halt, route to human (after model-tier escalation within the ladder — see §2) |
-| Test Runner → Test Investigator → Task Dev | `max_retries=3` | Escalate to human triage |
-| Integrator → Merge Conflict → Task Decomposer | `max_retries=3` | Halt and escalate as a boundary failure (Principle 8) |
+| Loop-back edge | Ceiling | Target Budget (Cost Units) | On exhaustion |
+|---|---|---|---|
+| Plan Writer ↔ Plan Reviewer | `max_retries=2` | 2.00 | Escalate to human plan review |
+| Task Dev ↔ Code Reviewer | `max_retries=3` | 15.00 | Halt, route to human (after model-tier escalation within the ladder — see §2) |
+| Test Runner → Test Investigator → Task Dev | `max_retries=4` | 10.00 | Escalate to human triage |
+| Integrator → Merge Conflict → Task Decomposer | `max_retries=2` | 5.00 | Halt and escalate as a boundary failure (Principle 8) |
 
 ---
 
@@ -31,10 +31,11 @@ This file owns the exact thresholds the core design document only names in princ
 ### 2.1 Standard ladder — competence-type loops
 For loops where the failure plausibly reflects the current agent/model not yet succeeding, rather than a structural problem:
 
-1. **Re-gather context** — first retry assumes the initial context injection may have been incomplete; the Context Gatherer re-runs with the failure as an added signal.
-2. **Re-spec / retry at current model tier** — a second attempt at the same task, same model, covering stochastic variance.
-3. **Escalate model tier** (e.g., Sonnet → Opus) — used once retries at the current tier are exhausted without success.
-4. **Halt to human** — final rung; the loop has exhausted its ceiling (§1) without a passing result.
+An "iteration" is defined as a full traversal of the escalation ladder up to the model escalation step. One "retry" equals the execution of these sub-steps:
+1. **Re-gather context** — first retry assumes the initial context injection may have been incomplete.
+2. **Re-spec / retry at current model tier** — a second attempt at the same task.
+3. **Escalate model tier** (e.g., Sonnet → Opus) — parameterized via `EscalationConfig.escalate_to_opus_at_retry`.
+4. **Halt to human** — parameterized via `EscalationConfig.require_human_halt_at_retry`. If the loop fails after model escalation, the iteration concludes.
 
 Applies to: Plan Writer ↔ Plan Reviewer, Task Dev ↔ Code Reviewer.
 
@@ -54,7 +55,7 @@ Also skips model-tier escalation by default. A Test Investigator loop back to Ta
 
 ## 3. Cost Ceilings
 
-Global run constraints that trigger a ceiling halt. Illustrative starting values — tune to your org's actual cost tolerance and repo size before relying on these:
+Global run constraints that trigger a ceiling halt. These targets map to abstract cost units (where the Adapter handles the conversion to actual currency like USD). Illustrative starting values — tune to your org's actual cost tolerance and repo size before relying on these:
 
 | Constraint | Scope | Notes |
 |---|---|---|
@@ -63,7 +64,9 @@ Global run constraints that trigger a ceiling halt. Illustrative starting values
 | Wall-clock ceiling | Full run | Set per SLA for the target repo |
 | Phase 4 (swarm) sub-budget | Parallel swarm specifically | Largest share of the total — the most token-intensive phase |
 
-On breach of any ceiling: the Budget **Enforcer** issues a ceiling halt (see §4 for why not the Accountant). The pipeline pauses, current state is snapshotted (same discipline as the Structural Change SOP's pause step, `structural_change_runbook.md` §3), and a human is notified to either raise the ceiling and resume or abort the run. **A ceiling halt is never silent and never auto-resumes.** This guarantees a "Preserve and Resume" branch under crash recovery (see `crash_recovery.md`).
+On breach of any global ceiling: the Budget **Enforcer** issues a ceiling halt (see §4 for why not the Accountant). The pipeline pauses, current state is snapshotted (same discipline as the Structural Change SOP's pause step, `structural_change_runbook.md` §3), and a human is notified to either raise the ceiling and resume or abort the run. **A ceiling halt is never silent and never auto-resumes.** This guarantees a "Preserve and Resume" branch under crash recovery (see `crash_recovery.md`).
+
+If a specific loop hits its `max_cost_units` ceiling before `max_retries` is reached, it DOES NOT fail silently. It immediately triggers a human `HaltReason.CEILING_HALT`, strictly consistent with global ceilings.
 
 ---
 

@@ -300,6 +300,20 @@ class RepoDeclaration(BaseContract):
     requested_secrets: list[SecretSpec] = Field(default_factory=list)
 
 
+class EscalationConfig(BaseContract):
+    """Configuration for when a loop escalates to a more capable model tier or halts."""
+    escalate_to_opus_at_retry: int = Field(..., description="Retry index at which to switch from the current model to a higher tier")
+    require_human_halt_at_retry: int = Field(..., description="Retry index at which to halt and request human intervention")
+
+
+class LoopBudgetConfig(BaseContract):
+    """Configuration for a specific loop's retry limits and cost bounds."""
+    loop_type: str = Field(..., description="Identifier for the loop (e.g., 'code_review', 'test_fix')")
+    max_retries: int = Field(..., description="Maximum allowed loop iterations before hard failure")
+    max_cost_units: float = Field(..., description="Maximum cumulative cost units for this loop instance")
+    escalation_policy: EscalationConfig
+
+
 class GovernancePolicy(BaseContract):
     """Control-plane half of the adapter contract. Lives outside every target repo, owned by
     whoever owns the pipeline's risk posture, changed rarely at a human governance gate.
@@ -329,6 +343,7 @@ class GovernancePolicy(BaseContract):
 
     # Spend and escalation posture. Illustrative bounds live in
     # budget_and_escalation_policy.md; these are where a run actually reads them.
+    budget_ceilings: dict[str, LoopBudgetConfig] = Field(default_factory=dict)
     max_resource_footprint_mb: int | None = None
     concurrency_cap: int | None = None
     model_tier_allowlist: list[str] = Field(default_factory=list)
