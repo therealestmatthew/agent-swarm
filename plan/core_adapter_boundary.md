@@ -36,12 +36,19 @@ It is not a dependency of the Core, and nothing in Stage 0 through Stage 2 of
 | Verification | The *engine* that evaluates ordered rules first-match-wins, the LLM-fallback edge, anti-deletion baseline guards, gate evaluation and `GateResult` routing |
 | Safety | Budget metering and the ceiling halt, secret resolution and boundary scrubbing, evidence retention |
 
-### 1.2 Adapter — declared per target repo
+### 1.2 Adapter — declared per target repo (Progressive Onboarding)
+
+Adapters onboard in stages (Levels 0 through 3). A repo does not need a full schema to start.
+
+- **Level 0 (Ad-Hoc / Chat):** No adapter needed. The agent acts as a simple chat assistant with read access.
+- **Level 1 (Execution):** Minimal adapter. Declares the image reference, basic bootstrap commands, and Tier 1 (Unit) tests.
+- **Level 2 (State & Triage):** Adds Tier 2 (Integration) tests, Reset Strategies (e.g., transaction rollbacks), and telemetry/triage rules for structured failure handling.
+- **Level 3 (Full Intent & Pooling):** Adds Tier 3 (Browser) tests with warm pools (`browser_pool_checkout`), Additive Intent operations, custom hooks, and fixture hydration.
 
 | Area | Adapter declares |
 |---|---|
 | Execution | Isolation unit (worktree or container), image reference, bootstrap commands, port bindings, per-unit resource footprint |
-| Verification | Test tiers, their commands, whether each is hermetic, and the reset strategy wrapping each test — what it recreates, what host resources it needs, and what it costs |
+| Verification | Test tiers (`execution_tier`), their commands, whether each is hermetic, and the reset strategy wrapping each test — what it recreates, what host resources it needs, and what it costs |
 | Vocabulary | Its Additive Intent operations, their collision keys, and the transformer that applies each |
 | Telemetry | The signals its harness can capture, and the ordered triage rules written over those signals |
 | Hydration | Named fixture states and the hooks that apply, verify, and tear them down |

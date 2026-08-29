@@ -20,54 +20,20 @@ This file owns the mechanics of the verification layer that the core design docu
 ### 1.1 The problem this solves
 `FailureSignature.dom_state_diff_from_baseline` (see `plan/contracts/verification.py`) is only trustworthy if "baseline" is unambiguous and the mechanism that produces it can't itself leak state. This section defines both.
 
-### 1.2 Capture rule: construct fresh, never clean in place
+### 1.2 Execution Tiers and Reset Mandates
 
-**The universal rule:** every test gets a **freshly constructed instance** of whatever holds its
-state. Reusing an instance and clearing it is explicitly disallowed as the sole isolation mechanism,
-at any scope.
+The previous strict mandate of "construct fresh, never clean in place" has been relaxed in favor of tiered execution. Some environments (like Selenium) face start-up times in seconds rather than milliseconds. Instead of universally enforcing a slow cold-start per test, testing is organized into tiers (`TestTier.execution_tier`):
 
-**Why, and why it generalizes:** clearing routines only reach what they explicitly enumerate. In a
-browser, service workers, cache storage, IndexedDB, open native dialogs, and in-flight download
-state routinely fall outside that enumeration and persist silently. The same shape recurs everywhere
-— a reused Python process leaks module globals, import side effects, and monkeypatches; a reused
-database connection leaks session settings and transaction state; a reused temp directory leaks
-files. A leaky clearing mechanism doesn't just cause occasional flakiness: it undermines the
-clean-state signal the triage matrix depends on, and `infra_triage_matrix.md`'s rule ordering
-(state-leakage checked *before* timing) collapses if that signal can be wrong.
+- **Tier 1 (Unit):** (`tier1_unit`) Fully hermetic. Fast, in-process or pure-memory resets.
+- **Tier 2 (Integration):** (`tier2_integration`) Transaction rollbacks or local service state resets.
+- **Tier 3 (Browser/E2E):** (`tier3_browser`) May utilize a warm **browser pool** (via the `browser_pool_checkout` strategy) to dramatically lower per-test cost. In-place cleaning is permitted here.
 
-**What is *not* universal is the mechanism.** This section previously mandated:
-
-```
-before each test:  browser.new_context()
-after each test:   context.close()
-```
-
-That is Playwright's API, hard-coded into a document that governs every repo. **Selenium has no
-`new_context()`.** Its nearest honest equivalent is a fresh WebDriver process with a fresh
-`--user-data-dir`; `delete_all_cookies()` plus a `localStorage.clear()` is precisely the in-place
-clearing this rule forbids, and a new session against a reused browser process still shares the
-profile, the cache, and any registered service worker. The rule survives; the mechanism was one
-framework's, and one framework's price:
-
-| Mechanism | Cost per test | Genuinely clean? |
-|---|---|---|
-| Playwright `browser.new_context()` | milliseconds | Yes |
-| Selenium: clear cookies + storage in place | ~0 | **No** — forbidden as sole mechanism |
-| Selenium: new session, reused browser process | tens of ms | **No** — shares profile, cache, service workers |
-| Selenium: new driver process + fresh `--user-data-dir` | ~1–3 **seconds** | Yes |
-
-§1.2 previously stated the cost tradeoff as "accepted deliberately." That acceptance was priced for
-milliseconds. At seconds per test it is a different decision — a 500-test browser suite spends
-minutes on browser startup alone — and it interacts directly with the wall-clock ceiling
-(`budget_and_escalation_policy.md` §3) and the concurrency derivation
-(`core_adapter_boundary.md` §3.6). Pretending the two cost the same is how a design accepts a
-tradeoff it never actually made.
+**State Leakage Protection:** To prevent the classic problem of state leakage from in-place cleaning (e.g., lingering service workers, IndexedDB, or leaked database connections), we rely entirely on the deterministic triage table (`infra_triage_matrix.md`). If a test passes in isolation but fails when run in the suite, the triage matrix automatically classifies it as state leakage. This makes the relaxed rule safe: the system functionally catches and flags leaky state resets rather than statically banning them at the cost of high overhead.
 
 ### 1.3 Reset strategies are declared, not assumed
 
 The mechanism is therefore adapter data: `ResetStrategy` in `plan/contracts/governance.py`, named
-per tier by `TestTier.reset_strategy_id`. A strategy declares what it recreates, what the host must
-give it (`ResetResource`), what it costs, and what its clean-state check actually inspects.
+per tier by `TestTier.reset_strategy_id`. A strategy declares its `strategy_type` (e.g., `browser_pool_checkout`), `pool_size` if applicable, what it recreates, what the host must give it (`ResetResource`), what it costs, and what its clean-state check actually inspects.
 
 `typical_cost_ms` is load-bearing rather than documentation. Core feeds it into the wall-clock
 estimate and the concurrency ceiling, so a two-second reset is a budget fact the pipeline reasons

@@ -118,6 +118,8 @@ class ResetStrategy(BaseContract):
     # checks cookies and localStorage; a backend adapter checks open connections and temp
     # files. Any single mismatch sets the clean-state signal False.
     clean_state_checks: list[str] = Field(default_factory=list)
+    strategy_type: Literal["process_restart", "transaction_rollback", "browser_pool_checkout", "full_hermetic"] = "full_hermetic"
+    pool_size: int | None = None
 
 
 class TestTier(BaseContract):
@@ -138,6 +140,8 @@ class TestTier(BaseContract):
     # Which ResetStrategy wraps each test in this tier. Absent means the tier needs no reset
     # beyond a fresh process, which Core will hold it to rather than assume.
     reset_strategy_id: str | None = None
+    execution_tier: Literal["tier1_unit", "tier2_integration", "tier3_browser"] = "tier1_unit"
+    is_required: bool = True
 
 
 class IntentOpSpec(BaseContract):
