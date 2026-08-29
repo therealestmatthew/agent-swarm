@@ -55,7 +55,7 @@ they touch entirely different files.
 | 10 | **H3+H4** | completed | `401e24e` | 4 (see below) | Tiered execution (Tiers 1-3), Level 0-3 progressive onboarding, schema integration locked. |
 | 11 | **H5** | completed | `5e2bb40` | 6 + 17 frontmatter (see below) | Three-tier structural change governance. SharedFileIntent rename, pending_tier2_review, max_intents_per_shared_file. |
 | 12 | **H7** | completed | `a3e5213` | 7 (see below) | Two-Layer Collision Model. SemanticAnalyzerSpec, IntentSubmission, `semantic_collision` reason. No followups surfaced. |
-| 13 | M1–M6 | not_started | — | — | Medium findings, internally parallelizable |
+| 13 | M1–M6 | completed | `d81b007` | 17 (see below) | Medium findings (glossary, manifests, context, triage). Also resolved F2, F3, F6, F11, F13. |
 
 ## Per-remediation detail
 
@@ -468,3 +468,23 @@ One commit (`401e24e`). Net: +138 / -47 across 4 files (and 1 new file).
 - State Leakage: Relied on deterministic triage (`infra_triage_matrix.md`) rather than adding stochastic monkey testers.
 - Browser Pool Lifecycle: Owned by the adapter test harness; crashes transparently trigger a cold start.
 - Cost Attribution: Warm pool costs are treated as fixed amortized overhead rather than dynamically billed to specific agents in the dispatch path.
+
+### M1-M6 — Medium findings (completed 2026-08-28)
+
+One commit (`d81b007`) with Maker/Checker sub-agent pair, plus a second Maker/Checker pair to resolve missing `__init__.py` exports and broken sync script. Net: modifications across 17 files.
+
+- **`d81b007`** M1-M6 resolution: 
+  - **M1 (Glossary)**: Converted `plan/agentic_sdlc_glossary.csv` to `plan/agentic_sdlc_glossary.md` and updated all referencing documents (`agentic-sdlc-design-v0.5.md`, manifests).
+  - **M2 (Inventory Files)**: Explicitly opted not to touch the manifests as they were already correctly scoped (no frontmatter rules in `AGENTIC_ARCHITECTURE_MANIFEST.md`, no agent inventories in `FRONTMATTER_MANIFEST.md`), avoiding destructive regressions. Modified `scripts/sync_counts.py` to parse the new markdown glossary instead of the CSV.
+  - **M3+M4 (Context Retrieval)**: Added `ExactSymbolLookup` to `plan/contracts/orchestration.py` to bypass broad vector search for known symbols. Updated `plan/context_retrieval_strategy.md`.
+  - **M5 (Hermeticity Cost)**: Added `HermeticityTestScope` to `plan/contracts/governance.py` and updated `plan/test_harness_architecture.md` to scope hermetic verification strictly via dependency-graph rather than full combinatorics.
+  - **M6 (DOM Baseline)**: Added `DOMCaptureConfig` to `plan/contracts/reference_adapter/web_intents.py` featuring a hard timeout (`await_hydration_ms`) and `ignore_selectors` list to filter volatile/animated nodes. Updated `plan/infra_triage_matrix.md` accordingly.
+  - **Housekeeping**: Resolved pending items F2, F3, F6, F11, F13 in the same pass.
+
+**Design decisions locked in during human gate:**
+- `check_frontmatter.py` remains a strict enforcement check and will not automatically inject default schemas.
+- Schemas placed contextually: `ExactSymbolLookup` in `orchestration.py`, `HermeticityTestScope` in `governance.py`, `DOMCaptureConfig` in `reference_adapter/web_intents.py`.
+- DOM Quiescence relies strictly on explicit `ignore_selectors` and a hard timeout, avoiding stochastic percentage-based evaluation of DOM changes.
+
+**Follow-ups resolved:** F2 (roadmap status), F3 (FailureSignature hardcoded fields removed), F6 (boundary scrubbing renamed to egress scrubbing), F11 (coverage meta-gate assigned to Core Orchestrator), F13 (redundant VerdictLedgerEntry reviewer_spec_version removed).
+
