@@ -105,6 +105,18 @@ def companion_file_count() -> int:
     ])
 
 
+def agent_card_count() -> int:
+    """One card per agent in plan/agents/. README.md is the index and card_schema.md is the
+    schema -- neither describes an agent. types/ is a subdirectory and so is already excluded
+    by the non-recursive glob. Whether each card corresponds to a real roster row is
+    scripts/check_agent_cards.py's job; this only counts them."""
+    cards_dir = ROOT / "plan" / "agents"
+    if not cards_dir.is_dir():
+        return 0
+    excluded = {"README.md", "card_schema.md"}
+    return len([p for p in cards_dir.glob("*.md") if p.name not in excluded])
+
+
 def live_human_gate_count() -> int:
     s = _v5_doc()
     block = s.split("### 9.3 Human gates")[1].split("\n---")[0]
@@ -141,6 +153,11 @@ REGISTRY: list[Count] = [
     Count("companion_file_count", companion_file_count, [
         t("plan/agentic-sdlc-design-v0.5.md", r"mechanics live in (\d+) companion files"),
         t("CLAUDE.md", r"now (\d+) companion files, not five"),
+    ]),
+    Count("agent_card_count", agent_card_count, [
+        t("plan/agents/README.md", r"5 Executors = (\d+)\."),
+        t("plan/agents/README.md", r"(\d+) agents: \d+ in"),
+        t("plan/agent_taxonomy.md", r"23 existing agents \+ 2 proposed = \*\*(\d+) total\*\*"),
     ]),
     Count("live_human_gate_count", live_human_gate_count, [
         t("plan/implementation_roadmap.md", r"(\d+) human gates exist; nothing lets a human"),

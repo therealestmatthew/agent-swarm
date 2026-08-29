@@ -151,10 +151,10 @@ that every card's declared type matches this table.
 | Plan Writer | Maker | Paired with Plan Reviewer |
 | Task Decomposer | Maker | Paired with implicit structural review; owns Structural Change SOP |
 | Test Author | Maker | Paired with Baseline Guard |
-| Task Dev (Swarm) | Maker | Paired with Code Reviewer; emits shared-file intents rather than direct edits |
+| Task Dev Swarm | Maker | Paired with Code Reviewer; emits shared-file intents rather than direct edits |
 | CI Cleanup | Maker | Lint/format pass; reviewed implicitly by Code Reviewer |
 | Plan Reviewer | Checker | Paired with Plan Writer |
-| Security Reviewer (plan-time) | Checker | Paired with Plan Writer at plan-approval gate |
+| Security Review (plan-time) | Checker | Paired with Plan Writer at plan-approval gate |
 | Code Reviewer | Checker | Paired with Task Dev; Shadow Mode during calibration |
 | Baseline Guard | Checker | Paired with Test Author; anti-deletion enforcement |
 | Test Investigator | Checker | Judgment fallback for ambiguous `FailureSignature`; paired with Test Runner output |

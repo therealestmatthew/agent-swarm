@@ -9,7 +9,7 @@ layer: repo-meta
 # Agentic Architecture Manifest
 
 A complete inventory of every file in this repository, as of `plan/agentic-sdlc-design-v0.5.md`.
-92 tracked files, spanning two projects: the live Agentic SDLC design (`plan/`) and the frozen
+93 tracked files, spanning two projects: the live Agentic SDLC design (`plan/`) and the frozen
 hackathon project it grew out of (`archive/glass-box/`). Repo history runs 2026-08-25 to present.
 
 **Reading this table:** *Description* is what the file literally is (form/type). *Summary* is what's
