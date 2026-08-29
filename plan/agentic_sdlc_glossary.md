@@ -1,3 +1,10 @@
+---
+title: Agentic SDLC Glossary
+status: live
+part_of: agentic-sdlc
+doc_type: reference
+---
+
 # Agentic SDLC Glossary
 
 ## Additive Intents
