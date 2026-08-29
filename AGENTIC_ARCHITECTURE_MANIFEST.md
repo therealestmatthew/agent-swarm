@@ -137,9 +137,14 @@ The Personal and Team Optimization adapters: the second and third reference adap
 ## `audit/2026-08-28_audit/` — Adversarial Audit
 
 The audit report, its feedback and question responses, and 13 remediation records keyed `C1`–`C5`,
-`H1`–`H8`, `M1`–`M6`, plus session trackers. A second finding register, independent of the
-roadmap's `D`/`R` IDs — the two have never been reconciled against each other, which is itself
+`H1`–`H8`, `M1`–`M6`, plus session trackers and prompts. A second finding register, independent of
+the roadmap's `D`/`R` IDs — the two have never been reconciled against each other, which is itself
 worth noting.
+
+Listed collectively, for the same reason as the agent cards above: the records are named by their
+finding ID and `status.md` already indexes them, so a row each here would be a second index nothing
+keeps in sync. **These are the only two places this manifest departs from one row per file**, and
+both say so.
 
 ---
 
