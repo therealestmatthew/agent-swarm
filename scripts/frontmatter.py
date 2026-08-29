@@ -50,7 +50,7 @@ DOC_TYPES = (
 # Which side of the Core/Adapter boundary a document sits on. `core` is the universal
 # orchestrator; each `adapter-*` is one domain's declared nouns; `shared` is a doc that
 # genuinely spans both and says so per-section; `repo-meta` is repo housekeeping that
-# classifies neither. See plan/core_vs_adapter.md for the per-file verdicts and the evidence.
+# classifies neither. See design/plans/core_vs_adapter.md for the per-file verdicts and the evidence.
 LAYERS = (
     "core", "adapter-sdlc", "adapter-personal", "adapter-team", "shared", "repo-meta",
 )

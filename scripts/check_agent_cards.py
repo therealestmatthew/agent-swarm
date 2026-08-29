@@ -2,9 +2,9 @@
 
 Three files describe the same 25 agents:
 
-    plan/agentic-sdlc-design-v0.5.md  §2   -- the roster: who exists, and their role
-    plan/agent_taxonomy.md            §2   -- the type assigned to each
-    plan/agents/*.md                       -- one card per agent, the detail
+    design/plans/agentic-sdlc-design-v0.5.md  §2   -- the roster: who exists, and their role
+    design/plans/agent_taxonomy.md            §2   -- the type assigned to each
+    design/plans/agents/*.md                       -- one card per agent, the detail
 
 Nothing kept them agreeing. The taxonomy's own summary line read "23 existing + 1 proposed = 24
 total" while its type counts summed to 25 and its table had 25 rows, and that survived until
@@ -34,14 +34,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import frontmatter as fm  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-BLUEPRINT = ROOT / "plan" / "agentic-sdlc-design-v0.5.md"
-TAXONOMY = ROOT / "plan" / "agent_taxonomy.md"
-CARDS_DIR = ROOT / "plan" / "agents"
+BLUEPRINT = ROOT / "design" / "plans" / "agentic-sdlc-design-v0.5.md"
+TAXONOMY = ROOT / "design" / "plans" / "agent_taxonomy.md"
+CARDS_DIR = ROOT / "design" / "plans" / "agents"
 # Adapter agent cards. These have no row in the SDLC roster and never will -- they belong to a
 # different adapter -- so they are checked for schema conformance only. That check is the point:
 # these cards fill the same schema as the SDLC ones, and a required field only an SDLC agent can
 # fill would be a Core leak hiding in the card format. See optimization/charter.md §6.
-ADAPTER_CARD_DIRS = [ROOT / "plan" / "optimization" / "agents"]
+ADAPTER_CARD_DIRS = [ROOT / "design" / "plans" / "optimization" / "agents"]
 
 TYPES = ("Orchestrator", "Maker", "Checker", "Provider", "Archivist", "Executor")
 
@@ -49,7 +49,7 @@ TYPES = ("Orchestrator", "Maker", "Checker", "Provider", "Archivist", "Executor"
 # carry status: draft; they enter the roster when the blueprint adopts them.
 PROPOSED = {"Vault Scribe", "Vault Checker"}
 
-# Files under plan/agents/ that are not agent cards.
+# Files under design/plans/agents/ that are not agent cards.
 NOT_A_CARD = {"README.md", "card_schema.md"}
 
 REQUIRED_SECTIONS = ("Type", "Pairing", "Purpose", "Inputs", "Outputs", "Write scope", "Layer")
@@ -122,7 +122,7 @@ def main() -> int:
     # 1. every roster row has a card
     for agent in roster:
         if agent not in cards:
-            errors.append(f"roster agent '{agent}' has no card in plan/agents/")
+            errors.append(f"roster agent '{agent}' has no card in design/plans/agents/")
 
     # 2. every card maps to a roster row (or is a declared proposal)
     for name, (path, _, fields) in cards.items():

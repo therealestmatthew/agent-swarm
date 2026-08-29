@@ -5,7 +5,7 @@ part_of: agentic-sdlc
 doc_type: blueprint
 layer: adapter-sdlc
 version: "0.1"
-superseded_by: plan/versions/agentic-sdlc-design-v0.2.md
+superseded_by: design/plans/versions/agentic-sdlc-design-v0.2.md
 ---
 
 # Agentic SDLC Orchestration — Design Proposal
