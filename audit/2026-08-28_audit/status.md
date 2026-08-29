@@ -52,7 +52,7 @@ they touch entirely different files.
 | 7 | **H8** | completed | (pending commit) | 4 | Companion doc, orchestration.py, cross-refs, F9/F10/F12 fixes |
 | 8 | **H2** | completed | `2dd00b7` | 3 (see below) | Parameterized loop ceilings (`max_cost_units`), CEILING_HALT semantics locked. Resolved F1. |
 | 9 | **H1** | completed | `da6bec1` | 3 (see below) | Tier 1/2/3 metrics, CPIC metric, CI window/overlap heuristics locked. |
-| 10 | H3+H4 | not_started | — | — | — |
+| 10 | **H3+H4** | completed | `401e24e` | 4 (see below) | Tiered execution (Tiers 1-3), Level 0-3 progressive onboarding, schema integration locked. |
 | 11 | H5 | not_started | — | — | — |
 | 12 | H7 | not_started | — | — | — |
 | 13 | M1–M6 | not_started | — | — | Medium findings, internally parallelizable |
@@ -350,3 +350,15 @@ One commit (`da6bec1`). Net: +45 / -23 across 3 files.
 - Schema (`VerdictLedgerEntry`) placed in `plan/contracts/verification.py`.
 - CI Window for Tier 2 evaluation defined purely by immediate post-merge CI pipeline success.
 - Tier 2 Attribution implemented via a simple overlap heuristic (modified files vs. failing test suite).
+
+### H3+H4 — Tiered execution & onboarding (completed 2026-08-28)
+
+One commit (`401e24e`). Net: +138 / -47 across 4 files (and 1 new file).
+
+- **`401e24e`** tiered execution: Added `strategy_type` and `pool_size` to `ResetStrategy`, and `execution_tier` and `is_required` to `TestTier` inside `plan/contracts/governance.py`. Updated `test_harness_architecture.md` and `core_adapter_boundary.md` to introduce Tiers 1-3 execution and Levels 0-3 progressive onboarding. Created `adapter_onboarding.md` detailing the transition with a Python Web App starter template.
+
+**Design decisions locked in during human gate:**
+- Schema integration: Modified existing `TestTier` and `ResetStrategy` in `governance.py` instead of fragmenting into separate schemas.
+- State Leakage: Relied on deterministic triage (`infra_triage_matrix.md`) rather than adding stochastic monkey testers.
+- Browser Pool Lifecycle: Owned by the adapter test harness; crashes transparently trigger a cold start.
+- Cost Attribution: Warm pool costs are treated as fixed amortized overhead rather than dynamically billed to specific agents in the dispatch path.
