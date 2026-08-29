@@ -33,6 +33,7 @@ answers.
 | `plan/test_harness_architecture.md` | Baseline capture, Protocol-fake test double standards, diff-scoped mutation testing |
 | `plan/context_retrieval_strategy.md` | Context Gatherer search heuristics and token budgets |
 | `plan/budget_and_escalation_policy.md` | Loop ceilings, the escalation ladder, cost ceilings |
+| `plan/crash_recovery.md` | Startup Reconciliation Protocol, orphan cleanup, shared/ branch integrity, resume decision tree |
 | `plan/structural_change_runbook.md` | Human-gated SOP for non-additive shared-file changes |
 | `plan/execution_isolation.md` | Why disjoint write ownership alone doesn't isolate reads; one worktree per task; shared-file materialization (§7) |
 | `plan/calibration_and_measurement.md` | Verdict ledger, Shadow Mode promotion criteria, agent-spec versioning |
@@ -47,7 +48,7 @@ answers.
 The blueprint deliberately splits mechanics out into companion files. Keep that split: if a
 threshold, schema, or capture rule is being written into the core document, it belongs in a
 companion instead. v0.5 added two companions (`execution_isolation.md`,
-`calibration_and_measurement.md`) for exactly this reason rather than growing §1's principle text.
+`calibration_and_measurement.md`) for exactly this reason rather than growing §1's principle text. Now 9 companion files, not five.
 
 ## Principles that shape every decision
 
@@ -102,7 +103,7 @@ Tracked in `plan/agentic-sdlc-design-v0.5.md` §12, and live:
   promotion data.
 - **Structural Change SOP cadence** — repeated triggering against one file may itself be a
   governance signal.
-- **Modular file versioning** — now 8 companion files, not five. Do they version independently
+- **Modular file versioning** — now 11 companion files, not five. Do they version independently
   of the blueprint?
 - **Four more, carried forward from v0.1 and dropped without resolution at v0.2** (task granularity,
   Plan Writer dialogue depth, run manifest location, secrets posture) — see §12 for the full

@@ -103,6 +103,9 @@ The Core Orchestrator's entire state across all eight phases is a `RunManifest` 
 
 Agent-produced outputs (Validator verdicts, additive intents) pass through a **normalization layer** before entering Core's typed pipeline. This layer recurses through the graph, stripping and logging hallucinated extra fields before strict validation. See `plan/llm_output_normalization.md` for full specification.
 
+### Step 0: Startup Reconciliation
+Before entering any phase, the `StartupReconciler` executes the Crash Recovery protocol to handle abandoned runs, orphans, and resume decisions. See `crash_recovery.md` for the full Startup Reconciliation Protocol.
+
 ### Phase 1 — Planning & Context (Gating)
 Context Gatherer pulls targeted context into a separate context window (`context_retrieval_strategy.md`). Plan Writer produces a plan; Plan Reviewer adversarially reviews it (bounded loop, §7). Security Review runs a plan-time pass. The Invariant Curator injects relevant constraints into the approval step. A human gate approves the plan.
 
@@ -146,7 +149,7 @@ The Intent Service therefore maintains a **rejection graph** alongside the inten
 
 Some deadlocks never close a full cycle — two tasks that repeatedly collide on the same resource without either holding a lock the other observes, for example. To catch those, the service also maintains a per-`(rejected_task, blocking_task, resource_key)` counter; when the counter exceeds `GovernancePolicy.max_mutex_rejections` (illustrative default: 3), the tuple is classified as a `deadlock_cycle` even without a full graph cycle. Policy-tunable per repo, because the appropriate threshold depends on how the adapter's intent vocabulary shapes retry semantics.
 
-On detection, the Intent Service returns `IntentRejection` with `reason = "deadlock_cycle"` and `deadlock_cycle` populated with the involved task IDs to every task in the cycle. Those tasks fail via the existing per-task failure path — they drop out of `RunManifest.active_task_ids`, their worktrees are torn down, and the failure is recorded in the event log. Other swarm tasks continue unaffected: this is a boundary failure scoped to the deadlocked set, not a run-level halt. `HaltReason.BOUNDARY_FAILURE` is only raised if the cascade empties `active_task_ids` or otherwise blocks phase progress. `RejectionEdge`s are persisted on `RunManifest.rejection_graph_edges` so a crashed-and-resumed run cannot silently re-enter a deadlock it had already detected (see H8 crash recovery).
+On detection, the Intent Service returns `IntentRejection` with `reason = "deadlock_cycle"` and `deadlock_cycle` populated with the involved task IDs to every task in the cycle. Those tasks fail via the existing per-task failure path — they drop out of `RunManifest.active_task_ids`, their worktrees are torn down, and the failure is recorded in the event log. Other swarm tasks continue unaffected: this is a boundary failure scoped to the deadlocked set, not a run-level halt. `HaltReason.BOUNDARY_FAILURE` is only raised if the cascade empties `active_task_ids` or otherwise blocks phase progress. `RejectionEdge`s are persisted on `RunManifest.rejection_graph_edges` so a crashed-and-resumed run cannot silently re-enter a deadlock it had already detected (see H8 crash recovery). Edges lock in phase-boundary decay: edges older than a phase boundary are stale evidence and discarded (`crash_recovery.md`).
 
 This is deliberately distinct from `structural_change_runbook.md` §1 trigger 5. A graph cycle or `max_mutex_rejections` breach is C2's detector: fast, mechanical, task-scoped termination with no human in the loop. Slow-boil non-cyclic repeated collisions between the same agents on the same file — where blocking-context resolution is genuinely converging but slowly, or where the underlying interface itself needs redesign — remain the SOP's trigger, and route through the human-gated procedure. The two signals are non-overlapping by construction: the SOP does not fire on graph cycles or counter breaches, and the deadlock detector does not fire on non-cyclic slow-boil friction.
 
@@ -306,7 +309,8 @@ Verdict ledger schema, promotion thresholds, and agent-spec versioning: `calibra
 - **Enterprise invariant arbitration.** If two repos' Context Gatherers generate opposing signals about whether an `enterprise_wide` invariant still holds, who arbitrates — a designated owner per enterprise invariant, or does every conflict go to the same human review queue as deprecation? *(Carried forward from v0.3 — still unresolved.)*
 - **Decay tuning.** The §4.6 decay rule (−1 per clean integration phase, floored at 0) is a reasonable starting point but untested — worth revisiting once there's real promotion data on false-positive/false-negative rates.
 - **Structural Change SOP cadence.** Repeated triggering of `structural_change_runbook.md` against the same file or subsystem may itself be a signal worth feeding back into governance — a file that keeps needing structural intervention might need a heavier redesign rather than another round of the SOP.
-- **Modular file versioning.** Now that mechanics live in 8 companion files, do they carry
+- **Crash Recovery Scope.** Are there any scenarios where `StartupReconciler` should prompt the user instead of relying on the resume decision tree?
+- **Modular file versioning.** Now that mechanics live in 11 companion files, do they carry
   independent version numbers, or do they always track the core document's version? Matters once one
   companion file needs to change without the others. *(The question grows more pressing this version:
   two companions were just added.)*

@@ -201,3 +201,20 @@ class RunManifest(BaseContract):
     # because the diff may have been mutated (or reverted) between crash and restart, and a
     # silently-reclassified task would defeat the point of persisting the label.
     diff_classification: DiffClassification | None = None
+    last_sync_hash_by_task: dict[str, str] = Field(default_factory=dict)
+
+
+class RecoveryStrategy(str, Enum):
+    """Resume decision tree outcomes for the StartupReconciler."""
+
+    RESUME_FROM_PHASE = "resume_from_phase"
+    ROLLBACK_AND_RESTART = "rollback_and_restart"
+    HALT_FOR_MANUAL_INTERVENTION = "halt_for_manual_intervention"
+
+
+class RecoveryManifest(BaseContract):
+    """The plan produced by the StartupReconciler for crash recovery."""
+
+    run_id: str
+    strategy: RecoveryStrategy
+    recovered_phase: Phase | None = None

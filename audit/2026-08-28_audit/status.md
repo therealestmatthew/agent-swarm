@@ -49,7 +49,7 @@ they touch entirely different files.
 | 4 | **C2** | completed | `506ee85` | 7 (see below) | Cycle detection + threshold, task-scoped boundary failure. Two surfaced items → `followups.md` (F9, F10) |
 | 5 | **C3** | completed | `fe66305` | 8 (see below) | Meta-gate `gate_coverage.minimum` for NOT_APPLICABLE bypass. Two surfaced items → `followups.md` (F9 broadened, F11 new) |
 | 6 | **C4** | completed | `477a2da` | 7 (see below) | Pull-based materialization at subprocess boundaries. New `adapter_surface.py` module, subprocess-only invariant, sync-starvation timeout. One surfaced item → `followups.md` (F12) |
-| 7 | H8 | not_started | — | — | — |
+| 7 | **H8** | completed | (pending commit) | 4 | Companion doc, orchestration.py, cross-refs, F9/F10/F12 fixes |
 | 8 | H2 | not_started | — | — | — |
 | 9 | H1 | not_started | — | — | — |
 | 10 | H3+H4 | not_started | — | — | — |

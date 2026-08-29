@@ -63,6 +63,8 @@ reads and writes only inside that tree for the duration of the task.
 6. The worktree is torn down after its branch merges or its task is abandoned. Nothing about
    worktree teardown is itself a gate — the merge (`merge.no_conflict`, design doc §9.1) is.
 
+> **Crash Recovery Pointer:** If a run crashes during task execution, the `StartupReconciler` handles orphan cleanup for these worktrees. See `crash_recovery.md` for the full lifecycle.
+
 ## 5. The isolation unit is derived, not discovered
 
 This section previously read *"containers are not required — yet ... revisit the moment a task's
@@ -71,6 +73,8 @@ instinct expressed as an escape condition someone has to notice — and the whol
 design is that a constraint which binds should be a fact about a run rather than a discovery at
 runtime. It is also, for any browser-driven repo, already true on day one: a WebDriver reset spawns
 a process, binds a port, and needs a profile directory no sibling task may share.
+
+> **Crash Recovery Pointer:** To ensure orphan detection, containers are labeled with `run_id`. Lingering containers from crashed runs are cleaned up by the `StartupReconciler`. See `crash_recovery.md`.
 
 ### 5.1 The derivation
 
@@ -175,6 +179,8 @@ interpreter leaves the agent writing code against a route its own test run canno
    which makes `merge.no_conflict` (design doc §9.1) an honest gate rather than one that has been
    quietly exempted. The Integrator then fast-forwards `shared/` as the final commit. It is a
    fast-forward, never a merge: the service was the only writer, so there is nothing to reconcile.
+
+> **Crash Recovery Pointer:** The `shared/` branch semantics interact with the crash reset protocol; branch integrity is guaranteed via `git reset --hard`. See `crash_recovery.md`.
 
 This is what §4.2's "applied synchronously before the agent continues" was always describing. It is
 now a mechanism rather than an assertion.

@@ -77,6 +77,8 @@ from plan.contracts.orchestration import (
     IntentOutcome,
     IntentRejection,
     Phase,
+    RecoveryManifest,
+    RecoveryStrategy,
     RejectionEdge,
     RunManifest,
 )
@@ -99,6 +101,8 @@ __all__ = [
     "HaltReason",
     "IntentOutcome",
     "IntentRejection",
+    "RecoveryManifest",
+    "RecoveryStrategy",
     "RejectionEdge",
     # Governance
     "RepoDeclaration",
