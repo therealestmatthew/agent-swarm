@@ -1,3 +1,10 @@
+---
+title: "Remediation: H7 Collision Key Semantics are Too Shallow"
+status: live
+part_of: repo-meta
+doc_type: reference
+---
+
 # Remediation: H7 Collision Key Semantics are Too Shallow
 
 ## 1. Finding

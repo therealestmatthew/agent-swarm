@@ -44,7 +44,7 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 | `context_retrieval_strategy.md` | Context Gatherer search heuristics (git history vs. vector search) and token budget management |
 | `budget_and_escalation_policy.md` | Exact loop ceilings, the escalation ladder rung-by-rung, and Budget Accountant cost ceilings |
 | `infra_triage_matrix.md` | Deterministic failure-classification rules engine |
-| `structural_change_runbook.md` | Human-gated SOP for non-additive shared-file changes |
+| `structural_change_runbook.md` | Three-tier structural change governance: Tier 1 auto-resolves; Tier 2 queues for async human review; Tier 3 triggers the full synchronous SOP |
 
 ---
 
@@ -58,7 +58,7 @@ noted in `REGRESSION.md` and left as-is pending a deliberate naming pass.
 6. **Model escalation on repeated failure.** Agents that fail review repeatedly are re-run on a stronger model rather than retried indefinitely (exact ladder: `budget_and_escalation_policy.md`).
 7. **Budget and circuit-breaking.** Enforcement and forecasting are separated. A **deterministic Budget Enforcer** checks every phase transition against `GovernancePolicy.budget_ceilings` and refuses the transition on breach; a **Budget Accountant** agent forecasts spend trend advisorily and gates nothing. A circuit breaker that is itself an LLM can be slow, wrong, or unavailable at exactly the moment a runaway swarm is burning fastest — so nothing that must fire is left to judgment. The same philosophy governs individual loop-back edges (exact thresholds and the enforcement point: `budget_and_escalation_policy.md`).
 8. **Merge conflicts are decomposition errors.** A merge conflict is evidence the Task Decomposer drew task boundaries incorrectly — never punted to the PR Reviewer. Repeated conflicts on the same seam escalate as a boundary failure, not an infinite retry loop.
-9. **Shared state is governed, not merged.** Files that are legitimately shared across tasks are modified only through a closed vocabulary of typed, additive operations applied by a deterministic service (§4; schemas in `plan/contracts/`).
+9. **Shared state is governed, not merged.** Files that are legitimately shared across tasks are modified only through a closed vocabulary of typed structural intents (additive and structural-but-safe Tier 1) applied by a deterministic service (§4; schemas in `plan/contracts/`).
 10. **Deterministic classification before LLM judgment.** Wherever a failure or event can be classified from structured signals alone, it is. An LLM is only invoked for the residue that doesn't cleanly match a deterministic rule. Governs both the Shared-File Intent Service (§4) and failure triage (§6, `infra_triage_matrix.md`).
 11. **Validator asymmetry.** *(Reinstated from v0.1 — absent v0.2 through v0.4.)* A validator only adds signal if its inputs differ from the generator's. Concretely: information asymmetry (the reviewer sees the spec and the artifact, never the generator's own rationale — a validator that reads the builder's justification is grading the persuasion, not the artifact); tooling asymmetry (a validator can execute — run the tests, run the type checker, grep for callers — a review that only reads is a style pass); model asymmetry (a different tier from the builder, at minimum). Applies to every Maker/Checker pair in §2, most concretely Plan Writer/Plan Reviewer and Task Dev/Code Reviewer.
 12. **Enforce with permissions, not prompts.** *(Reinstated from v0.1 — stated in v0.4 as an outcome, e.g. "Test Author... never touches implementation," without this as its stated mechanism.)* A write-scope boundary (Principle 4) or a role restriction (Test Author writes no implementation) is a permission or a filesystem/config-level constraint, never an instruction an agent is asked to reason its way past. An instruction can be argued with; a permission cannot.
@@ -113,7 +113,7 @@ Context Gatherer pulls targeted context into a separate context window (`context
 The Task Decomposer produces disjoint tasks with interface maps and ownership assignments. A human Contract Freeze gate reviews the interface contracts — including any Protocol definitions for shared dependencies (`test_harness_architecture.md` §2.3) and any anticipated shared-file changes — and flags tasks that need the Structural Change SOP instead of the standard swarm flow. The Test Author then writes failing tests (`tests/**` only) ahead of any implementation.
 
 ### Phase 4 — Parallel Swarm & Shared-File Governance
-Task Dev agents work disjoint `src/**` slices in parallel. Code Reviewer runs in shadow mode on each branch, escalating to a stronger model after repeated failed reviews (bounded, §7), subject to the specific cost unit budget constraints of the Code Review loop. Any change to a registered shared file is emitted as a typed intent (§4), applied by the Shared-File Intent Service and re-materialized into every live worktree before the agent continues (§4.7; mechanics in `execution_isolation.md` §7). A task that turns out to need a structural, non-additive change exits the swarm via `structural_change_runbook.md`.
+Task Dev agents work disjoint `src/**` slices in parallel. Code Reviewer runs in shadow mode on each branch, escalating to a stronger model after repeated failed reviews (bounded, §7), subject to the specific cost unit budget constraints of the Code Review loop. Any change to a registered shared file is emitted as a typed intent (§4), applied by the Shared-File Intent Service and re-materialized into every live worktree before the agent continues (§4.7; mechanics in `execution_isolation.md` §7). A task that turns out to need a Tier 2 or Tier 3 change routes through `structural_change_runbook.md` (Tier 2: async human review, run continues; Tier 3: synchronous full pause).
 
 ### Phase 5 — Integration (Clean Merge)
 The Integrator merges completed branches. Because shared-file changes were resolved in Phase 4, this phase only resolves genuine git-level conflicts on disjoint code. A conflict is treated per Principle 8: bounded retries, then escalation to the Decomposer as a boundary failure. The Integrator also increments the lifetime conflict counter for any ungoverned file involved (§4.6).
@@ -131,8 +131,14 @@ Draft PR is generated; PR Reviewer and a diff-time Security Reviewer evaluate it
 ### 4.1 Problem
 A small set of files — DI containers, routers, export barrels — are inherently shared across tasks that are otherwise disjoint. Treating them as ordinary merge targets recreates the failure mode the swarm's ownership model exists to avoid: two agents can produce textually non-overlapping, git-clean changes that are still semantically incompatible.
 
-### 4.2 Typed, additive intents
-Task Dev agents never edit a registered shared file directly. They emit typed intents (`AddExport`, `AddRoute`, `AddProviderBinding` — full schemas in `plan/contracts/reference_adapter/web_intents.py`). The vocabulary is deliberately closed and additive-only; a genuine structural change (splitting a router, restructuring a DI graph) exits via `structural_change_runbook.md` instead.
+### 4.2 Typed structural intents
+Task Dev agents never edit a registered shared file directly. They emit typed intents — full schemas in `plan/contracts/reference_adapter/web_intents.py`, organized by tier:
+
+- **Tier 1 (auto-resolved, synchronous):** `AddExport`, `AddRoute`, `AddProviderBinding` (additive), plus `RenameExport`, `MoveRoute`, `DeprecateExport` (structural-but-safe). All handled by the Intent Service with no human gate.
+- **Tier 2 (async human review):** Not a new intent type — when a task exceeds `GovernancePolicy.max_intents_per_shared_file` against the same file, or proposes a well-formed split/merge, the Intent Service returns `IntentRejection.reason = "pending_tier2_review"`. The agent parks the dependent sub-task and continues other work; the run does not halt.
+- **Tier 3 (synchronous full pause):** High-blast-radius changes exit via `structural_change_runbook.md`. The Intent Service returns `reason = "structural"`.
+
+The vocabulary is deliberately closed. An operation not in this set is either Tier 2 (queued for async review) or Tier 3 (full SOP).
 
 ### 4.3 Shared-File Registration
 Before a file can accept intents, a one-time registration step maps its structural insertion points: an agent proposes the map, a human confirms it once, and it's cached for reuse.
@@ -151,7 +157,7 @@ Some deadlocks never close a full cycle — two tasks that repeatedly collide on
 
 On detection, the Intent Service returns `IntentRejection` with `reason = "deadlock_cycle"` and `deadlock_cycle` populated with the involved task IDs to every task in the cycle. Those tasks fail via the existing per-task failure path — they drop out of `RunManifest.active_task_ids`, their worktrees are torn down, and the failure is recorded in the event log. Other swarm tasks continue unaffected: this is a boundary failure scoped to the deadlocked set, not a run-level halt. `HaltReason.BOUNDARY_FAILURE` is only raised if the cascade empties `active_task_ids` or otherwise blocks phase progress. `RejectionEdge`s are persisted on `RunManifest.rejection_graph_edges` so a crashed-and-resumed run cannot silently re-enter a deadlock it had already detected (see H8 crash recovery). Edges lock in phase-boundary decay: edges older than a phase boundary are stale evidence and discarded (`crash_recovery.md`).
 
-This is deliberately distinct from `structural_change_runbook.md` §1 trigger 5. A graph cycle or `max_mutex_rejections` breach is C2's detector: fast, mechanical, task-scoped termination with no human in the loop. Slow-boil non-cyclic repeated collisions between the same agents on the same file — where blocking-context resolution is genuinely converging but slowly, or where the underlying interface itself needs redesign — remain the SOP's trigger, and route through the human-gated procedure. The two signals are non-overlapping by construction: the SOP does not fire on graph cycles or counter breaches, and the deadlock detector does not fire on non-cyclic slow-boil friction.
+This is deliberately distinct from `structural_change_runbook.md` §1 Tier 3 trigger 5 (escalation from the Intent Service on non-cyclic slow-boil friction). A graph cycle or `max_mutex_rejections` breach is C2's detector: fast, mechanical, task-scoped termination with no human in the loop. Slow-boil non-cyclic repeated collisions between the same agents on the same file — where blocking-context resolution is genuinely converging but slowly, or where the underlying interface itself needs redesign — remain the SOP's Tier 3 trigger, and route through the human-gated procedure. The two signals are non-overlapping by construction: the SOP does not fire on graph cycles or counter breaches, and the deadlock detector does not fire on non-cyclic slow-boil friction.
 
 Model-tier escalation is deliberately skipped for this loop; a structural deadlock is not a stochastic miss the next model tier would improve. See `budget_and_escalation_policy.md` §2.2.
 
@@ -310,7 +316,7 @@ Verdict ledger schema, promotion thresholds, and agent-spec versioning: `calibra
 - **Decay tuning.** The §4.6 decay rule (−1 per clean integration phase, floored at 0) is a reasonable starting point but untested — worth revisiting once there's real promotion data on false-positive/false-negative rates.
 - **Structural Change SOP cadence.** Repeated triggering of `structural_change_runbook.md` against the same file or subsystem may itself be a signal worth feeding back into governance — a file that keeps needing structural intervention might need a heavier redesign rather than another round of the SOP.
 - **Crash Recovery Scope.** Are there any scenarios where `StartupReconciler` should prompt the user instead of relying on the resume decision tree?
-- **Modular file versioning.** Now that mechanics live in 11 companion files, do they carry
+- **Modular file versioning.** Now that mechanics live in 12 companion files, do they carry
   independent version numbers, or do they always track the core document's version? Matters once one
   companion file needs to change without the others. *(The question grows more pressing this version:
   two companions were just added.)*

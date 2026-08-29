@@ -1,3 +1,10 @@
+---
+title: "Remediation Plan: Medium Findings (M1 - M6)"
+status: live
+part_of: repo-meta
+doc_type: reference
+---
+
 # Remediation Plan: Medium Findings (M1 - M6)
 
 ## M1: CSV Glossary Maintenance

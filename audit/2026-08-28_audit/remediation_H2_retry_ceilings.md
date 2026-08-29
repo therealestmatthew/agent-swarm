@@ -1,3 +1,10 @@
+---
+title: "Remediation: Finding H2 - Blanket `max_retries=3` is Too Coarse"
+status: live
+part_of: repo-meta
+doc_type: reference
+---
+
 # Remediation: Finding H2 - Blanket `max_retries=3` is Too Coarse
 
 ## 1. Finding Summary

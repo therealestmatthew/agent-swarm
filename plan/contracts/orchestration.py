@@ -46,15 +46,27 @@ class IntentRejection(BaseContract):
     single-collision rejection (which the agent can resolve from the blocking context)
     from a systemic loop the agent cannot resolve on its own -- and is the signal Core
     uses to fail the involved task set as a boundary failure rather than let it burn
-    budget on further retries."""
+    budget on further retries.
+
+    `pending_tier2_review` is distinct from all other reasons in that it is
+    resumable: the submitting agent should park the dependent sub-task and pick up
+    other work. When the human approves, the Intent Service applies the intent and
+    the agent is notified. If rejected, the agent receives a `"structural"` reason
+    on the retry, routing to the full Tier 3 SOP."""
 
     reason: Literal[
-        "collision",         # another pending/applied intent matches on every collision key
-        "unmapped_anchor",   # no registered insertion point covers this -- a registration gap
-        "not_registered",    # the target file is not in GovernancePolicy.registered_shared_files
-        "op_not_declared",   # the op is absent from RepoDeclaration.intent_vocabulary
-        "structural",        # exceeds the additive vocabulary -- exits via the SOP
-        "deadlock_cycle",    # graph cycle detected, or max_mutex_rejections breached -- §4.5
+        "collision",              # another pending/applied intent matches on every collision key
+        "unmapped_anchor",        # no registered insertion point covers this -- a registration gap
+        "not_registered",         # the target file is not in GovernancePolicy.registered_shared_files
+        "op_not_declared",        # the op is absent from RepoDeclaration.intent_vocabulary
+        "structural",             # Tier 3: high-blast-radius change -- exits via the full SOP
+                                  # (structural_change_runbook.md Tier 3 Procedure). The run halts
+                                  # for human architectural review.
+        "pending_tier2_review",   # Tier 2: intent accepted into async review queue. applied=False
+                                  # but NOT terminal -- the human approves/rejects asynchronously.
+                                  # The proposing agent parks the dependent sub-task and continues
+                                  # other work within its existing write scope. No run halt.
+        "deadlock_cycle",         # graph cycle detected, or max_mutex_rejections breached -- §4.5
     ]
     blocking_task_id: str | None = None
     blocking_op: str | None = None

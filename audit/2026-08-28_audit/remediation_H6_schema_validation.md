@@ -1,3 +1,10 @@
+---
+title: "Remediation Plan: Finding H6 (extra='forbid' + LLM Output = Chronic Parse Failures)"
+status: live
+part_of: repo-meta
+doc_type: reference
+---
+
 # Remediation Plan: Finding H6 (extra='forbid' + LLM Output = Chronic Parse Failures)
 
 ## 1. Finding Summary

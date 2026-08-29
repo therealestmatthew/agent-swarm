@@ -378,6 +378,15 @@ class GovernancePolicy(BaseContract):
     # resource that would otherwise burn task budget indefinitely without ever completing an
     # edge back to its origin.
     max_mutex_rejections: int = 3
+    # Illustrative — no default numeric value is chosen (`None` means "off"), adapter-tunable
+    # per CLAUDE.md convention. When non-None, a task that submits this many intents against
+    # the same registered shared file in a single task triggers a Tier 2 async review
+    # (structural_change_runbook.md §1 Tier 2 trigger) rather than continuing to accept intents.
+    # The signal: what looks like a sequence of individually-reasonable intents may be a
+    # structural change happening one step at a time. Too low and legitimate multi-route features
+    # trigger Tier 2 unnecessarily; too high and a disguised structural change slips through.
+    # Tune per the target repo's observed intent burst sizes (structural_change_runbook.md §4).
+    max_intents_per_shared_file: int | None = None
     # Illustrative — no default numeric value is chosen (`None` means "off"), and the
     # threshold is adapter-tunable per CLAUDE.md convention. Semantics: an agent that has
     # gone this long since its last `WorktreeSyncResult` is starved from materialization

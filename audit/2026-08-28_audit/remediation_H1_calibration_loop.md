@@ -1,3 +1,10 @@
+---
+title: "Remediation H1: Calibration Loop Can't Close (Downstream Attribution is Impractical)"
+status: live
+part_of: repo-meta
+doc_type: reference
+---
+
 # Remediation H1: Calibration Loop Can't Close (Downstream Attribution is Impractical)
 
 ## 1. Finding Summary

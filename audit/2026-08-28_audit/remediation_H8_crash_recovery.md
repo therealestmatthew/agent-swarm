@@ -1,3 +1,10 @@
+---
+title: "Remediation Plan: H8 - No Crash Recovery for Stateful Isolation Units"
+status: live
+part_of: repo-meta
+doc_type: reference
+---
+
 # Remediation Plan: H8 - No Crash Recovery for Stateful Isolation Units
 
 ## 1. Finding Summary
