@@ -65,20 +65,69 @@ that would be wrong for every codebase, it is Core code.
 Three places where "Core owns the mechanism, adapter owns the specifics" is not sufficient on its
 own. Each of these is a decision, not a detail.
 
-### 2.1 Collision detection is not fully universal
+### 2.1 Collision detection is not fully universal — the Two-Layer Collision Model
 
 The lock, the serialization, and the rejection protocol are Core. **Whether two intents collide is
 not** — it is a semantic question about a vocabulary Core has never seen. `AddRoute(path="/x")`
-twice is an obvious collision on `path`; two `AddSelector` intents with different names pointing at
-the same DOM element collide semantically while sharing no key.
+twice is an obvious collision on `path`; two `AddRoute` intents on `/users/:id` and `/users/new`
+overlap semantically while sharing no literal key; two `AddSelector` intents with different names
+pointing at the same DOM element collide semantically while sharing no key at all.
 
-**Resolution:** every declared operation carries a **collision key set**
-(`IntentOpSpec.collision_keys`). Core arbitrates by exact match on those keys and nothing else. That
-makes arbitration deterministic and repo-independent, at the cost of being deliberately
-under-powered: an adapter that needs richer collision semantics expresses it by choosing keys that
-capture it, or accepts that the residue surfaces at integration as an ordinary conflict and
-increments the file's counter. **Core does not accept an adapter-supplied predicate function** —
-that would move arbitration logic into untrusted repo-declared code, which §4 exists to prevent.
+**Resolution: a Two-Layer Collision Model.** Layer 1 is Core's deterministic key match. Layer 2 is
+an optional adapter-declared static analyzer, sandboxed inside the repo's isolation unit. Both run
+inside the same synchronous Intent Service call, and either can reject an intent — but for
+different reasons and with different override semantics. Audit finding H7
+(`audit/2026-08-28_audit/remediation_H7_collision_semantics.md`) drove this from a Layer-1-only
+design; the pre-H7 shape is preserved as the additive-default behavior when a repo declares no
+analyzers.
+
+**Layer 1 — deterministic key match (Core, universal, unchanged).** Every declared operation
+carries a **collision key set** (`IntentOpSpec.collision_keys`, `plan/contracts/governance.py`).
+Core arbitrates by exact match on those keys and nothing else. That makes Layer 1 deterministic and
+repo-independent, at the cost of being deliberately under-powered: an adapter that needs richer
+collision semantics expresses it by choosing keys that capture it, by declaring a Layer 2 analyzer,
+or by accepting that the residue surfaces at integration as an ordinary conflict and increments the
+file's counter. **Core does not accept an adapter-supplied predicate function inside its own
+process** — that would move arbitration logic into untrusted repo-declared code, which §4 exists to
+prevent. A Layer-1 collision returns `IntentRejection.reason = "collision"` and is not overrideable
+through the submission envelope: it is a factual claim about pending intents, not a judgement.
+
+**Layer 2 — adapter-declared semantic analyzer (sandboxed, per-op, opt-in).** A repo declares zero
+or more analyzers via `RepoDeclaration.semantic_analyzers`
+(`SemanticAnalyzerSpec` — `plan/contracts/governance.py`), each an executable command plus an
+`IsolationUnit`. Every `IntentOpSpec` that needs semantic checking cites the analyzers it needs by
+`semantic_analyzer_ids`; multiple ops MAY share an `analyzer_id`. Empty `semantic_analyzer_ids` on
+an op means Layer 2 is skipped for that op and Core runs Layer 1 only. A repo that declares no
+analyzers at all keeps the pre-H7 arbitration shape.
+
+Ordering is fixed and per-intent synchronous. Inside one Intent Service call: Layer 1 evaluates
+first; on a Layer-1 pass Core dispatches the op's mapped analyzers as subprocesses inside the
+declared `IsolationUnit` (per the `execution_isolation.md` §7.6 subprocess-only invariant),
+aggregates their structured JSON verdicts, and either applies the intent or returns
+`IntentRejection.reason = "semantic_collision"` with `semantic_feedback` and `override_key`
+populated. No batching, no Phase-4-boundary rollback, no `shared/`-branch rewind path: on a
+semantic_collision the intent is simply not applied (`IntentOutcome.applied = False`), and the
+submitting agent sees one outcome per submission just as it did pre-H7.
+
+**Egress crosses the trust boundary** (SECURITY). The analyzer's JSON verdict leaves the isolation
+unit on its way back to Core and therefore passes through the §5 credential scrubber like any other
+egress artifact — reusing `EgressPayload` / `ScrubbedEgressPayload`, no new schema. An analyzer
+that echoes a secret it observed inside the unit is redacted at the boundary, exactly as a log line
+would be.
+
+**Override semantics.** A Layer-2 rejection is not final. The rejection carries `override_key`,
+and an agent may resubmit the same intent through the `IntentSubmission` envelope
+(`plan/contracts/orchestration.py`) with that key placed in `override_semantic_collisions`. The
+wrapper is the seam — the intent members (`AddRoute`, `AddExport`, `AddProviderBinding`,
+`RenameExport`, `MoveRoute`, `DeprecateExport`) stay untouched, so the vocabulary is not polluted
+by submission-side governance metadata. An honored override converts the analyzer's block into a
+hypothesis that Phase 5 integration testing will still catch if the analyzer was correct. Repeated
+`semantic_collision` on the same `(rejected_task, blocking_task, resource_key)` tuple accrues
+against `GovernancePolicy.max_mutex_rejections` and degrades to `deadlock_cycle` on breach — a
+stuck override loop is caught by the same ceiling that catches a stuck Layer-1 loop
+(design doc §4.5). This is deliberately non-overlapping with the structural-change tiers: a
+semantic_collision stays inside the Intent Service's per-intent verdict loop and is neither a
+Tier 2 (`structural_change_runbook.md` §1) nor a Tier 3 trigger.
 
 ### 2.2 Telemetry cannot be adapter fields on a `extra="forbid"` model
 

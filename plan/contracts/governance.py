@@ -146,14 +146,56 @@ class TestTier(BaseContract):
 class IntentOpSpec(BaseContract):
     """One Additive Intent operation this repo accepts, and the fields Core arbitrates on.
 
-    `collision_keys` is the whole of Core's collision predicate: two pending intents for the
+    `collision_keys` is Layer 1 of Core's collision predicate: two pending intents for the
     same op collide iff they match on every listed key. Deliberately under-powered -- Core
     does not execute an adapter-supplied predicate, because that would move arbitration into
-    untrusted repo-declared code. See core_adapter_boundary.md §2.1."""
+    untrusted repo-declared code. See core_adapter_boundary.md §2.1.
+
+    `semantic_analyzer_ids` names the Layer 2 analyzers (declared once on
+    `RepoDeclaration.semantic_analyzers`) that Core dispatches after this op passes Layer 1.
+    Empty means Layer 2 is skipped for this op and Core runs Layer 1 only -- the
+    pre-H7 arbitration shape, preserved as the additive-default backward-compatible path.
+    Multiple ops MAY share an `analyzer_id`; analyzers are declared once on the repo and
+    referenced by every op that needs them, so a semantic check that spans routes and
+    provider bindings is declared once and cited twice."""
 
     op: str
     collision_keys: list[str]
     transformer_id: str
+    semantic_analyzer_ids: list[str] = Field(default_factory=list)
+
+
+class SemanticAnalyzerSpec(BaseContract):
+    """One adapter-declared Layer-2 semantic analyzer for the Two-Layer Collision
+    Model (core_adapter_boundary.md §2.1).
+
+    Layer 1 arbitrates by exact match on `IntentOpSpec.collision_keys` and stays inside
+    Core, deterministic and repo-independent. Layer 2 runs a repo-supplied executable
+    against the applied intent to catch semantic collisions that share no key --
+    overlapping regex routes, middleware pairs that cancel, DI bindings whose scopes
+    conflict without matching literally. Core does NOT accept an in-process predicate
+    function (that would move arbitration into untrusted repo-declared code); instead,
+    the analyzer runs as a subprocess inside the repo's declared `IsolationUnit`, and
+    returns a structured JSON verdict Core reads back through the standard egress path.
+
+    Timing is per-intent synchronous: Layer 2 runs inside the same Intent Service call
+    that ran Layer 1, so the submitting agent sees one `IntentOutcome` per submission.
+    On a Layer-2 failure the intent is NOT applied -- `IntentOutcome.applied = False`
+    with `IntentRejection.reason = "semantic_collision"`. See design doc §4.2.
+
+    SECURITY: the analyzer's JSON verdict crosses the isolation-unit boundary on the
+    way back to Core and therefore passes through the §5 credential scrubber like any
+    other egress artifact -- reusing `EgressPayload` / `ScrubbedEgressPayload`, no new
+    schema. An analyzer that echoes a secret value it observed inside the unit is
+    redacted at the boundary, same as any log line.
+
+    Backward compatibility: a repo that declares no analyzers (`semantic_analyzers`
+    empty) and no `semantic_analyzer_ids` on any `IntentOpSpec` gets Layer-1-only
+    arbitration -- the pre-H7 behavior, preserved by defaulting both lists to empty."""
+
+    analyzer_id: str
+    command: list[str]
+    isolation_unit: IsolationUnit
 
 
 class SignalSpec(BaseContract):
@@ -294,6 +336,13 @@ class RepoDeclaration(BaseContract):
 
     # Vocabulary & transforms
     intent_vocabulary: list[IntentOpSpec] = Field(default_factory=list)
+    # Layer-2 semantic analyzers for the Two-Layer Collision Model
+    # (core_adapter_boundary.md §2.1). Referenced by
+    # `IntentOpSpec.semantic_analyzer_ids`; declared once per repo and cited by
+    # every op that needs them. Empty is a valid declaration -- a repo relying on
+    # Layer-1-only arbitration (the pre-H7 shape) declares nothing here and gets
+    # backward-compatible behavior.
+    semantic_analyzers: list[SemanticAnalyzerSpec] = Field(default_factory=list)
 
     # Telemetry
     signals: list[SignalSpec] = Field(default_factory=list)

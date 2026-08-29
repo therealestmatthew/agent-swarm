@@ -52,10 +52,35 @@ class IntentRejection(BaseContract):
     resumable: the submitting agent should park the dependent sub-task and pick up
     other work. When the human approves, the Intent Service applies the intent and
     the agent is notified. If rejected, the agent receives a `"structural"` reason
-    on the retry, routing to the full Tier 3 SOP."""
+    on the retry, routing to the full Tier 3 SOP.
+
+    `semantic_collision` is a Layer-2 sub-status of a Tier-1 intent under the
+    Two-Layer Collision Model (`core_adapter_boundary.md` §2.1;
+    `agentic-sdlc-design-v0.5.md` §4.2). Layer 1 (`collision`) is Core's exact-match
+    predicate on `IntentOpSpec.collision_keys`; Layer 2 (`semantic_collision`) is an
+    adapter-declared analyzer that runs synchronously inside the same Intent Service
+    call and can reject an intent that passed Layer 1 -- overlapping regex routes,
+    conflicting middleware, and other semantic conflicts that share no literal key.
+    Distinct from `collision` (Layer 1, key match), from `pending_tier2_review`
+    (Tier 2, human queue, resumable), and from `structural` (Tier 3, SOP). The
+    accompanying `semantic_feedback` carries the analyzer's message; `override_key`
+    is the token an agent submits back via `IntentSubmission.override_semantic_collisions`
+    to bypass this specific verdict, converting the block into a hypothesis Phase 5
+    integration testing will still catch if the analyzer was correct.
+
+    `max_mutex_rejections` covers `semantic_collision` as well as `collision`: a stuck
+    override loop between the same `(rejected_task, blocking_task, resource_key)` tuple
+    degrades to `deadlock_cycle` once the counter trips, exactly like a Layer-1 rejection
+    loop. This prevents an agent from indefinitely re-submitting an intent with the same
+    override against an analyzer that will keep rejecting it."""
 
     reason: Literal[
-        "collision",              # another pending/applied intent matches on every collision key
+        "collision",              # Layer 1: another pending/applied intent matches on every key
+        "semantic_collision",     # Layer 2: adapter analyzer rejected an intent that passed Layer 1
+                                  # (core_adapter_boundary.md §2.1). applied=False; the submitting
+                                  # agent may resubmit via IntentSubmission.override_semantic_collisions
+                                  # with the analyzer's `override_key`. Stuck override loops degrade
+                                  # to `deadlock_cycle` under max_mutex_rejections like any other loop.
         "unmapped_anchor",        # no registered insertion point covers this -- a registration gap
         "not_registered",         # the target file is not in GovernancePolicy.registered_shared_files
         "op_not_declared",        # the op is absent from RepoDeclaration.intent_vocabulary
@@ -77,6 +102,18 @@ class IntentRejection(BaseContract):
     # single-collision fact (resolvable from blocking_*) or a systemic-loop fact
     # (task-scoped termination), never ambiguously both.
     deadlock_cycle: list[str] | None = None
+    # Populated iff reason == "semantic_collision": the Layer-2 analyzer's human-readable
+    # message explaining why the intent was refused (e.g. "route `/users/:id` overlaps
+    # with pending route `/users/new`"). Structured data on the SECURITY path already noted
+    # for `blocking_*` -- the receiving agent renders this string, never interprets it as
+    # an instruction. None for every other reason.
+    semantic_feedback: str | None = None
+    # Populated iff reason == "semantic_collision": the token the submitting agent must
+    # place in `IntentSubmission.override_semantic_collisions` to bypass this specific
+    # Layer-2 verdict on resubmission. Bound to the specific rejection so a stale override
+    # from a different rejection cannot silently pass; Core validates the key against the
+    # last rejection before honoring it. None for every other reason.
+    override_key: str | None = None
 
 
 class RejectionEdge(BaseContract):
@@ -108,7 +145,7 @@ class IntentOutcome(BaseContract):
     (execution_isolation.md §7.4), so the intent log is the audit record for content that
     appears in no task's diff."""
 
-    # Typed as BaseModel rather than AdditiveIntent because AdditiveIntent lives in
+    # Typed as BaseModel rather than SharedFileIntent because SharedFileIntent lives in
     # `plan.contracts.reference_adapter.web_intents` and Core cannot import from the reference
     # adapter (core_adapter_boundary.md §3). Core does not need the concrete type: it routes on
     # the `op` string field and serializes the payload opaquely. Adapter-level code that
@@ -120,6 +157,47 @@ class IntentOutcome(BaseContract):
     applied_anchor: str | None = None   # where in the structural map it landed
     content_digest: str | None = None   # of the shared file after application
     rejection: IntentRejection | None = None
+
+
+class IntentSubmission(BaseContract):
+    """The envelope an agent submits to the Shared-File Intent Service. Wraps the
+    Tier-1 intent (a `SharedFileIntent` union member) with submission-side metadata
+    that is NOT part of the intent vocabulary itself -- keeping the reference-adapter
+    intents (`AddExport`, `AddRoute`, `AddProviderBinding`, `RenameExport`, `MoveRoute`,
+    `DeprecateExport`) untouched by Core-side collision governance.
+
+    Introduced by H7 for the Two-Layer Collision Model
+    (`core_adapter_boundary.md` §2.1). `override_semantic_collisions` is the seam the
+    override protocol rides on: on a Layer-2 rejection the agent receives an
+    `IntentRejection` carrying `override_key`, and resubmits the same intent with that
+    key in this list to bypass the specific Layer-2 verdict. Layer 1 (deterministic key
+    match) is not overrideable through this field -- a Layer-1 collision is a factual
+    claim about pending intents, not a semantic judgement, and overriding it would
+    silently corrupt the shared file.
+
+    Empty `override_semantic_collisions` is the default and matches the pre-H7
+    submission shape, so every existing call site is a valid `IntentSubmission` under
+    the additive-default discipline. A non-empty list matches `override_key` values
+    previously returned in an `IntentRejection` for this same intent; Core validates
+    the keys against the last rejection before honoring them (design note -- no
+    runtime validation code lives here).
+
+    Repeated `semantic_collision` rejections on the same
+    `(rejected_task, blocking_task, resource_key)` tuple accrue against
+    `GovernancePolicy.max_mutex_rejections` and degrade to `deadlock_cycle` on breach,
+    exactly like Layer-1 rejection loops -- an agent cannot spin indefinitely against
+    an analyzer by cycling override keys. See `IntentRejection` docstring for the
+    combined loop-ceiling semantics."""
+
+    # Typed as BaseModel for the same core/adapter-boundary reason as
+    # `IntentOutcome.intent`: `SharedFileIntent` lives in
+    # `plan.contracts.reference_adapter.web_intents`, and Core routes on the `op` string
+    # field without importing from the reference adapter (core_adapter_boundary.md §3).
+    # Adapter-level code that constructs an IntentSubmission still validates the intent
+    # against the concrete union before wrapping it here.
+    intent: BaseModel
+    task_id: str
+    override_semantic_collisions: list[str] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------

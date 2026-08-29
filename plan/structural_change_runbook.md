@@ -75,6 +75,15 @@ mid-swarm into this SOP) when any of the following hold:
   §4.5) as task-scoped boundary failures without entering this SOP. The two paths are
   non-overlapping by construction.
 
+Layer-2 semantic rejections (`IntentRejection.reason = "semantic_collision"` — the
+Two-Layer Collision Model, `core_adapter_boundary.md` §2.1) are neither a Tier 2 nor a
+Tier 3 trigger. A `semantic_collision` stays inside the Intent Service's per-intent
+verdict loop: the submitting agent resubmits via `IntentSubmission.override_semantic_collisions`
+or accepts the rejection, and a stuck override loop degrades to `deadlock_cycle` under
+`max_mutex_rejections` like any other loop (design doc §4.5). This mirrors the existing
+non-overlap carve for the deadlock detector above — semantic-collision governance and
+structural-change governance are non-overlapping paths.
+
 ## 2. Who's involved
 
 - **Task Decomposer** — owns this SOP. It's the same agent responsible for task boundaries in the normal flow, and a structural change is fundamentally a boundary redefinition.
