@@ -50,7 +50,7 @@ they touch entirely different files.
 | 5 | **C3** | completed | `fe66305` | 8 (see below) | Meta-gate `gate_coverage.minimum` for NOT_APPLICABLE bypass. Two surfaced items → `followups.md` (F9 broadened, F11 new) |
 | 6 | **C4** | completed | `477a2da` | 7 (see below) | Pull-based materialization at subprocess boundaries. New `adapter_surface.py` module, subprocess-only invariant, sync-starvation timeout. One surfaced item → `followups.md` (F12) |
 | 7 | **H8** | completed | (pending commit) | 4 | Companion doc, orchestration.py, cross-refs, F9/F10/F12 fixes |
-| 8 | H2 | not_started | — | — | — |
+| 8 | **H2** | completed | `2dd00b7` | 3 (see below) | Parameterized loop ceilings (`max_cost_units`), CEILING_HALT semantics locked. Resolved F1. |
 | 9 | H1 | not_started | — | — | — |
 | 10 | H3+H4 | not_started | — | — | — |
 | 11 | H5 | not_started | — | — | — |
@@ -325,3 +325,17 @@ exist as separate files rather than sections of a monolith.
   H6-specific Maker sub-agents encountered permission timeouts; remaining edits
   were applied directly by the Orchestrator and independently reviewed by a
   Checker sub-agent.
+
+### H2 — Retry ceiling parameterization (completed 2026-08-28)
+
+One commit (`2dd00b7`). Net: +32 / -14 across 4 files.
+
+- **`2dd00b7`** loop budgets: Added `LoopBudgetConfig` and `EscalationConfig` to `plan/contracts/governance.py`. Replaced the static `max_retries` integer in `budget_and_escalation_policy.md` with parameterized target budgets. Updated `agentic-sdlc-design-v0.5.md` Phase 4 to reference these constraints.
+
+**Design decisions locked in during human gate:**
+- Schemas live in `plan/contracts/governance.py` since `agent_interface_contracts.py` was deleted by C5.
+- Added `budget_ceilings: dict[str, LoopBudgetConfig]` to `GovernancePolicy` (resolving **F1**).
+- Used `max_cost_units: float` instead of USD to keep Core Orchestrator currency-agnostic.
+- Hitting a loop-specific cost ceiling before `max_retries` is reached immediately triggers a human `CEILING_HALT`, maintaining consistency with global cost ceilings.
+
+**Follow-ups resolved:** F1 (budget_ceilings missing from schema).
