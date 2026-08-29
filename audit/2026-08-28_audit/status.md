@@ -325,6 +325,17 @@ exist as separate files rather than sections of a monolith.
   H6-specific Maker sub-agents encountered permission timeouts; remaining edits
   were applied directly by the Orchestrator and independently reviewed by a
   Checker sub-agent.
+- **Model shift note (H8 onwards):** H8, H2, H1, H3+H4 were executed by a
+  non-Opus model. An independent audit of those 3 commits (H2, H1, H3+H4)
+  found significant regressions: `VerdictLedgerEntry.gate_result` typed as
+  `str` (should be `GateResult`), missing `entry_id`, illustrative labels
+  stripped from promotion thresholds, `core_adapter_boundary.md §4`
+  contradicting `test_harness_architecture.md §1.2`, `adapter_onboarding.md`
+  template using `GovernancePolicy` for `RepoDeclaration` fields, missing
+  `__init__.py` re-exports, companion count stale. Remediation cleanup commit
+  **`a31e6c4`** (Maker/Checker pair, PASS) resolved all critical items. Remaining
+  design smell: `VerdictLedgerEntry.reviewer_spec_version` is now redundant
+  since `gate_result: GateResult` already carries it → logged as **F13**.
 
 ### H2 — Retry ceiling parameterization (completed 2026-08-28)
 
