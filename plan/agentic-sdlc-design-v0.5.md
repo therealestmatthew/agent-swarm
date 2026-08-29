@@ -322,6 +322,9 @@ Verdict ledger schema, promotion thresholds, and agent-spec versioning: `calibra
   independent version numbers, or do they always track the core document's version? Matters once one
   companion file needs to change without the others. *(The question grows more pressing this version:
   two companions were just added.)*
+- **Glossary extraction.** Should we eventually extract glossary terms directly from docstrings of key Pydantic schemas to guarantee perfect synchronization with code?
+- **Lexical index rebuild cadence.** How frequently should the lexical index be rebuilt during an active execution pipeline to ensure agents have up-to-date symbol resolution without exceeding cost budgets?
+- **AST-diffing fallback.** What is the fallback mechanism if AST-diffing fails to accurately identify dependent tests for a modified file when scoping hermeticity verification?
 - **Triviality heuristic upgrade.** The `test_harness_architecture.md` §3.9 rule that
   `gate_coverage.minimum` reads is illustrative and extension-only — path suffixes plus
   `RepoDeclaration.trivial_path_globs`. A future revision may add AST-aware detection
