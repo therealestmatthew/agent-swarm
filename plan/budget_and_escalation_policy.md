@@ -108,7 +108,4 @@ costs the budget.
 
 ### 4.3 Consequences for the ledger
 
-`calibration_and_measurement.md` §4 crosses per-agent spend against per-validator precision to get
-cost per genuinely-caught defect. That attribution is produced by the same metering the Enforcer
-reads, not by the Accountant — so the cost-per-pair calculation stays available whether or not the
-Accountant is running, and does not inherit an advisory agent's error bars.
+`calibration_and_measurement.md` §4 crosses per-agent spend against per-validator precision to calculate **Cost-per-Verdict** and **Cost-per-Integration-Catch (CPIC)**. That attribution is produced by the same metering the Enforcer reads, not by the Accountant. Crucially, this dispatch-path metering must explicitly tag costs to the `VerdictLedgerEntry` ID — so the cost calculations stay available whether or not the Accountant is running, and do not inherit an advisory agent's error bars.

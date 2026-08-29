@@ -10,7 +10,7 @@ Parsing discipline: mixed. GateResult and Finding are agent-produced (Validator 
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import Field
 
@@ -174,3 +174,21 @@ class NormalizationEvent(BaseContract):
     stripped_data_summary: dict[str, str]
     nesting_depth: int
     source_model_tier: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Verdict Ledger  (calibration_and_measurement.md §1)
+# ---------------------------------------------------------------------------
+
+
+class VerdictLedgerEntry(BaseContract):
+    """
+    Records a validator's verdict and its subsequent outcomes to calibrate
+    precision and compute Cost-per-Integration-Catch (CPIC).
+    """
+
+    gate_result: str = Field(..., description="The original agentic GateResult (e.g., 'pass', 'fail')")
+    reviewer_spec_version: str = Field(..., description="Version of the prompts/rules used")
+    human_override: Optional[str] = Field(None, description="Tier 1: Explicit human verdict overriding or confirming the agent")
+    integration_catch_outcome: Optional[bool] = Field(None, description="Tier 2: True if integration tests caught an issue on the approved code within the CI window")
+    downstream_outcome: Optional[str] = Field(None, description="Tier 3: Optional manual notation of a production bug attributed to this verdict")
