@@ -54,13 +54,13 @@ class LoopBudgetConfig(BaseModel):
 
 ## 4. Required Document Updates
 
-- **`plan/budget_and_escalation_policy.md`**:
+- **`design/plans/budget_and_escalation_policy.md`**:
   - Update **§1 (Loop ceilings table)**: Replace the uniform `max_retries=3` with the parameterized table from section 3.2 above.
   - Update **§2 (Escalation ladder)**: Clarify the sub-step counting mechanism (section 3.1) and specify that model escalation timing is parameterized via `EscalationConfig`.
   - Update **§3 (Cost ceilings)**: Replace illustrative TBDs with the concrete target budgets defined in section 3.2, mapping to Anthropic pricing (Sonnet vs. Opus).
-- **`plan/agent_interface_contracts.py`**:
+- **`design/plans/agent_interface_contracts.py`**:
   - Add the `LoopBudgetConfig` and `EscalationConfig` schemas to the centralized contracts.
-- **`plan/agentic-sdlc-design-v0.5.md`**:
+- **`design/plans/agentic-sdlc-design-v0.5.md`**:
   - Update the Phase 4 parallel swarm description to reference the specific budget constraints of the Code Review loop.
 
 ## 5. Open Questions

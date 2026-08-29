@@ -28,7 +28,7 @@ We will introduce a new deterministic gate named `gate_coverage.minimum`.
   4. If all blocking testing gates return `NOT_APPLICABLE` on a non-trivial code diff, the `gate_coverage.minimum` gate returns `FAIL` with a detailed finding.
 
 ### B. Schema Modifications
-We need to update the Pydantic schemas in `plan/agent_interface_contracts.py` to support meta-gate analysis and explicit triviality declarations, adhering to the `frozen=True` and `extra="forbid"` design constraints.
+We need to update the Pydantic schemas in `design/plans/agent_interface_contracts.py` to support meta-gate analysis and explicit triviality declarations, adhering to the `frozen=True` and `extra="forbid"` design constraints.
 
 ```python
 from pydantic import BaseModel, Field, ConfigDict
@@ -64,12 +64,12 @@ class GateResult(BaseModel):
 
 The following plan documents must be updated to reflect this remediation:
 
-- **`plan/agentic-sdlc-design-v0.5.md`**: 
+- **`design/plans/agentic-sdlc-design-v0.5.md`**: 
   - Update **§9.1** to include the new `gate_coverage.minimum` meta-gate in the deterministic gates table.
   - Clarify the Phase 6 pipeline execution order to account for meta-gate aggregation.
   - Update **§10 Anti-Reward-Hacking Guards** to list `gate_coverage.minimum` as a specific defense against test evasion and scope bypassing, supplementing the `mutation.diff_scoped` guard.
-- **`plan/agent_interface_contracts.py`**: Add `DiffClassification` enum and update the `GateResult` model schema.
-- **`plan/test_harness_architecture.md`**: Update **§3.4-3.6** to define what constitutes a "trivial" vs "non-trivial" diff for the purpose of applicability bypassing.
+- **`design/plans/agent_interface_contracts.py`**: Add `DiffClassification` enum and update the `GateResult` model schema.
+- **`design/plans/test_harness_architecture.md`**: Update **§3.4-3.6** to define what constitutes a "trivial" vs "non-trivial" diff for the purpose of applicability bypassing.
 
 ## 5. Open Questions
 - **Triviality Heuristics:** What precise heuristics will robustly distinguish `TRIVIAL_DOCS` from `NON_TRIVIAL_CODE` without being overly rigid? Should we rely purely on file extensions, or include AST-based analysis of the diff (e.g., changes only inside Python docstrings)?

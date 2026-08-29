@@ -9,8 +9,8 @@ layer: shared
 # Core / Adapter Boundary
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §4 (Shared-File Governance) · §6 (Failure Triage) ·
-§8 (Execution Isolation) · `implementation_roadmap.md` Stage 0 · `plan/contracts/governance.py`
-(`RepoDeclaration`, `GovernancePolicy`) · `plan/llm_output_normalization.md` (§3 dispatch path)
+§8 (Execution Isolation) · `implementation_roadmap.md` Stage 0 · `design/plans/contracts/governance.py`
+(`RepoDeclaration`, `GovernancePolicy`) · `design/plans/llm_output_normalization.md` (§3 dispatch path)
 
 ## Purpose
 
@@ -78,12 +78,12 @@ pointing at the same DOM element collide semantically while sharing no key at al
 an optional adapter-declared static analyzer, sandboxed inside the repo's isolation unit. Both run
 inside the same synchronous Intent Service call, and either can reject an intent — but for
 different reasons and with different override semantics. Audit finding H7
-(`audit/2026-08-28_audit/remediation_H7_collision_semantics.md`) drove this from a Layer-1-only
+(`design/audits/2026-08-28_design/audits/remediation_H7_collision_semantics.md`) drove this from a Layer-1-only
 design; the pre-H7 shape is preserved as the additive-default behavior when a repo declares no
 analyzers.
 
 **Layer 1 — deterministic key match (Core, universal, unchanged).** Every declared operation
-carries a **collision key set** (`IntentOpSpec.collision_keys`, `plan/contracts/governance.py`).
+carries a **collision key set** (`IntentOpSpec.collision_keys`, `design/plans/contracts/governance.py`).
 Core arbitrates by exact match on those keys and nothing else. That makes Layer 1 deterministic and
 repo-independent, at the cost of being deliberately under-powered: an adapter that needs richer
 collision semantics expresses it by choosing keys that capture it, by declaring a Layer 2 analyzer,
@@ -95,7 +95,7 @@ through the submission envelope: it is a factual claim about pending intents, no
 
 **Layer 2 — adapter-declared semantic analyzer (sandboxed, per-op, opt-in).** A repo declares zero
 or more analyzers via `RepoDeclaration.semantic_analyzers`
-(`SemanticAnalyzerSpec` — `plan/contracts/governance.py`), each an executable command plus an
+(`SemanticAnalyzerSpec` — `design/plans/contracts/governance.py`), each an executable command plus an
 `IsolationUnit`. Every `IntentOpSpec` that needs semantic checking cites the analyzers it needs by
 `semantic_analyzer_ids`; multiple ops MAY share an `analyzer_id`. Empty `semantic_analyzer_ids` on
 an op means Layer 2 is skipped for that op and Core runs Layer 1 only. A repo that declares no
@@ -118,7 +118,7 @@ would be.
 
 **Override semantics.** A Layer-2 rejection is not final. The rejection carries `override_key`,
 and an agent may resubmit the same intent through the `IntentSubmission` envelope
-(`plan/contracts/orchestration.py`) with that key placed in `override_semantic_collisions`. The
+(`design/plans/contracts/orchestration.py`) with that key placed in `override_semantic_collisions`. The
 wrapper is the seam — the intent members (`AddRoute`, `AddExport`, `AddProviderBinding`,
 `RenameExport`, `MoveRoute`, `DeprecateExport`) stay untouched, so the vocabulary is not polluted
 by submission-side governance metadata. An honored override converts the analyzer's block into a
@@ -164,20 +164,20 @@ is what it has always actually been.
 Agent-produced JSON (Validator verdicts, additive intents) enters Core as raw JSON strings.
 Core's **normalization layer** is the first mechanism applied to this inbound payload: it
 recursively strips hallucinated extra fields, logs each removal as a `NormalizationEvent`
-(`plan/contracts/verification.py`), and then hands the cleaned data to strict Pydantic
+(`design/plans/contracts/verification.py`), and then hands the cleaned data to strict Pydantic
 validation (`extra="forbid"`). Only validated, typed objects enter the downstream pipeline.
 
 This is an *inbound* data-cleaning path, distinct from the *outbound* credential-scrubbing
 egress path in §5: normalization handles what agents produce; scrubbing handles what leaves an
 isolation unit. Both are Core-owned deterministic mechanisms. See
-`plan/llm_output_normalization.md` for the full specification, including model categories
+`design/plans/llm_output_normalization.md` for the full specification, including model categories
 (which schemas cross this boundary) and escalation interaction.
 
 ---
 
 ## 3. The adapter contract: two artifacts, two trust levels
 
-Schemas: `plan/contracts/governance.py`. The contract is deliberately **not** one file. A target
+Schemas: `design/plans/contracts/governance.py`. The contract is deliberately **not** one file. A target
 repo declares facts about itself; the control plane owns what the pipeline will tolerate. They have
 different authors, different change cadences, and different blast radii on compromise.
 
@@ -333,11 +333,11 @@ memory for exactly one task's duration** — the scrubbing trust boundary — an
 
 **The scrubber runs in Core, at the Core/adapter trust boundary — not inside the isolation unit.**
 Every log line, screenshot filename, DOM dump, HAR file, git commit message, and network payload
-leaving the unit passes through it as an `EgressPayload` (`plan/contracts/governance.py`) and
-returns as a `ScrubbedEgressPayload` (`plan/contracts/governance.py`). Nothing that has not been
+leaving the unit passes through it as an `EgressPayload` (`design/plans/contracts/governance.py`) and
+returns as a `ScrubbedEgressPayload` (`design/plans/contracts/governance.py`). Nothing that has not been
 transformed is admissible as an `evidence_ref` target or as a network egress destination.
 
-The scrubber holds active values via `SecretScrubberConfig` (`plan/contracts/governance.py`),
+The scrubber holds active values via `SecretScrubberConfig` (`design/plans/contracts/governance.py`),
 populated at task start from `GovernancePolicy.granted_secrets`. Instances live only in Core memory
 for the task's duration and are never persisted, logged, or serialized into the `RunManifest` event
 log.
@@ -356,7 +356,7 @@ rule.
 
 Earlier drafts of this design placed the scrubber **inside** the isolation unit, on the argument
 that a redaction filter must know its values, which conflicts with Core never holding them. Audit
-finding C1 (`audit/2026-08-28_audit/adversarial_audit_report.md`) established that in-unit
+finding C1 (`design/audits/2026-08-28_design/audits/adversarial_audit_report.md`) established that in-unit
 scrubbing is defeatable: an agent with `src/` write access can tamper with the scrubber, encode
 credentials in filenames or commit messages, or exfiltrate them via network calls the scrubber never
 sees. The trade-off changed. **Core-memory exposure of raw values for one task's duration is a

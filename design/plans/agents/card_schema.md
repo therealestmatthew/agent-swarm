@@ -8,7 +8,7 @@ layer: core
 
 # Agent Card Schema
 
-**Referenced by:** every file in `plan/agents/` and `plan/optimization/agents/` ·
+**Referenced by:** every file in `design/plans/agents/` and `design/plans/optimization/agents/` ·
 `agent_taxonomy.md` §2 · enforced by `scripts/check_agent_cards.py`
 
 ## Purpose
@@ -19,12 +19,12 @@ contract, write scope, loop ceiling, or failure behaviour anywhere. The roster t
 one line of role prose.
 
 A card is the specification for one agent. This file is the schema every card fills in, held in one
-place for the same reason `plan/contracts/` holds the schemas in one place: two cards inventing two
+place for the same reason `design/plans/contracts/` holds the schemas in one place: two cards inventing two
 slightly different shapes for "what this agent may write" is the drift the whole design exists to
 prevent, reintroduced at the documentation layer.
 
 **Per-type specialization** — which fields are required, forbidden, or not applicable for a given
-type — lives in `plan/agents/types/<type>.md`, not here and not repeated on 30 cards.
+type — lives in `design/plans/agents/types/<type>.md`, not here and not repeated on 30 cards.
 
 ---
 

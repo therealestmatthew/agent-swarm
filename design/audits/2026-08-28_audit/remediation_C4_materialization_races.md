@@ -47,7 +47,7 @@ The original design (§4.7) stated shared file updates are "applied synchronousl
 
 ## 4. Required File Changes
 
-### 4.1 Update `plan/agent_interface_contracts.py`
+### 4.1 Update `design/plans/agent_interface_contracts.py`
 Add the synchronization contract to the Adapter interface schemas.
 
 ```python
@@ -63,7 +63,7 @@ class SyncWorktreeResponse(BaseModel):
     new_commit_hash: str = Field(..., description="The new canonical commit hash of the shared branch.")
 ```
 
-### 4.2 Update `plan/execution_isolation.md`
+### 4.2 Update `design/plans/execution_isolation.md`
 Modify **§7. The Materialization Mechanism** and its sub-sections:
 
 - **§7.2 Step 3 (Current):** "On successful application, Core writes the new file content into each running worktree's working directory"
@@ -71,7 +71,7 @@ Modify **§7. The Materialization Mechanism** and its sub-sections:
 - **Add §7.4 (Materialization Window Protocol):** Detail the requirement that agents must invoke `SyncWorktree()` before starting any sub-process execution, ensuring safe runtime isolation.
 - **Update §7.3 (Read-View Guarantee):** Clarify that isolation from governed shared state is maintained strictly at process execution boundaries, preventing mid-run state mutation.
 
-### 4.3 Update `plan/agentic-sdlc-design-v0.5.md`
+### 4.3 Update `design/plans/agentic-sdlc-design-v0.5.md`
 - **Modify §4.7:** Update the wording to clarify the synchronous guarantee: "Updates are applied synchronously before the *proposing* agent continues. Sibling agents synchronize lazily at their next execution boundary via a pull mechanism."
 
 ## 5. Open Questions Introduced

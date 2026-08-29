@@ -17,11 +17,11 @@ layer: adapter-sdlc
 CSV diffs are difficult to review in standard version control interfaces. Because the terminology is disconnected from the codebase and primary markdown documentation, developers experience high friction when trying to keep the glossary synchronized as the 8-phase pipeline evolves.
 
 ### Remediation
-Convert the CSV glossary into a structured Markdown document. This format integrates cleanly with GitHub/GitLab PR diffs and fits naturally alongside the rest of the `plan/` documentation.
+Convert the CSV glossary into a structured Markdown document. This format integrates cleanly with GitHub/GitLab PR diffs and fits naturally alongside the rest of the `design/plans/` documentation.
 
 **File Changes:**
-1. **`plan/agentic_sdlc_glossary.csv`**: Delete file.
-2. **`plan/agentic_sdlc_glossary.md`**: Create file. Organize the 64 terms alphabetically with standard Markdown headings for enhanced readability.
+1. **`design/plans/agentic_sdlc_glossary.csv`**: Delete file.
+2. **`design/plans/agentic_sdlc_glossary.md`**: Create file. Organize the 64 terms alphabetically with standard Markdown headings for enhanced readability.
 
 ### Required Document Updates
 - `agentic-sdlc-design-v0.5.md`: Update all references pointing to the glossary to target the new `.md` extension.
@@ -40,7 +40,7 @@ Convert the CSV glossary into a structured Markdown document. This format integr
 The system lacks a clear demarcation between structural architecture definitions (the 23 agents, 8 phases) and documentation metadata rules. As a result, both files attempt to catalog the agents, leading to duplicated state and synchronization failures.
 
 ### Remediation
-Define explicit boundaries: `AGENTIC_ARCHITECTURE_MANIFEST.md` acts as the single source of truth for the pipeline and agent inventory. `FRONTMATTER_MANIFEST.md` will strictly define the frontmatter schema required for all `plan/` documents.
+Define explicit boundaries: `AGENTIC_ARCHITECTURE_MANIFEST.md` acts as the single source of truth for the pipeline and agent inventory. `FRONTMATTER_MANIFEST.md` will strictly define the frontmatter schema required for all `design/plans/` documents.
 
 **File Changes:**
 1. **`AGENTIC_ARCHITECTURE_MANIFEST.md`**: Retain agent and phase inventories. Remove any frontmatter enforcement rules.
@@ -67,7 +67,7 @@ Vector embeddings inherently prioritize natural language semantic similarity, ca
 Introduce a lexical/symbol lookup bypass mechanism and add specialized lexical indexing for custom DSLs. This allows agents to bypass vector search entirely when exact paths or symbols are known.
 
 **File Changes:**
-1. **`plan/agent_interface_contracts.py`**: Add a new exact-match bypass schema.
+1. **`design/plans/agent_interface_contracts.py`**: Add a new exact-match bypass schema.
 ```python
 from pydantic import BaseModel, Field
 
@@ -79,7 +79,7 @@ class ExactSymbolLookup(BaseModel):
 ```
 
 ### Required Document Updates
-- `plan/context_retrieval_strategy.md`: Add a new section detailing the lexical/symbol bypass strategy. Update search heuristics to specify that agents should default to `ExactSymbolLookup` when the target is deterministic.
+- `design/plans/context_retrieval_strategy.md`: Add a new section detailing the lexical/symbol bypass strategy. Update search heuristics to specify that agents should default to `ExactSymbolLookup` when the target is deterministic.
 - `agentic-sdlc-design-v0.5.md`: Note the addition of the new retrieval path.
 
 ### Open Questions
@@ -99,7 +99,7 @@ Hermeticity verification currently attempts to run full suites in randomized ord
 Scope randomized execution exclusively to the changed test subsets (e.g., determined by AST diffing) or move full combinatorial runs to a periodic asynchronous pipeline.
 
 **File Changes:**
-1. **`plan/agent_interface_contracts.py`**: Add schema to configure test scope limits.
+1. **`design/plans/agent_interface_contracts.py`**: Add schema to configure test scope limits.
 ```python
 from pydantic import BaseModel, Field
 
@@ -111,8 +111,8 @@ class HermeticityTestScope(BaseModel):
 ```
 
 ### Required Document Updates
-- `plan/test_harness_architecture.md`: Update §1.2 (fresh construction) to enforce dependency-graph based scoped test execution rather than full suite randomization.
-- `plan/core_adapter_boundary.md`: Clarify that Adapters should cache state resets based on target isolation requirements.
+- `design/plans/test_harness_architecture.md`: Update §1.2 (fresh construction) to enforce dependency-graph based scoped test execution rather than full suite randomization.
+- `design/plans/core_adapter_boundary.md`: Clarify that Adapters should cache state resets based on target isolation requirements.
 - `budget_and_escalation_policy.md`: Add explicit maximum compute caps for hermeticity verification.
 
 ### Open Questions
@@ -132,7 +132,7 @@ The `dom_state_diff_from_baseline` rule performs strict diffs on the DOM. Async 
 Standardize hydration quiescence checks before capturing the DOM, and introduce a filter to strip volatile, non-semantic attributes before comparison.
 
 **File Changes:**
-1. **`plan/agent_interface_contracts.py`**: Update baseline capture schema.
+1. **`design/plans/agent_interface_contracts.py`**: Update baseline capture schema.
 ```python
 from pydantic import BaseModel, Field
 
@@ -144,8 +144,8 @@ class DOMCaptureConfig(BaseModel):
 ```
 
 ### Required Document Updates
-- `plan/test_harness_architecture.md`: Update §1.4 (baseline) to mandate the use of `DOMCaptureConfig` and define "quiescence".
-- `plan/infra_triage_matrix.md`: Modify the `dom_state_diff_from_baseline` rule to require filtering of volatile elements prior to triggering an infrastructure escalation.
+- `design/plans/test_harness_architecture.md`: Update §1.4 (baseline) to mandate the use of `DOMCaptureConfig` and define "quiescence".
+- `design/plans/infra_triage_matrix.md`: Modify the `dom_state_diff_from_baseline` rule to require filtering of volatile elements prior to triggering an infrastructure escalation.
 
 ### Open Questions
 - How do we handle applications that utilize continuous animations where "quiescence" is never truly reached?

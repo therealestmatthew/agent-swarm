@@ -23,19 +23,19 @@ Modify `CLAUDE.md` to clearly delineate that system contracts (Pydantic models, 
 
 **Specific change to `CLAUDE.md`:**
 *Remove:*
-> We are in design, not build. plan/ is the source of truth. Do not start implementing agents, services, or schemas until the design settles and this line changes.
+> We are in design, not build. design/plans/ is the source of truth. Do not start implementing agents, services, or schemas until the design settles and this line changes.
 
 *Replace with:*
-> We are in the structural design phase. `plan/` is the source of truth.
+> We are in the structural design phase. `design/plans/` is the source of truth.
 > **Permitted:** Defining, refining, and modularizing Pydantic schemas, system contracts, glossary definitions, and interface boundaries. Schema relocation is design.
 > **Forbidden:** Implementing agent logic, service execution code, internal pipeline routing logic, or API integrations. Do not build application logic until the design settles and this phase gate changes.
 
 ### 3.2. Decomposing `agent_interface_contracts.py`
-Decompose the monolithic `agent_interface_contracts.py` into a modular package structure within `plan/contracts/`.
+Decompose the monolithic `agent_interface_contracts.py` into a modular package structure within `design/plans/contracts/`.
 
 **New Directory Structure:**
 ```text
-plan/
+design/plans/
 └── contracts/
     ├── __init__.py
     ├── core_schemas.py      # RunManifest, GateResult, IntentRejection, Error models
@@ -51,7 +51,7 @@ This alignment fulfills the D2 resolution by moving web-specific adapter intents
 ### 3.3. Pydantic Model Alignment and Import Conventions
 All relocated schemas must strictly adhere to the Pydantic v2 configuration standard for the project (`frozen=True`, `extra="forbid"`).
 
-**Example Snippet (`plan/contracts/core_schemas.py`):**
+**Example Snippet (`design/plans/contracts/core_schemas.py`):**
 ```python
 from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional
@@ -64,7 +64,7 @@ class RunManifest(BaseModel):
     # ... additional fields ...
 ```
 
-**Example Snippet (`plan/contracts/reference_adapter/web_intents.py`):**
+**Example Snippet (`design/plans/contracts/reference_adapter/web_intents.py`):**
 ```python
 from pydantic import BaseModel, ConfigDict, Field
 from plan.contracts.core_schemas import IntentRejection
@@ -76,21 +76,21 @@ class AddRoute(BaseModel):
     handler_signature: str = Field(..., description="Signature of the route handler")
 ```
 
-To maintain the "single source of truth" principle, `plan/contracts/__init__.py` may expose the fundamental models so that external tooling can still import from a unified namespace if necessary, though direct module imports are preferred for clarity.
+To maintain the "single source of truth" principle, `design/plans/contracts/__init__.py` may expose the fundamental models so that external tooling can still import from a unified namespace if necessary, though direct module imports are preferred for clarity.
 
 ## 4. Updates Required to Existing Plan Documents
 
 1. **`CLAUDE.md`**
    - Update the gating line as specified in Section 3.1.
 2. **`agent_interface_contracts.py`**
-   - Delete this file entirely after migrating its contents to the new `plan/contracts/` structure.
+   - Delete this file entirely after migrating its contents to the new `design/plans/contracts/` structure.
 3. **`implementation_roadmap.md`**
-   - Update Stage 0 to reflect the decomposed directory structure (`plan/contracts/`).
-   - Note the completion of the D2 resolution regarding the relocation of web-specific intents to `plan/contracts/reference_adapter/web_intents.py`.
+   - Update Stage 0 to reflect the decomposed directory structure (`design/plans/contracts/`).
+   - Note the completion of the D2 resolution regarding the relocation of web-specific intents to `design/plans/contracts/reference_adapter/web_intents.py`.
 4. **`core_adapter_boundary.md`**
    - Add a section defining the strict import rules: Core schemas (`core_schemas.py`) may not import from Adapter schemas (`adapter_schemas.py` or `reference_adapter/`).
 
 ## 5. Open Questions Introduced
 - **Schema Validation:** If schemas are now spread across multiple files, how do we enforce that the "frozen=True, extra=forbid" rule is consistently applied? Should a linter or test be added to the Stage 0 conformance kit?
 - **Dependency Graphs:** With 23 agents in an 8-phase pipeline, how do we track which agents depend on which specific intent schemas now that they are distributed into adapter-specific modules?
-- **Conformance Kit Location:** Will the Stage 0 conformance kit reside in `plan/` (as it validates design), or does it belong in the main code directory since it executes validation logic?
+- **Conformance Kit Location:** Will the Stage 0 conformance kit reside in `design/plans/` (as it validates design), or does it belong in the main code directory since it executes validation logic?

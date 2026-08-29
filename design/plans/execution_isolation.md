@@ -12,7 +12,7 @@ layer: adapter-sdlc
 Write Ownership) · Principle 12 (Enforce with permissions, not prompts)
 
 **Status:** reinstated from `agentic-sdlc-design-v0.1.md` §6, absent v0.2 through v0.4. See
-`plan/versions/REGRESSION.md` finding #2.
+`design/plans/versions/REGRESSION.md` finding #2.
 
 ## Purpose
 
@@ -170,7 +170,7 @@ interpreter leaves the agent writing code against a route its own test run canno
    written to at this point; a sibling that is mid-execution has caches (module import caches, file
    watchers) that a mid-run byte-swap would corrupt at the runtime layer even where the filesystem
    layer stays atomic (§7.3, §7.6). Instead, every agent's runtime unconditionally calls
-   `WorktreeSyncRequest` (`plan/contracts/adapter_surface.py`) before spawning any subprocess. That
+   `WorktreeSyncRequest` (`design/plans/contracts/adapter_surface.py`) before spawning any subprocess. That
    call is a local filesystem reconciliation between the worktree's local `shared/` branch head and
    its working directory — atomic per-file via temp-file-plus-`rename`, idempotent when nothing has
    changed. `skip-worktree` behavior is unchanged: git stays silent about the reconciled paths, the
@@ -281,7 +281,7 @@ system into its own interpreter and run tests there.
 **How the invariant is honored operationally.** The agent's runtime hooks the sync call at every
 subprocess-spawn site: before spawning a test runner, a script, a linter, or any other target-code
 process, the runtime unconditionally issues a `WorktreeSyncRequest`
-(`plan/contracts/adapter_surface.py`) and waits for the `WorktreeSyncResult`. Safe materialization
+(`design/plans/contracts/adapter_surface.py`) and waits for the `WorktreeSyncResult`. Safe materialization
 windows are therefore exactly the moments a fresh subprocess is about to start — which are also
 exactly the moments the receiving cache does not yet exist. The `was_noop=True` case is the normal
 steady-state result and costs nothing beyond a stat comparison; the `was_noop=False` case writes
@@ -306,7 +306,7 @@ daemonized service, or a hung LLM-generation loop may go arbitrarily long withou
 shared-file intent Core applies during that stretch fails to reach the starved worktree, no matter
 how faithfully the protocol is otherwise being followed.
 
-`GovernancePolicy.max_seconds_without_sync` (`plan/contracts/governance.py`) bounds that stretch.
+`GovernancePolicy.max_seconds_without_sync` (`design/plans/contracts/governance.py`) bounds that stretch.
 It is illustrative and adapter-tunable: `None` means the bound is off. When Core observes that a
 task has gone longer than this since its last `WorktreeSyncResult`, it treats the task as
 materialization-starved and issues a task-scoped boundary failure — dropping the task from

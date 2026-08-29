@@ -72,7 +72,7 @@ def parse_agent_output(model_class: Type[T], raw_json: str, agent_id: str, run_i
     return model_class.model_validate(data)
 ```
 
-**Changes to `plan/agent_interface_contracts.py`**
+**Changes to `design/plans/agent_interface_contracts.py`**
 *No schema changes required.* We will keep `ConfigDict(extra='forbid', frozen=True)` on **ALL** 20+ models. The strictness remains in the domain models themselves; the leniency is explicitly handled in the parser boundary, avoiding the need to conditionally loosen schemas.
 
 ### 3.3. Dispatch Path Integration
@@ -82,11 +82,11 @@ Inside the agent dispatch loop (likely within `adapter/llm_client.py` or `core/o
 
 ## 4. Document Updates Required
 
-1. **`plan/agentic-sdlc-design-v0.5.md`**
+1. **`design/plans/agentic-sdlc-design-v0.5.md`**
    - Update the "Agent Execution Loop" section to include the `llm_output_parser` normalization step.
-2. **`plan/core_adapter_boundary.md`**
+2. **`design/plans/core_adapter_boundary.md`**
    - Explicitly define that raw LLM output normalization occurs on the Adapter side. The Core only ever receives strict, valid Pydantic objects.
-3. **`plan/calibration_and_measurement.md`**
+3. **`design/plans/calibration_and_measurement.md`**
    - Add a new metric tracking "Schema Hallucination Rate" based on the `audit_event=schema_hallucination` logs. 
    - State that high hallucination rates on specific models should trigger prompt refinement.
 4. **`CLAUDE.md`**

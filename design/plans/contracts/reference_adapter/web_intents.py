@@ -105,7 +105,7 @@ class DeprecateExport(BaseContract):
 # The Intent Service routes on `op` without an isinstance() chain.
 # Tier 2 and Tier 3 outcomes are not expressed as intent types -- they are
 # expressed as IntentRejection.reason values returned to the submitting agent
-# (see plan/contracts/orchestration.py IntentRejection).
+# (see design/plans/contracts/orchestration.py IntentRejection).
 SharedFileIntent = (
     AddExport | AddRoute | AddProviderBinding
     | RenameExport | MoveRoute | DeprecateExport

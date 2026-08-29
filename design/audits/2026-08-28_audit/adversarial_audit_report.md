@@ -9,7 +9,7 @@ layer: adapter-sdlc
 # Adversarial Audit: SDLC Agentic Development System (v0.5)
 
 **Date:** 2026-08-27  
-**Scope:** All 12 files in `plan/`, plus `CLAUDE.md`, `AGENTIC_ARCHITECTURE_MANIFEST.md`, `FRONTMATTER_MANIFEST.md`, and `plan/versions/`  
+**Scope:** All 12 files in `design/plans/`, plus `CLAUDE.md`, `AGENTIC_ARCHITECTURE_MANIFEST.md`, `FRONTMATTER_MANIFEST.md`, and `design/plans/versions/`  
 **Methodology:** Two parallel deep-read passes (core design + operations/policy), followed by cross-reference verification
 
 ---
@@ -26,7 +26,7 @@ That said, the audit found **5 critical issues**, **8 high-severity concerns**, 
 
 ### C1. Security — In-Unit Secret Scrubbing is Defeatable
 
-**Where:** [core_adapter_boundary.md §5](file:///code/agent-swarm/agent-swarm/plan/core_adapter_boundary.md)  
+**Where:** [core_adapter_boundary.md §5](file:///code/agent-swarm/agent-swarm/design/plans/core_adapter_boundary.md)  
 **The claim:** Secrets are injected into the isolation unit, and scrubbing runs *inside* the unit before artifacts leave — so Core never handles raw secrets.
 
 **The problem:** Task Dev agents operate *inside* that same isolation unit with write access to `src/`. A hallucinating or adversarial agent could:
@@ -40,7 +40,7 @@ That said, the audit found **5 critical issues**, **8 high-severity concerns**, 
 
 ### C2. Deadlock Potential in Smart Mutex Rejection
 
-**Where:** [agentic-sdlc-design-v0.5.md §4.5](file:///code/agent-swarm/agent-swarm/plan/agentic-sdlc-design-v0.5.md#L138-L139), [agent_interface_contracts.py](file:///code/agent-swarm/agent-swarm/plan/agent_interface_contracts.py)  
+**Where:** [agentic-sdlc-design-v0.5.md §4.5](file:///code/agent-swarm/agent-swarm/design/plans/agentic-sdlc-design-v0.5.md#L138-L139), [agent_interface_contracts.py](file:///code/agent-swarm/agent-swarm/design/plans/agent_interface_contracts.py)  
 **The claim:** Colliding intents are rejected back to the submitting agent with blocking context.
 
 **The problem:** If two tasks have fundamentally incompatible structural requirements (e.g., Task A needs route `/api/v2/users` and Task B needs the same path for a different handler), they will ping-pong rejections. The budget ceiling will eventually kill the run, but it will burn significant tokens/dollars before it does. More subtly, three or more tasks can create a circular wait where no ordering of intent submissions resolves the collision.
@@ -51,7 +51,7 @@ That said, the audit found **5 critical issues**, **8 high-severity concerns**, 
 
 ### C3. The `NOT_APPLICABLE` Gate Bypass
 
-**Where:** [agent_interface_contracts.py `GateApplicability`](file:///code/agent-swarm/agent-swarm/plan/agent_interface_contracts.py), [agentic-sdlc-design-v0.5.md §9.1](file:///code/agent-swarm/agent-swarm/plan/agentic-sdlc-design-v0.5.md#L216-L217)  
+**Where:** [agent_interface_contracts.py `GateApplicability`](file:///code/agent-swarm/agent-swarm/design/plans/agent_interface_contracts.py), [agentic-sdlc-design-v0.5.md §9.1](file:///code/agent-swarm/agent-swarm/design/plans/agentic-sdlc-design-v0.5.md#L216-L217)  
 **The claim:** Gates can return `NOT_APPLICABLE` when their scope doesn't cover the diff.
 
 **The problem:** An adversarial or poorly-prompted Task Dev agent could structure its changes to intentionally fall outside the scope of hermetic test triggers (e.g., modifying only files that aren't covered by any hermetic test tier), effectively bypassing the mutation gate by forcing it to return `NOT_APPLICABLE`. 
@@ -62,7 +62,7 @@ That said, the audit found **5 critical issues**, **8 high-severity concerns**, 
 
 ### C4. Race Conditions in Shared-File Materialization
 
-**Where:** [execution_isolation.md §7](file:///code/agent-swarm/agent-swarm/plan/execution_isolation.md), [agentic-sdlc-design-v0.5.md §4.7](file:///code/agent-swarm/agent-swarm/plan/agentic-sdlc-design-v0.5.md#L144-L156)  
+**Where:** [execution_isolation.md §7](file:///code/agent-swarm/agent-swarm/design/plans/execution_isolation.md), [agentic-sdlc-design-v0.5.md §4.7](file:///code/agent-swarm/agent-swarm/design/plans/agentic-sdlc-design-v0.5.md#L144-L156)  
 **The claim:** Shared files are re-materialized into live worktrees via atomic POSIX rename while agents work.
 
 **The problem:** "Atomic rename" only guarantees filesystem-level atomicity. It does **not** protect against:
@@ -76,7 +76,7 @@ The design correctly identifies that worktrees are isolated from sibling *in-pro
 
 ### C5. Design/Build Phase Contradiction
 
-**Where:** [CLAUDE.md L20-22](file:///code/agent-swarm/agent-swarm/CLAUDE.md#L20-L22) vs. [agent_interface_contracts.py](file:///code/agent-swarm/agent-swarm/plan/agent_interface_contracts.py)  
+**Where:** [CLAUDE.md L20-22](file:///code/agent-swarm/agent-swarm/CLAUDE.md#L20-L22) vs. [agent_interface_contracts.py](file:///code/agent-swarm/agent-swarm/design/plans/agent_interface_contracts.py)  
 **The claim:** "We are in design, not build."
 
 **The problem:** `agent_interface_contracts.py` is 569 lines of fully executable, import-ready Pydantic code. The implementation roadmap demands immediate creation of a conformance kit (Stage 0). The glossary is a machine-readable CSV. These are all build artifacts. The gating line in CLAUDE.md creates an impossible instruction for agents: contribute to the design while the design *is* executable code.
@@ -89,7 +89,7 @@ The design correctly identifies that worktrees are isolated from sibling *in-pro
 
 ### H1. Calibration Loop Can't Close — Downstream Attribution is Impractical
 
-**Where:** [calibration_and_measurement.md §1](file:///code/agent-swarm/agent-swarm/plan/calibration_and_measurement.md#L26-L38)
+**Where:** [calibration_and_measurement.md §1](file:///code/agent-swarm/agent-swarm/design/plans/calibration_and_measurement.md#L26-L38)
 
 The verdict ledger records "downstream outcome" (did the artifact a validator passed later fail?). In a mutating codebase with continuous deploys, attributing a production bug to the specific `GateResult` that let it through weeks earlier is functionally impossible to automate. The document acknowledges this implicitly by leaving thresholds as TBD, but the *mechanism* for downstream attribution is not just untuned — it's architecturally undefined.
 
@@ -100,7 +100,7 @@ The verdict ledger records "downstream outcome" (did the artifact a validator pa
 
 ### H2. Blanket `max_retries=3` is Both Too High and Too Low
 
-**Where:** [budget_and_escalation_policy.md §1](file:///code/agent-swarm/agent-swarm/plan/budget_and_escalation_policy.md#L20-L25)
+**Where:** [budget_and_escalation_policy.md §1](file:///code/agent-swarm/agent-swarm/design/plans/budget_and_escalation_policy.md#L20-L25)
 
 A uniform `max_retries=3` across all loop-back edges ignores both cost and complexity:
 - For Plan Writer ↔ Plan Reviewer on Opus, 3 retries could burn $20–50+ in tokens per cycle
@@ -113,12 +113,12 @@ A uniform `max_retries=3` across all loop-back edges ignores both cost and compl
 
 ### H3. Fresh Test Environment Per Test is Prohibitively Expensive
 
-**Where:** [test_harness_architecture.md §1.2](file:///code/agent-swarm/agent-swarm/plan/test_harness_architecture.md#L24-L64)
+**Where:** [test_harness_architecture.md §1.2](file:///code/agent-swarm/agent-swarm/design/plans/test_harness_architecture.md#L24-L64)
 
 The document correctly identifies that Selenium's fresh-driver-per-test costs ~1–3 seconds. A 500-test browser suite would spend 8–25 minutes on browser startup alone. Combined with parallel agents each running their own suites, this interacts catastrophically with:
-- The wall-clock ceiling in [budget_and_escalation_policy.md §3](file:///code/agent-swarm/agent-swarm/plan/budget_and_escalation_policy.md#L49-L60)
+- The wall-clock ceiling in [budget_and_escalation_policy.md §3](file:///code/agent-swarm/agent-swarm/design/plans/budget_and_escalation_policy.md#L49-L60)
 - Container memory limits (each WebDriver is a full browser process)
-- The concurrency ceiling derivation in [core_adapter_boundary.md §3.6](file:///code/agent-swarm/agent-swarm/plan/core_adapter_boundary.md)
+- The concurrency ceiling derivation in [core_adapter_boundary.md §3.6](file:///code/agent-swarm/agent-swarm/design/plans/core_adapter_boundary.md)
 
 The document *acknowledges* this tension but doesn't resolve it. It just says the cost was "priced for milliseconds" and at seconds "it is a different decision." What decision? This needs an actual answer.
 
@@ -126,7 +126,7 @@ The document *acknowledges* this tension but doesn't resolve it. It just says th
 
 ### H4. Onboarding Complexity is Astronomical
 
-**Where:** [core_adapter_boundary.md §1.2](file:///code/agent-swarm/agent-swarm/plan/core_adapter_boundary.md#L39-L49)
+**Where:** [core_adapter_boundary.md §1.2](file:///code/agent-swarm/agent-swarm/design/plans/core_adapter_boundary.md#L39-L49)
 
 To onboard a new repo, a team must provide:
 - Isolation unit specs (worktree vs. container, image reference, bootstrap commands, port bindings, resource footprint)
@@ -142,7 +142,7 @@ This is not a "fill out a config file" onboarding — it's weeks of work per rep
 
 ### H5. Structural Change SOP Creates a Human Bottleneck
 
-**Where:** [structural_change_runbook.md](file:///code/agent-swarm/agent-swarm/plan/structural_change_runbook.md)
+**Where:** [structural_change_runbook.md](file:///code/agent-swarm/agent-swarm/design/plans/structural_change_runbook.md)
 
 In a mature codebase, file renames, route restructuring, and module splits happen regularly. Every one of these triggers the Structural Change SOP: pause affected swarm tasks → snapshot → human architecture review → new decomposition → resume. During off-hours, the entire pipeline stalls. The "agentic" system degrades into a ticketing queue.
 
@@ -152,7 +152,7 @@ The design correctly identifies that LLMs shouldn't attempt non-additive refacto
 
 ### H6. `extra="forbid"` + LLM Output = Chronic Parse Failures
 
-**Where:** [agent_interface_contracts.py L13-16](file:///code/agent-swarm/agent-swarm/plan/agent_interface_contracts.py#L13-L16)
+**Where:** [agent_interface_contracts.py L13-16](file:///code/agent-swarm/agent-swarm/design/plans/agent_interface_contracts.py#L13-L16)
 
 LLMs frequently hallucinate extra fields in structured output. With `extra="forbid"` on every model, any hallucinated field causes a hard Pydantic validation error, killing the pipeline step. The design rationale (prevent silent mutation) is sound, but the failure mode is chronic — especially with weaker models in the escalation ladder.
 
@@ -162,7 +162,7 @@ LLMs frequently hallucinate extra fields in structured output. With `extra="forb
 
 ### H7. Collision Key Semantics are Too Shallow
 
-**Where:** [core_adapter_boundary.md §2.1](file:///code/agent-swarm/agent-swarm/plan/core_adapter_boundary.md#L61-L74), [agent_interface_contracts.py](file:///code/agent-swarm/agent-swarm/plan/agent_interface_contracts.py)
+**Where:** [core_adapter_boundary.md §2.1](file:///code/agent-swarm/agent-swarm/design/plans/core_adapter_boundary.md#L61-L74), [agent_interface_contracts.py](file:///code/agent-swarm/agent-swarm/design/plans/agent_interface_contracts.py)
 
 Collision detection relies only on exact key matches. Two intents can be semantically destructive when combined but technically have different collision keys:
 - Two middleware additions that cancel each other out
@@ -175,7 +175,7 @@ The document acknowledges this is "deliberately under-powered" but doesn't quant
 
 ### H8. No Crash Recovery for Stateful Isolation Units
 
-**Where:** [agentic-sdlc-design-v0.5.md §3](file:///code/agent-swarm/agent-swarm/plan/agentic-sdlc-design-v0.5.md#L100-L103)
+**Where:** [agentic-sdlc-design-v0.5.md §3](file:///code/agent-swarm/agent-swarm/design/plans/agentic-sdlc-design-v0.5.md#L100-L103)
 
 The RunManifest supports resumability from the last recorded phase, but there's no defined mechanism for:
 - Cleaning up orphaned containers from a mid-Phase-4 crash
@@ -190,12 +190,12 @@ The immutable RunManifest pattern is good for the state machine, but the *side e
 
 | # | Issue | Where | Notes |
 |---|---|---|---|
-| M1 | CSV glossary will rot | [agentic_sdlc_glossary.csv](file:///code/agent-swarm/agent-swarm/plan/agentic_sdlc_glossary.csv) | Difficult to review in PRs, likely to fall out of sync with rapidly evolving docs. Markdown table would integrate better with the review workflow |
+| M1 | CSV glossary will rot | [agentic_sdlc_glossary.csv](file:///code/agent-swarm/agent-swarm/design/plans/agentic_sdlc_glossary.csv) | Difficult to review in PRs, likely to fall out of sync with rapidly evolving docs. Markdown table would integrate better with the review workflow |
 | M2 | Two competing inventory files | [AGENTIC_ARCHITECTURE_MANIFEST.md](file:///code/agent-swarm/agent-swarm/AGENTIC_ARCHITECTURE_MANIFEST.md) + [FRONTMATTER_MANIFEST.md](file:///code/agent-swarm/agent-swarm/FRONTMATTER_MANIFEST.md) | Both claim to be the repository map; neither tracks semantic dependencies between docs |
-| M3 | Vector search weakness for DSLs | [context_retrieval_strategy.md](file:///code/agent-swarm/agent-swarm/plan/context_retrieval_strategy.md) | Semantic search is poor at custom DSLs, specific syntax idioms, and highly abstracted code |
-| M4 | Sequential latency in context retrieval | [context_retrieval_strategy.md](file:///code/agent-swarm/agent-swarm/plan/context_retrieval_strategy.md) | Broad-then-narrow forces two sequential calls even when the agent already knows the exact target |
-| M5 | Hermeticity verification is expensive | [core_adapter_boundary.md](file:///code/agent-swarm/agent-swarm/plan/core_adapter_boundary.md) | Running tests in randomized order to verify hermeticity is combinatorially expensive for large suites |
-| M6 | DOM baseline false positives | [infra_triage_matrix.md](file:///code/agent-swarm/agent-swarm/plan/infra_triage_matrix.md) | Third-party scripts, service workers, background syncs can dirty DOM state, causing logic failures to be misclassified as infra |
+| M3 | Vector search weakness for DSLs | [context_retrieval_strategy.md](file:///code/agent-swarm/agent-swarm/design/plans/context_retrieval_strategy.md) | Semantic search is poor at custom DSLs, specific syntax idioms, and highly abstracted code |
+| M4 | Sequential latency in context retrieval | [context_retrieval_strategy.md](file:///code/agent-swarm/agent-swarm/design/plans/context_retrieval_strategy.md) | Broad-then-narrow forces two sequential calls even when the agent already knows the exact target |
+| M5 | Hermeticity verification is expensive | [core_adapter_boundary.md](file:///code/agent-swarm/agent-swarm/design/plans/core_adapter_boundary.md) | Running tests in randomized order to verify hermeticity is combinatorially expensive for large suites |
+| M6 | DOM baseline false positives | [infra_triage_matrix.md](file:///code/agent-swarm/agent-swarm/design/plans/infra_triage_matrix.md) | Third-party scripts, service workers, background syncs can dirty DOM state, causing logic failures to be misclassified as infra |
 
 ---
 

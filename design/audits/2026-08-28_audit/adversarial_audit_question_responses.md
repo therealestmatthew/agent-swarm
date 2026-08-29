@@ -25,7 +25,7 @@ This is initially designed for a small team (Myself, the architect, and 2-3 addi
 ### Q2. What LLM provider and rate limits are assumed?
 
 > **Question:**  
-> The concurrency ceiling derivation ([core_adapter_boundary.md §3.6](file:///code/agent-swarm/agent-swarm/plan/core_adapter_boundary.md)) mentions API rate limits, but the design doesn't name providers. Rate limits vary 10x+ between providers and tiers. Are you targeting Anthropic, OpenAI, Google, or provider-agnostic?
+> The concurrency ceiling derivation ([core_adapter_boundary.md §3.6](file:///code/agent-swarm/agent-swarm/design/plans/core_adapter_boundary.md)) mentions API rate limits, but the design doesn't name providers. Rate limits vary 10x+ between providers and tiers. Are you targeting Anthropic, OpenAI, Google, or provider-agnostic?
 
 #### Response
 Let's assume Anthropic (primary) and potentially OpenAI (secondary) - I would need to research the exact API limits.
@@ -55,7 +55,7 @@ I am really not sure - we would need to figure out how to handle this edge case.
 ### Q5. What happens to in-flight work during a ceiling halt?
 
 > **Question:**  
-> [budget_and_escalation_policy.md §3](file:///code/agent-swarm/agent-swarm/plan/budget_and_escalation_policy.md#L60) says the pipeline pauses and state is snapshotted. But during Phase 4, multiple Task Dev agents may be mid-execution. Are their containers/worktrees preserved? Can they be resumed, or must they restart from their last committed state?
+> [budget_and_escalation_policy.md §3](file:///code/agent-swarm/agent-swarm/design/plans/budget_and_escalation_policy.md#L60) says the pipeline pauses and state is snapshotted. But during Phase 4, multiple Task Dev agents may be mid-execution. Are their containers/worktrees preserved? Can they be resumed, or must they restart from their last committed state?
 
 #### Response
 I really don't know.  My instinct says we should have a decision tree that helps us figure out which case should follow in such a scenario.  I would think they should be preserved and resumable, but what triggers would mandate a restart from last-committed state?
@@ -65,7 +65,7 @@ I really don't know.  My instinct says we should have a decision tree that helps
 ### Q6. Is Stage 0 of the roadmap implementation work?
 
 > **Question:**  
-> [implementation_roadmap.md](file:///code/agent-swarm/agent-swarm/plan/implementation_roadmap.md) Stage 0 involves defining `RepoDeclaration`/`GovernancePolicy` contracts and relocating web-specific intents out of Core — which requires modifying `agent_interface_contracts.py`. Does this count as "build" under the CLAUDE.md gate, or is schema relocation still "design"?
+> [implementation_roadmap.md](file:///code/agent-swarm/agent-swarm/design/plans/implementation_roadmap.md) Stage 0 involves defining `RepoDeclaration`/`GovernancePolicy` contracts and relocating web-specific intents out of Core — which requires modifying `agent_interface_contracts.py`. Does this count as "build" under the CLAUDE.md gate, or is schema relocation still "design"?
 
 #### Response
 Schema relocation is still design.  Also, we should consider decomposing the agent_interface_contracts.py file into multiple modular files by purpose - need to figure out if this makes sense and to what level of detail we should decompose.

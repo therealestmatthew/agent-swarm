@@ -8,7 +8,7 @@ layer: core
 
 # LLM Output Normalization
 
-**Referenced by:** `agentic-sdlc-design-v0.5.md` §3 (Phase-by-Phase Architecture) · `core_adapter_boundary.md` · `CLAUDE.md` (Working agreements) · `plan/contracts/__init__.py` · `plan/calibration_and_measurement.md` §5 (Schema Hallucination Rate)
+**Referenced by:** `agentic-sdlc-design-v0.5.md` §3 (Phase-by-Phase Architecture) · `core_adapter_boundary.md` · `CLAUDE.md` (Working agreements) · `design/plans/contracts/__init__.py` · `design/plans/calibration_and_measurement.md` §5 (Schema Hallucination Rate)
 
 ## Purpose
 
@@ -53,4 +53,4 @@ How normalization interacts with the escalation ladder:
 
 ## 6. Schema Defaulting Convention
 
-Required fields with no default on top-level governance postures force explicit, conscious choice by the policy owner. Scoped or per-tier decisions may default to the conservative option. The reference case: `GovernancePolicy.absent_capability_policy` (no default — a top-level posture that must never be silently inherited) vs. `GovernancePolicy.non_hermetic_coverage_posture` (defaults to `DEGRADE` — a scoped, per-tier decision where degradation is the safe, conservative default). See `plan/contracts/governance.py` L309 for the inline rationale.
+Required fields with no default on top-level governance postures force explicit, conscious choice by the policy owner. Scoped or per-tier decisions may default to the conservative option. The reference case: `GovernancePolicy.absent_capability_policy` (no default — a top-level posture that must never be silently inherited) vs. `GovernancePolicy.non_hermetic_coverage_posture` (defaults to `DEGRADE` — a scoped, per-tier decision where degradation is the safe, conservative default). See `design/plans/contracts/governance.py` L309 for the inline rationale.

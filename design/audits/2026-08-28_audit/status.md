@@ -70,7 +70,7 @@ One commit with Maker/Checker sub-agent pair. Net: +219 / −17 across 7 files
   against in-process module caches (`sys.modules`, `require.cache`,
   `$LOADED_FEATURES`) during test execution. Atomic POSIX rename provided
   filesystem-level atomicity but not runtime isolation. New Core-owned
-  adapter-surface schema module `plan/contracts/adapter_surface.py` holds
+  adapter-surface schema module `design/plans/contracts/adapter_surface.py` holds
   `WorktreeSyncRequest` and `WorktreeSyncResult` (fourth Core schema module
   alongside `orchestration.py`, `governance.py`, `verification.py`). Sync is
   idempotent by design (`was_noop=True` steady state) — event delivery is
@@ -85,14 +85,14 @@ One commit with Maker/Checker sub-agent pair. Net: +219 / −17 across 7 files
   `GateApplicability`, `GateResult`, `HaltReason`, `RunManifest.*`,
   `DiffClassification`, and C1/C2/C3 fields all untouched — the pre-C5
   remediation draft would have written schemas to the deleted
-  `plan/agent_interface_contracts.py`.
+  `design/plans/agent_interface_contracts.py`.
 
 **Design decisions locked in during human gate:**
 - **Sync trigger: unconditional pre-subprocess.** Agent's runtime calls
   `SyncWorktree()` unconditionally before every subprocess execution.
   Idempotent. Removes event-loss risk on agent crash/restart entirely; H8
   does not need to persist unseen events.
-- **Schema home: new module `plan/contracts/adapter_surface.py`.** Fourth
+- **Schema home: new module `design/plans/contracts/adapter_surface.py`.** Fourth
   Core schema module for adapter-facing verbs. Deliberately opened as the
   future home for other adapter-surface schemas even though it holds one
   verb today. Must not import from `orchestration.py`, `governance.py`, or
@@ -136,11 +136,11 @@ One commit with Maker/Checker sub-agent pair. Net: +122 / −11 across 8 files.
   check that fires when a `NON_TRIVIAL_CODE` diff produces no `APPLIED`-and-
   passed result from the coverage family (`tests.diff_covered` +
   `mutation.diff_scoped`, hard-coded). New `DiffClassification` enum in
-  `plan/contracts/verification.py` (`TRIVIAL_DOCS`, `NON_TRIVIAL_CODE`);
-  new `RunManifest.diff_classification` field on `plan/contracts/orchestration.py`
+  `design/plans/contracts/verification.py` (`TRIVIAL_DOCS`, `NON_TRIVIAL_CODE`);
+  new `RunManifest.diff_classification` field on `design/plans/contracts/orchestration.py`
   (parallel to C2's `rejection_graph_edges` — task-scoped state persisted so
   H8 crash recovery cannot silently lose the classification). New
-  `RepoDeclaration.trivial_path_globs` on `plan/contracts/governance.py`
+  `RepoDeclaration.trivial_path_globs` on `design/plans/contracts/governance.py`
   (adapter-extensible; Core defaults to `.md/.rst/.txt` allow-list). Extended
   `agentic-sdlc-design-v0.5.md` §9.1 with the meta-gate row, §10 with a new
   attack row cross-referencing the existing `mutation.diff_scoped` row
@@ -191,7 +191,7 @@ One commit with Maker/Checker sub-agent pair. Net: +105 / −12 across 7 files.
 
 - **`506ee85`** deadlock detection: extended `IntentRejection.reason` with a 6th value
   `deadlock_cycle` (spec was pre-C5 and would have replaced the vocabulary — corrected at
-  human gate). Added Core-only `RejectionEdge` model in `plan/contracts/orchestration.py`
+  human gate). Added Core-only `RejectionEdge` model in `design/plans/contracts/orchestration.py`
   and persisted `RunManifest.rejection_graph_edges: list[RejectionEdge]` (additive,
   backward-compat, feeds H8 crash recovery). Added `GovernancePolicy.max_mutex_rejections:
   int = 3` (illustrative, adapter-tunable). Expanded `agentic-sdlc-design-v0.5.md` §4.5
@@ -258,9 +258,9 @@ Two commits, each with Maker/Checker sub-agent pair. Net: +142 / −15
 across 6 files.
 
 - **`6bacbce`** scaffold schemas: added `SecretScrubberConfig`,
-  `EgressPayload`, `ScrubbedEgressPayload` to `plan/contracts/governance.py`
+  `EgressPayload`, `ScrubbedEgressPayload` to `design/plans/contracts/governance.py`
   (per user Q2 — governance already owns `SecretSpec`), re-exported from
-  `plan/contracts/__init__.py`. All three inherit from `BaseContract`.
+  `design/plans/contracts/__init__.py`. All three inherit from `BaseContract`.
 - **`22bad69`** prose: rewrote `core_adapter_boundary.md` §5 with new
   Core-side scrubbing design and a §5.3 "why the trust boundary moved"
   callout preserving the prior argument (per user Q1). Added
@@ -271,7 +271,7 @@ across 6 files.
 
 **Design decisions locked in during human gate:**
 - Rewrite §5 with explicit design-change callout (not silent rewrite)
-- Schemas in `plan/contracts/governance.py` (same domain as `SecretSpec`)
+- Schemas in `design/plans/contracts/governance.py` (same domain as `SecretSpec`)
 - Egress: **allow-list is the design**, DPI is a possible extension only
 - Credential-isolation: new derivation rule alongside `ResetStrategy`,
   orthogonal source; `granted_secrets` non-empty → floors to `CONTAINER`
@@ -286,7 +286,7 @@ in its derivation examples.
 
 Three commits, each with Maker/Checker sub-agent pair. Net: +730 / −603 across 16 files.
 
-- **`cd34117`** scaffold: created `plan/contracts/` package with 4 modules by domain
+- **`cd34117`** scaffold: created `design/plans/contracts/` package with 4 modules by domain
   (`orchestration.py`, `governance.py`, `verification.py`,
   `reference_adapter/web_intents.py`) + `BaseContract` base class in `__init__.py`.
   Old file untouched.
@@ -294,7 +294,7 @@ Three commits, each with Maker/Checker sub-agent pair. Net: +730 / −603 across
   "Where things live" table row updated, "Schemas live in one place" working
   agreement rewritten per hybrid Q3 decision, 6 new rows added to
   `AGENTIC_ARCHITECTURE_MANIFEST.md`.
-- **`cb53dda`** cleanup: deleted `plan/agent_interface_contracts.py`, removed its
+- **`cb53dda`** cleanup: deleted `design/plans/agent_interface_contracts.py`, removed its
   manifest row, rewrote `CLAUDE.md` phase-gate paragraph into a
   Permitted/Forbidden bulleted form per remediation §3.1.
 
@@ -347,10 +347,10 @@ without a revise round.
 - **`a3e5213`** two-layer collision model: introduces Layer 2 semantic
   analysis for shared-file intents alongside the existing Layer 1
   deterministic key match. New `SemanticAnalyzerSpec` in
-  `plan/contracts/governance.py` (adapter-declared, sits next to
+  `design/plans/contracts/governance.py` (adapter-declared, sits next to
   `SignalSpec`/`TriageRule`); `RepoDeclaration.semantic_analyzers` and
   `IntentOpSpec.semantic_analyzer_ids` provide per-op linkage. New
-  `IntentSubmission` wrapper in `plan/contracts/orchestration.py` carries
+  `IntentSubmission` wrapper in `design/plans/contracts/orchestration.py` carries
   `override_semantic_collisions: list[str]` so the `SharedFileIntent` union
   members stay a pure vocabulary. `IntentRejection.reason` extended from 7
   to 8 values by adding `semantic_collision` (Layer-2 sub-status of a
@@ -401,7 +401,7 @@ without a revise round.
 **Minor items accepted without revise round:**
 - §4.5 schema-module cite is implicit (names `override_semantic_collisions`,
   `override_key`, `deadlock_cycle` as fields but does not hyperlink
-  `plan/contracts/orchestration.py`). Field references are unambiguous.
+  `design/plans/contracts/orchestration.py`). Field references are unambiguous.
 - `semantic_collision` inserted at union index 1 (next to `collision`)
   rather than appended at index 7. Relative order of the 7 pre-existing
   values is preserved; the locked "no reorder" decision holds.
@@ -421,7 +421,7 @@ remediations touched.
 
 One commit (`5e2bb40`). Net: 6 design files + 17 audit-dir files (pre-commit hook frontmatter backfill).
 
-- **`5e2bb40`** three-tier structural change governance: Introduces Tier 1 (auto-resolved: `RenameExport`, `MoveRoute`, `DeprecateExport`), Tier 2 (async human review: `IntentRejection.reason = "pending_tier2_review"`, run does not halt), and Tier 3 (full SOP pause: existing `reason = "structural"`). Renames `AdditiveIntent → SharedFileIntent` in `plan/contracts/reference_adapter/web_intents.py` and all prose. Adds `GovernancePolicy.max_intents_per_shared_file: int | None = None` (illustrative; closes the TBD in the runbook §4/§5). Restructures `structural_change_runbook.md` into §3 Tier 2 Procedure + §4 Tier 3 Procedure + renumbered §5/§6. Updates `agentic-sdlc-design-v0.5.md` §4.2 heading and Principle 9.
+- **`5e2bb40`** three-tier structural change governance: Introduces Tier 1 (auto-resolved: `RenameExport`, `MoveRoute`, `DeprecateExport`), Tier 2 (async human review: `IntentRejection.reason = "pending_tier2_review"`, run does not halt), and Tier 3 (full SOP pause: existing `reason = "structural"`). Renames `AdditiveIntent → SharedFileIntent` in `design/plans/contracts/reference_adapter/web_intents.py` and all prose. Adds `GovernancePolicy.max_intents_per_shared_file: int | None = None` (illustrative; closes the TBD in the runbook §4/§5). Restructures `structural_change_runbook.md` into §3 Tier 2 Procedure + §4 Tier 3 Procedure + renumbered §5/§6. Updates `agentic-sdlc-design-v0.5.md` §4.2 heading and Principle 9.
 
 **Design decisions locked in during human gate:**
 - Clean rename (`AdditiveIntent → SharedFileIntent`): once `RenameExport` joins the union, "additive" is a misnomer; all prose updated in one pass.
@@ -437,10 +437,10 @@ One commit (`5e2bb40`). Net: 6 design files + 17 audit-dir files (pre-commit hoo
 
 One commit (`2dd00b7`). Net: +32 / -14 across 4 files.
 
-- **`2dd00b7`** loop budgets: Added `LoopBudgetConfig` and `EscalationConfig` to `plan/contracts/governance.py`. Replaced the static `max_retries` integer in `budget_and_escalation_policy.md` with parameterized target budgets. Updated `agentic-sdlc-design-v0.5.md` Phase 4 to reference these constraints.
+- **`2dd00b7`** loop budgets: Added `LoopBudgetConfig` and `EscalationConfig` to `design/plans/contracts/governance.py`. Replaced the static `max_retries` integer in `budget_and_escalation_policy.md` with parameterized target budgets. Updated `agentic-sdlc-design-v0.5.md` Phase 4 to reference these constraints.
 
 **Design decisions locked in during human gate:**
-- Schemas live in `plan/contracts/governance.py` since `agent_interface_contracts.py` was deleted by C5.
+- Schemas live in `design/plans/contracts/governance.py` since `agent_interface_contracts.py` was deleted by C5.
 - Added `budget_ceilings: dict[str, LoopBudgetConfig]` to `GovernancePolicy` (resolving **F1**).
 - Used `max_cost_units: float` instead of USD to keep Core Orchestrator currency-agnostic.
 - Hitting a loop-specific cost ceiling before `max_retries` is reached immediately triggers a human `CEILING_HALT`, maintaining consistency with global cost ceilings.
@@ -451,10 +451,10 @@ One commit (`2dd00b7`). Net: +32 / -14 across 4 files.
 
 One commit (`da6bec1`). Net: +45 / -23 across 3 files.
 
-- **`da6bec1`** tiered calibration: Added `VerdictLedgerEntry` to `plan/contracts/verification.py`. Rewrote `calibration_and_measurement.md` to define Tiers 1-3, set the Shadow Mode promotion bar at N=50 with 95% Tier 1 / 5% Tier 2 thresholds, and redefined true-cost as Cost-per-Integration-Catch (CPIC). Updated `budget_and_escalation_policy.md` to tie dispatch metering to ledger entries.
+- **`da6bec1`** tiered calibration: Added `VerdictLedgerEntry` to `design/plans/contracts/verification.py`. Rewrote `calibration_and_measurement.md` to define Tiers 1-3, set the Shadow Mode promotion bar at N=50 with 95% Tier 1 / 5% Tier 2 thresholds, and redefined true-cost as Cost-per-Integration-Catch (CPIC). Updated `budget_and_escalation_policy.md` to tie dispatch metering to ledger entries.
 
 **Design decisions locked in during human gate:**
-- Schema (`VerdictLedgerEntry`) placed in `plan/contracts/verification.py`.
+- Schema (`VerdictLedgerEntry`) placed in `design/plans/contracts/verification.py`.
 - CI Window for Tier 2 evaluation defined purely by immediate post-merge CI pipeline success.
 - Tier 2 Attribution implemented via a simple overlap heuristic (modified files vs. failing test suite).
 
@@ -462,7 +462,7 @@ One commit (`da6bec1`). Net: +45 / -23 across 3 files.
 
 One commit (`401e24e`). Net: +138 / -47 across 4 files (and 1 new file).
 
-- **`401e24e`** tiered execution: Added `strategy_type` and `pool_size` to `ResetStrategy`, and `execution_tier` and `is_required` to `TestTier` inside `plan/contracts/governance.py`. Updated `test_harness_architecture.md` and `core_adapter_boundary.md` to introduce Tiers 1-3 execution and Levels 0-3 progressive onboarding. Created `adapter_onboarding.md` detailing the transition with a Python Web App starter template.
+- **`401e24e`** tiered execution: Added `strategy_type` and `pool_size` to `ResetStrategy`, and `execution_tier` and `is_required` to `TestTier` inside `design/plans/contracts/governance.py`. Updated `test_harness_architecture.md` and `core_adapter_boundary.md` to introduce Tiers 1-3 execution and Levels 0-3 progressive onboarding. Created `adapter_onboarding.md` detailing the transition with a Python Web App starter template.
 
 **Design decisions locked in during human gate:**
 - Schema integration: Modified existing `TestTier` and `ResetStrategy` in `governance.py` instead of fragmenting into separate schemas.
@@ -475,11 +475,11 @@ One commit (`401e24e`). Net: +138 / -47 across 4 files (and 1 new file).
 One commit (`d81b007`) with Maker/Checker sub-agent pair, plus a second Maker/Checker pair to resolve missing `__init__.py` exports and broken sync script. Net: modifications across 17 files.
 
 - **`d81b007`** M1-M6 resolution: 
-  - **M1 (Glossary)**: Converted `plan/agentic_sdlc_glossary.csv` to `plan/agentic_sdlc_glossary.md` and updated all referencing documents (`agentic-sdlc-design-v0.5.md`, manifests).
+  - **M1 (Glossary)**: Converted `design/plans/agentic_sdlc_glossary.csv` to `design/plans/agentic_sdlc_glossary.md` and updated all referencing documents (`agentic-sdlc-design-v0.5.md`, manifests).
   - **M2 (Inventory Files)**: Explicitly opted not to touch the manifests as they were already correctly scoped (no frontmatter rules in `AGENTIC_ARCHITECTURE_MANIFEST.md`, no agent inventories in `FRONTMATTER_MANIFEST.md`), avoiding destructive regressions. Modified `scripts/sync_counts.py` to parse the new markdown glossary instead of the CSV.
-  - **M3+M4 (Context Retrieval)**: Added `ExactSymbolLookup` to `plan/contracts/orchestration.py` to bypass broad vector search for known symbols. Updated `plan/context_retrieval_strategy.md`.
-  - **M5 (Hermeticity Cost)**: Added `HermeticityTestScope` to `plan/contracts/governance.py` and updated `plan/test_harness_architecture.md` to scope hermetic verification strictly via dependency-graph rather than full combinatorics.
-  - **M6 (DOM Baseline)**: Added `DOMCaptureConfig` to `plan/contracts/reference_adapter/web_intents.py` featuring a hard timeout (`await_hydration_ms`) and `ignore_selectors` list to filter volatile/animated nodes. Updated `plan/infra_triage_matrix.md` accordingly.
+  - **M3+M4 (Context Retrieval)**: Added `ExactSymbolLookup` to `design/plans/contracts/orchestration.py` to bypass broad vector search for known symbols. Updated `design/plans/context_retrieval_strategy.md`.
+  - **M5 (Hermeticity Cost)**: Added `HermeticityTestScope` to `design/plans/contracts/governance.py` and updated `design/plans/test_harness_architecture.md` to scope hermetic verification strictly via dependency-graph rather than full combinatorics.
+  - **M6 (DOM Baseline)**: Added `DOMCaptureConfig` to `design/plans/contracts/reference_adapter/web_intents.py` featuring a hard timeout (`await_hydration_ms`) and `ignore_selectors` list to filter volatile/animated nodes. Updated `design/plans/infra_triage_matrix.md` accordingly.
   - **Housekeeping**: Resolved pending items F2, F3, F6, F11, F13 in the same pass.
 
 **Design decisions locked in during human gate:**

@@ -47,11 +47,11 @@ An initialized changelog.
 ### 2. File System Refactor: The `design/` Staging Ground
 All current planning documents and audits will be relocated here to serve as the conceptual brainstorming and drafting area. The Python contracts (`contracts/*.py`) will also remain here until they are actively implemented in the executable codebase.
 
-#### [MODIFY] `plan/` -> `design/plans/`
-The entire `plan/` directory (including `contracts/`, `optimization/`, `agents/`, etc.) will be moved to `design/plans/`.
+#### [MODIFY] `design/plans/` -> `design/plans/`
+The entire `design/plans/` directory (including `contracts/`, `optimization/`, `agents/`, etc.) will be moved to `design/plans/`.
 
-#### [MODIFY] `audit/` -> `design/audits/`
-The entire `audit/` directory will be moved to `design/audits/`.
+#### [MODIFY] `design/audits/` -> `design/audits/`
+The entire `design/audits/` directory will be moved to `design/audits/`.
 
 ---
 
@@ -88,4 +88,4 @@ tree -L 3
 
 ### Manual Verification
 1. Review `AGENTS.md` to ensure the tone is imperative, concise, and effectively protects the root manifests.
-2. Verify that `plan/contracts/` successfully moved to `design/plans/contracts/` and was not prematurely moved to `src/`.
+2. Verify that `design/plans/contracts/` successfully moved to `design/plans/contracts/` and was not prematurely moved to `src/`.

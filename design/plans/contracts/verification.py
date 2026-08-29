@@ -102,7 +102,7 @@ class DiffClassification(str, Enum):
     Triviality is a property of the *diff*, not of any single gate's result — a diff either
     is or is not code the coverage family should have applied to, regardless of what any one
     gate returned. That is why this lives here as an enum but is carried on `RunManifest`
-    (`plan/contracts/orchestration.py`) rather than on `GateResult`: it is one label per task,
+    (`design/plans/contracts/orchestration.py`) rather than on `GateResult`: it is one label per task,
     not per gate. The starting rule is extension-only, defined in
     `test_harness_architecture.md` §3.9 and adapter-tunable via
     `RepoDeclaration.trivial_path_globs`."""

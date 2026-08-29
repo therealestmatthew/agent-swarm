@@ -8,14 +8,14 @@ layer: shared
 
 # Structural Change Runbook
 
-**Referenced by:** `agentic-sdlc-design-v0.5.md` §4.2, §4.6, §8 · `plan/contracts/orchestration.py` (`IntentRejection.reason = "structural"` and `"pending_tier2_review"`) · `plan/contracts/governance.py` (`GovernancePolicy.max_intents_per_shared_file`)
+**Referenced by:** `agentic-sdlc-design-v0.5.md` §4.2, §4.6, §8 · `design/plans/contracts/orchestration.py` (`IntentRejection.reason = "structural"` and `"pending_tier2_review"`) · `design/plans/contracts/governance.py` (`GovernancePolicy.max_intents_per_shared_file`)
 
 ## Purpose
 
 The Shared-File Intent Service (design doc §4) handles three tiers of structural change:
 
 - **Tier 1 (Auto-Resolved):** New deterministic operations (`RenameExport`, `MoveRoute`,
-  `DeprecateExport` — schemas in `plan/contracts/reference_adapter/web_intents.py`) are
+  `DeprecateExport` — schemas in `design/plans/contracts/reference_adapter/web_intents.py`) are
   handled synchronously by the Intent Service with no human gate. Low blast radius, fully
   reversible, mechanical AST transforms.
 - **Tier 2 (Async Human Review):** Changes that affect consumer boundaries but do not
@@ -140,7 +140,7 @@ The Intent Service's deadlock detector (design doc §4.5) terminates the involve
 The reviewer picking up a deadlocked task set works from the evidence Core preserves:
 
 1. **Read the persisted rejection graph.** `RunManifest.rejection_graph_edges` holds the full edge set the detector was operating on at termination. The involved tasks are named in `IntentRejection.deadlock_cycle`; the edges give the resource(s) and the sequence of rejections. A cycle over one resource key means the tasks were fighting for the same insertion point; a cycle over several means the interface itself is the shape of the conflict.
-2. **Decide the resolution class.** If the cycle sits over one resource and the tasks' declared responsibilities do not actually require both to write there, the answer is re-decomposition: the Task Decomposer redraws the task boundaries and Core reschedules the involved tasks (§4.4 style — the boundary failure path). No full runbook run is needed; the SOP's plan/approve steps (§4.3, §4.6) are overkill for a decomposition fix.
+2. **Decide the resolution class.** If the cycle sits over one resource and the tasks' declared responsibilities do not actually require both to write there, the answer is re-decomposition: the Task Decomposer redraws the task boundaries and Core reschedules the involved tasks (§4.4 style — the boundary failure path). No full runbook run is needed; the SOP's design/plans/approve steps (§4.3, §4.6) are overkill for a decomposition fix.
 3. **Or accept it as structural.** If the cycle reflects an interface that genuinely cannot express what both tasks need to do — different consumers of the same registered symbol needing incompatible extensions, for example — the answer is the full Tier 3 Procedure (§4 above), starting from the pause step. The rejection graph edges become part of the §4.2 snapshot as evidence for the §4.3 architecture proposal.
 
 The runbook does not fire automatically on a deadlock detection. Whether a deadlocked set routes to re-decomposition or to §4 is a human call, made against the persisted graph. What is automatic is the containment: budget stops burning at the moment of detection, not at the moment of human review.

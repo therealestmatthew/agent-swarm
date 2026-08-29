@@ -20,17 +20,17 @@ answers.
 
 **The first adapter is software delivery; it is not the only one.** The pipeline is a
 general-purpose orchestrator with a universal Core and per-domain adapters
-(`plan/core_adapter_boundary.md`). Two non-software adapters — **Personal** and **Team
-Optimization** — are being designed alongside it (`plan/optimization/charter.md`), not because the
+(`design/plans/core_adapter_boundary.md`). Two non-software adapters — **Personal** and **Team
+Optimization** — are being designed alongside it (`design/plans/optimization/charter.md`), not because the
 domain is the point but because `core_adapter_boundary.md` §6 is right that *"one adapter does not
 demonstrate an abstraction."* A dissimilar adapter is the falsification test, and a non-software one
 is the strongest available.
 
-Before assuming any mechanism generalizes, read `plan/core_vs_adapter.md`. It classifies every
+Before assuming any mechanism generalizes, read `design/plans/core_vs_adapter.md`. It classifies every
 document, schema module and agent as Core, adapter, or shared — and records six closed enums in Core
 that block a non-software adapter as currently written.
 
-**We are in the structural design phase.** `plan/` is the source of truth and the current work is refining it.
+**We are in the structural design phase.** `design/plans/` is the source of truth and the current work is refining it.
 - **Permitted:** Defining, refining, and modularizing Pydantic schemas, system contracts, glossary definitions, and interface boundaries. Schema relocation is design.
 - **Forbidden:** Implementing agent logic, service execution code, internal pipeline routing logic, or API integrations. Do not build application logic until the design settles and this phase gate changes.
 
@@ -38,28 +38,28 @@ that block a non-software adapter as currently written.
 
 | Path | What it is |
 |---|---|
-| `plan/agentic-sdlc-design-v0.5.md` | The orchestration blueprint — principles, agent roster, the eight phases. **Read first.** |
-| `plan/contracts/` | Every schema exchanged between agents, organized by domain (`orchestration.py`, `governance.py`, `verification.py`, `reference_adapter/`). Single source of truth. |
-| `plan/implementation_roadmap.md` | Design → build sequence: backlog critique, cross-file defects found, and the six stages. **Read second.** |
-| `plan/core_adapter_boundary.md` | The universal Core vs. the per-repo Adapter Layer — the `RepoDeclaration`/`GovernancePolicy` contract split and its governance, capability negotiation, hydration, credentials |
-| `plan/infra_triage_matrix.md` | The deterministic failure-classification rules engine |
-| `plan/test_harness_architecture.md` | Baseline capture, Protocol-fake test double standards, diff-scoped mutation testing |
-| `plan/context_retrieval_strategy.md` | Context Gatherer search heuristics and token budgets |
-| `plan/budget_and_escalation_policy.md` | Loop ceilings, the escalation ladder, cost ceilings |
-| `plan/crash_recovery.md` | Startup Reconciliation Protocol, orphan cleanup, shared/ branch integrity, resume decision tree |
-| `plan/structural_change_runbook.md` | Human-gated SOP for non-additive shared-file changes |
-| `plan/execution_isolation.md` | Why disjoint write ownership alone doesn't isolate reads; one worktree per task; shared-file materialization (§7) |
-| `plan/calibration_and_measurement.md` | Verdict ledger, Shadow Mode promotion criteria, agent-spec versioning |
-| `plan/llm_output_normalization.md` | The two-pass strip-then-validate layer between LLM JSON and `extra="forbid"` models |
-| `plan/adapter_onboarding.md` | Progressive Level 0–3 onboarding for a target repo, and the starter declaration template |
-| `plan/work_packet_contract.md` | What exactly one agent receives when dispatched — scope, approved sources, permissions, evidence and reviewer requirements |
-| `plan/agent_taxonomy.md` | The 6 agent types, the full roster mapped to them, and the proposed Vault subsystem. Summary layer above `plan/agents/` |
-| `plan/agents/` | **One card per agent** — 25 of them, plus `card_schema.md` and a per-type exemplar in `types/`. Enforced by `scripts/check_agent_cards.py` |
-| `plan/core_vs_adapter.md` | Which documents, schemas and agents are reusable Core vs. SDLC-only. **Read before assuming a mechanism generalizes.** |
-| `plan/optimization/` | The Personal and Team Optimization adapters — the non-software domains, their governed registers, routing standard, and the Delivery Pulse runbook |
-| `plan/agentic_sdlc_glossary.md` | Term definitions used across the set — 64 terms, with Category and Tags columns |
-| `plan/versions/` | Superseded design versions (v0.1–v0.4) and `REGRESSION.md`, the analysis behind v0.5 |
-| `audit/2026-08-28_audit/` | The adversarial audit and its 13 remediation records, keyed `C1`–`C5`, `H1`–`H8`, `M1`–`M6`. A second finding register, separate from the roadmap's `D`/`R` IDs |
+| `design/plans/agentic-sdlc-design-v0.5.md` | The orchestration blueprint — principles, agent roster, the eight phases. **Read first.** |
+| `design/plans/contracts/` | Every schema exchanged between agents, organized by domain (`orchestration.py`, `governance.py`, `verification.py`, `reference_adapter/`). Single source of truth. |
+| `design/plans/implementation_roadmap.md` | Design → build sequence: backlog critique, cross-file defects found, and the six stages. **Read second.** |
+| `design/plans/core_adapter_boundary.md` | The universal Core vs. the per-repo Adapter Layer — the `RepoDeclaration`/`GovernancePolicy` contract split and its governance, capability negotiation, hydration, credentials |
+| `design/plans/infra_triage_matrix.md` | The deterministic failure-classification rules engine |
+| `design/plans/test_harness_architecture.md` | Baseline capture, Protocol-fake test double standards, diff-scoped mutation testing |
+| `design/plans/context_retrieval_strategy.md` | Context Gatherer search heuristics and token budgets |
+| `design/plans/budget_and_escalation_policy.md` | Loop ceilings, the escalation ladder, cost ceilings |
+| `design/plans/crash_recovery.md` | Startup Reconciliation Protocol, orphan cleanup, shared/ branch integrity, resume decision tree |
+| `design/plans/structural_change_runbook.md` | Human-gated SOP for non-additive shared-file changes |
+| `design/plans/execution_isolation.md` | Why disjoint write ownership alone doesn't isolate reads; one worktree per task; shared-file materialization (§7) |
+| `design/plans/calibration_and_measurement.md` | Verdict ledger, Shadow Mode promotion criteria, agent-spec versioning |
+| `design/plans/llm_output_normalization.md` | The two-pass strip-then-validate layer between LLM JSON and `extra="forbid"` models |
+| `design/plans/adapter_onboarding.md` | Progressive Level 0–3 onboarding for a target repo, and the starter declaration template |
+| `design/plans/work_packet_contract.md` | What exactly one agent receives when dispatched — scope, approved sources, permissions, evidence and reviewer requirements |
+| `design/plans/agent_taxonomy.md` | The 6 agent types, the full roster mapped to them, and the proposed Vault subsystem. Summary layer above `design/plans/agents/` |
+| `design/plans/agents/` | **One card per agent** — 25 of them, plus `card_schema.md` and a per-type exemplar in `types/`. Enforced by `scripts/check_agent_cards.py` |
+| `design/plans/core_vs_adapter.md` | Which documents, schemas and agents are reusable Core vs. SDLC-only. **Read before assuming a mechanism generalizes.** |
+| `design/plans/optimization/` | The Personal and Team Optimization adapters — the non-software domains, their governed registers, routing standard, and the Delivery Pulse runbook |
+| `design/plans/agentic_sdlc_glossary.md` | Term definitions used across the set — 64 terms, with Category and Tags columns |
+| `design/plans/versions/` | Superseded design versions (v0.1–v0.4) and `REGRESSION.md`, the analysis behind v0.5 |
+| `design/audits/2026-08-28_design/audits/` | The adversarial audit and its 13 remediation records, keyed `C1`–`C5`, `H1`–`H8`, `M1`–`M6`. A second finding register, separate from the roadmap's `D`/`R` IDs |
 | `AGENTIC_ARCHITECTURE_MANIFEST.md` | Every tracked file in the repo, one row each — description, summary, purpose. A snapshot: re-check it against `git ls-files` after any file is added or removed. |
 | `FRONTMATTER_MANIFEST.md` | **Generated.** Every Markdown file's front matter in one table. Regenerated by `scripts/check_frontmatter.py` — don't hand-edit. |
 | `scripts/` | `check_frontmatter.py` (front matter backfill + manifest), `sync_counts.py` (fixes drifted counts in place), `check_agent_cards.py` (roster ↔ taxonomy ↔ card agreement), `frontmatter.py` (shared parser), `install-hooks.sh` |
@@ -98,9 +98,9 @@ wins unless the proposal argues explicitly for changing it.
 
 - **Docs before build.** The current phase is plan refinement. Changes land as design edits, not
   code.
-- **Schemas live in `plan/contracts/`.** The package is the single home for a schema, organized by domain: `orchestration.py` for Core state, `governance.py` for the adapter contract, `verification.py` for validator outputs, `reference_adapter/` for concrete adapter vocabulary. Each module's docstring names its scope so a new schema has an obvious home. `plan/contracts/__init__.py` re-exports every public model, so consumers can import canonically from the top level (`from plan.contracts import GateResult`) even though the definition lives in `verification.py`. Two agents inventing two slightly different shapes for one thing is the drift the whole shared-file design exists to prevent — don't reintroduce it at the type level.
+- **Schemas live in `design/plans/contracts/`.** The package is the single home for a schema, organized by domain: `orchestration.py` for Core state, `governance.py` for the adapter contract, `verification.py` for validator outputs, `reference_adapter/` for concrete adapter vocabulary. Each module's docstring names its scope so a new schema has an obvious home. `design/plans/contracts/__init__.py` re-exports every public model, so consumers can import canonically from the top level (`from plan.contracts import GateResult`) even though the definition lives in `verification.py`. Two agents inventing two slightly different shapes for one thing is the drift the whole shared-file design exists to prevent — don't reintroduce it at the type level.
 - **Pydantic v2, `extra="forbid"`, `frozen=True`** on every model. Agents produce new instances
-  rather than mutating shared state. Agent-produced models (Validator outputs, additive intents) are routed through the normalization layer (`plan/llm_output_normalization.md`) which strips and logs hallucinated extra fields before strict validation. Core-internal models are instantiated directly. Each contract module's docstring declares its parsing discipline.
+  rather than mutating shared state. Agent-produced models (Validator outputs, additive intents) are routed through the normalization layer (`design/plans/llm_output_normalization.md`) which strips and logs hallucinated extra fields before strict validation. Core-internal models are instantiated directly. Each contract module's docstring declares its parsing discipline.
 - **Say what's unresolved.** Several thresholds in the set are explicitly illustrative
   (cost ceilings, context budgets, the additive-intent threshold, decay tuning). Don't present them
   as decided, and don't quietly harden one without saying so.
@@ -112,11 +112,11 @@ wins unless the proposal argues explicitly for changing it.
   matter gets it added automatically rather than merged without it.
 - **`layer` says which side of the Core/Adapter boundary a doc sits on** — `core`, `adapter-sdlc`,
   `adapter-personal`, `adapter-team`, `shared`, or `repo-meta`. It records the file's *dominant*
-  classification; section-level detail lives in `plan/core_vs_adapter.md` §4, which is authoritative
+  classification; section-level detail lives in `design/plans/core_vs_adapter.md` §4, which is authoritative
   where the two disagree. Adding a value means adding it to `scripts/frontmatter.py:LAYERS`, not
   just writing it — an unrecognized value is reported, never silently dropped.
-- **An agent is specified on its card, not in prose.** `plan/agents/<agent>.md`, filling
-  `plan/agents/card_schema.md`. `plan/agent_taxonomy.md` stays authoritative for the 6-type
+- **An agent is specified on its card, not in prose.** `design/plans/agents/<agent>.md`, filling
+  `design/plans/agents/card_schema.md`. `design/plans/agent_taxonomy.md` stays authoritative for the 6-type
   vocabulary; the card owns everything else about that agent.
   `scripts/check_agent_cards.py` fails the commit if the roster, the taxonomy, and the cards
   disagree.
@@ -126,7 +126,7 @@ wins unless the proposal argues explicitly for changing it.
 
 ## Open questions
 
-Tracked in `plan/agentic-sdlc-design-v0.5.md` §12, and live:
+Tracked in `design/plans/agentic-sdlc-design-v0.5.md` §12, and live:
 
 - **Enterprise invariant arbitration** — who arbitrates when two repos disagree about whether an
   `enterprise_wide` invariant still holds. Carried unresolved since v0.3.
@@ -137,7 +137,7 @@ Tracked in `plan/agentic-sdlc-design-v0.5.md` §12, and live:
 - **Modular file versioning** — now 13 companion files, not five. Do they version independently
   of the blueprint?
 - **Closed enums are the next declared leak** — six `Enum`/`Literal` constructs in Core cannot be
-  extended by an adapter (`plan/core_vs_adapter.md` §6, roadmap D23/D24). The rule was learned for
+  extended by an adapter (`design/plans/core_vs_adapter.md` §6, roadmap D23/D24). The rule was learned for
   fields and never generalized to enums, so each schema growth reintroduces it.
 - **Should `Phase` be adapter-declared?** `Phase.DECOMPOSITION_TDD` bakes one methodology into the
   universal enum — but a fully declared phase sequence moves flow control into repo-declared data,
@@ -149,12 +149,12 @@ Tracked in `plan/agentic-sdlc-design-v0.5.md` §12, and live:
 - **Four more, carried forward from v0.1 and dropped without resolution at v0.2** (task granularity,
   Plan Writer dialogue depth, run manifest location, secrets posture) — see §12 for the full
   restatement of each. The fifth, **concurrency ceiling**, is answered in
-  `plan/core_adapter_boundary.md` §3.6: a repo declares its per-isolation-unit resource footprint,
+  `design/plans/core_adapter_boundary.md` §3.6: a repo declares its per-isolation-unit resource footprint,
   Core clamps it against policy and divides, then takes the minimum against the API rate limit and
   review throughput — so which constraint binds is a fact about a run rather than a discovery when
   the machine starts swapping.
 
-`plan/implementation_roadmap.md` §3 carries the live register of findings against this set —
+`design/plans/implementation_roadmap.md` §3 carries the live register of findings against this set —
 including the ones already resolved into it (the Core/Adapter split, the declaration/policy
 contract, shared-file materialization, the intent-outcome schema, the budget enforcement split) and
 the ones still open, with §8.3 naming which file each will change when it is decided. Read it before
@@ -165,7 +165,7 @@ Both items previously tracked here as drift were resolved in v0.5: the stale `v0
 `infra_triage_matrix.md`'s stale "not yet finalized" note on baseline capture now correctly points at
 `test_harness_architecture.md` §1.
 
-**v0.5 is a reinstatement pass, not new design.** `plan/versions/REGRESSION.md` found that v0.2's
+**v0.5 is a reinstatement pass, not new design.** `design/plans/versions/REGRESSION.md` found that v0.2's
 changelog documented six additions and zero removals, though roughly half of v0.1's content didn't
 survive. Five of the nine gaps it found are now reinstated (validator asymmetry, permissions over
 prompts, the Run Manifest, execution isolation, calibration) — read that file before assuming

@@ -144,7 +144,7 @@ Everything else in that file — Protocol fakes, `MagicMock`, diff-scoped mutati
 
 ## 5. Verdicts — contract modules
 
-`plan/contracts/` was split out of the former single schema file. The package boundary already
+`design/plans/contracts/` was split out of the former single schema file. The package boundary already
 tracks the layer boundary well, with the exceptions noted.
 
 | Module | Layer | Notes |

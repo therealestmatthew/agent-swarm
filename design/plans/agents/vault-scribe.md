@@ -9,7 +9,7 @@ layer: core
 # Vault Scribe
 
 **Status: draft — proposed agent, not in the blueprint §2 roster.** Defined in
-`agent_taxonomy.md` §3; full specification deferred to the proposed `plan/vault_architecture.md`.
+`agent_taxonomy.md` §3; full specification deferred to the proposed `design/plans/vault_architecture.md`.
 
 ## Type
 

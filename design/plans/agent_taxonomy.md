@@ -134,7 +134,7 @@ Executor is the correct type. If a future version adds a predictive LLM pass, re
 
 23 existing agents + 2 proposed = **25 total**.
 
-**Per-agent detail lives in `plan/agents/`**, one card per row of this table. This file stays
+**Per-agent detail lives in `design/plans/agents/`**, one card per row of this table. This file stays
 authoritative for the *type vocabulary* and the boundaries between types; the cards are
 authoritative for everything else about an individual agent. `scripts/check_agent_cards.py` enforces
 that every card's declared type matches this table.
@@ -286,7 +286,7 @@ The Vault Scribe definition in §3 is intentionally high-level. 3 follow-on file
 fully specify the memory subsystem before any schema or implementation work begins. None of these
 files exist yet.
 
-### `plan/vault_architecture.md`
+### `design/plans/vault_architecture.md`
 
 The structural specification of the Vault store itself. Should cover:
 
@@ -304,7 +304,7 @@ The structural specification of the Vault store itself. Should cover:
 - **Relationship to existing stores** — explicit statement of what the Vault reads from (Verdict
   Ledger, Event Log, Intent Log) and what it does not absorb
 
-### `plan/archivist_agents.md`
+### `design/plans/archivist_agents.md`
 
 Agent-level specifications for the 2 Archivist agents that interact with the Vault. Should cover:
 
@@ -322,7 +322,7 @@ Agent-level specifications for the 2 Archivist agents that interact with the Vau
   reconciliation mode is fully specified here
 - **Cadence and trigger policy** — resolution of open question §3.7 #3
 
-### `plan/contracts/memory.py`
+### `design/plans/contracts/memory.py`
 
 Pydantic v2 schemas for the Vault subsystem. Should define:
 
@@ -337,5 +337,5 @@ Pydantic v2 schemas for the Vault subsystem. Should define:
   candidates, list of `StalenessFlag` candidates, source attribution
 
 Follows existing contract conventions: `extra="forbid"`, `frozen=True` on every model, module
-docstring naming scope. Re-exported from `plan/contracts/__init__.py` so consumers import from
+docstring naming scope. Re-exported from `design/plans/contracts/__init__.py` so consumers import from
 the top level (`from plan.contracts import VaultEntry`).

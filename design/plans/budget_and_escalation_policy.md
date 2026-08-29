@@ -49,7 +49,7 @@ The Merge Conflict → Task Decomposer loop does **not** use rung 3. A merge con
 
 **Coverage-family gaps** (the `gate_coverage.minimum` meta-gate returning FAIL — see `agentic-sdlc-design-v0.5.md` §9.1, §10) are boundary-type for the same reason: a `NON_TRIVIAL_CODE` diff whose coverage family entirely scoped out is a decomposition or test-design shortfall, not a stochastic miss a stronger model would close. Task-scoped termination via `RunManifest.active_task_ids` drop, no rung 3.
 
-**Sync starvation** (a task exceeding `GovernancePolicy.max_seconds_without_sync` — see `plan/execution_isolation.md` §7.7 and `plan/contracts/governance.py`) is boundary-type for the same reason: an agent that has gone longer than the bound without reaching a subprocess boundary is violating the materialization-window protocol (`plan/execution_isolation.md` §7.6), and a stronger model does not resolve a structural violation of that protocol. Task-scoped termination via `RunManifest.active_task_ids` drop, no rung 3.
+**Sync starvation** (a task exceeding `GovernancePolicy.max_seconds_without_sync` — see `design/plans/execution_isolation.md` §7.7 and `design/plans/contracts/governance.py`) is boundary-type for the same reason: an agent that has gone longer than the bound without reaching a subprocess boundary is violating the materialization-window protocol (`design/plans/execution_isolation.md` §7.6), and a stronger model does not resolve a structural violation of that protocol. Task-scoped termination via `RunManifest.active_task_ids` drop, no rung 3.
 
 ### 2.3 Test Investigator loop
 Also skips model-tier escalation by default. A Test Investigator loop back to Task Dev is specifically a logic-fix loop — infra-class failures are routed to the Environment/Infra queue instead (`infra_triage_matrix.md` §4), so what reaches Task Dev here is already known to be a code issue. This loop follows the ladder through rung 2, then proceeds to human triage (rung 4), unless the specific failure pattern gives a concrete reason to believe model competence is the limiting factor.
@@ -84,7 +84,7 @@ things, and the difference is load-bearing.*
 ### 4.1 Enforcement is deterministic middleware
 
 The ceiling check runs **in the dispatch path**, as middleware the Core Orchestrator cannot route
-around. It reads `GovernancePolicy.budget_ceilings` (`plan/contracts/governance.py`) directly and
+around. It reads `GovernancePolicy.budget_ceilings` (`design/plans/contracts/governance.py`) directly and
 refuses the transition on breach, emitting `HaltReason.CEILING_HALT`.
 
 The reason it cannot be an agent: a circuit breaker that is itself an LLM can be slow, wrong, or

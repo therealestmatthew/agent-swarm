@@ -9,11 +9,11 @@ layer: core
 # Calibration and Measurement
 
 **Referenced by:** `agentic-sdlc-design-v0.5.md` §11 (Measurement and Calibration) · §9.2 (Agent
-Gates — `code.review` promotion) · `agentic_sdlc_glossary.md` (Shadow Mode) · `plan/contracts/verification.py`
-(`GateResult.reviewer_spec_version`) · `plan/llm_output_normalization.md`
+Gates — `code.review` promotion) · `agentic_sdlc_glossary.md` (Shadow Mode) · `design/plans/contracts/verification.py`
+(`GateResult.reviewer_spec_version`) · `design/plans/llm_output_normalization.md`
 
 **Status:** reinstated from `agentic-sdlc-design-v0.1.md` §8, absent v0.2 through v0.4. See
-`plan/versions/REGRESSION.md` finding #5 — verified before reinstating that the only reference to
+`design/plans/versions/REGRESSION.md` finding #5 — verified before reinstating that the only reference to
 calibration anywhere in v0.2 through v0.4 is the Shadow Mode glossary entry's own text, with no
 baseline, ledger, or threshold defined anywhere else.
 
@@ -35,7 +35,7 @@ Every `GateResult` a Validator agent produces is appended to a ledger alongside 
 | Field | Source | Why it's recorded |
 |---|---|---|
 | The `GateResult` itself | The validator | Subject ref, findings, severities — the verdict being graded |
-| `reviewer_spec_version` | `GateResult` (`plan/contracts/verification.py`) | So a later prompt change doesn't silently invalidate this row's precision data — see §3 |
+| `reviewer_spec_version` | `GateResult` (`design/plans/contracts/verification.py`) | So a later prompt change doesn't silently invalidate this row's precision data — see §3 |
 | `human_override` | Whichever human gate follows | Tier 1: Explicit human verdict overriding or confirming the agent |
 | `integration_catch_outcome` | CI / Integration Harness | Tier 2: True if integration tests caught an issue on the approved code within the CI window. The CI window is defined purely by the immediate post-merge CI pipeline success. Attribution uses a simple overlap heuristic: if modified files overlap with the failing test suite, count it as a potential miss. |
 | `downstream_outcome` | Manual / Log Monitor | Tier 3: Optional manual notation of a production bug attributed to this verdict |
@@ -63,7 +63,7 @@ arithmetic on the ledger.
 
 ## 3. Agent spec versioning
 
-`GateResult.reviewer_spec_version` (`plan/contracts/verification.py`) records which version of a
+`GateResult.reviewer_spec_version` (`design/plans/contracts/verification.py`) records which version of a
 validator's prompt/spec produced a given verdict. Without this field, changing a reviewer's prompt
 silently invalidates every precision and recall number gathered under the old one — the ledger keeps
 accumulating rows, but they no longer describe the validator currently running. A version bump on a
@@ -87,6 +87,6 @@ the wrong trade — this is the check that would surface that, ensuring the cost
 ## 5. Schema Hallucination Rate
 
 - Define the metric: count of `NormalizationEvent` records per model class, per agent, per model tier, over a rolling window.
-- Computed from `NormalizationEvent` instances (schema: `plan/contracts/verification.py`; design rationale and escalation interaction: `plan/llm_output_normalization.md` §4).
+- Computed from `NormalizationEvent` instances (schema: `design/plans/contracts/verification.py`; design rationale and escalation interaction: `design/plans/llm_output_normalization.md` §4).
 - A high hallucination rate on a specific LLM tier or model class is a signal for prompt refinement, not runtime escalation.
 - Per-tier analysis: if Sonnet hallucination rate on `GateResult` exceeds a threshold (illustrative, not settled), it surfaces as a prompt-engineering work item, not a budget event.

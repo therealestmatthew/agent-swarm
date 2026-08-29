@@ -53,12 +53,12 @@ class ScrubbedEgressPayload(BaseModel, frozen=True, extra="forbid"):
 
 ## 4. Required Document Updates
 
-- **`plan/core_adapter_boundary.md` §5 (Credential Injection)**: 
+- **`design/plans/core_adapter_boundary.md` §5 (Credential Injection)**: 
   - Update to specify that Core retains a copy of the injected secrets exclusively for the egress scrubber. 
   - Define the egress interception points for logs, artifacts, and metadata.
-- **`plan/agent_interface_contracts.py`**:
+- **`design/plans/agent_interface_contracts.py`**:
   - Add the `SecretScrubberConfig`, `EgressPayload`, and `ScrubbedEgressPayload` schemas.
-- **`plan/execution_isolation.md` §5 (Isolation Units)**:
+- **`design/plans/execution_isolation.md` §5 (Isolation Units)**:
   - Add a mandate: Tasks requiring credentials *must* use container-based isolation units to enforce network egress proxying. Worktree isolation is insufficient for credential-bearing tasks because it lacks robust network boundaries.
 
 ## 5. Open Questions

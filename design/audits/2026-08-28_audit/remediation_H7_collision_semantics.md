@@ -89,10 +89,10 @@ class AddRoute(BaseModel, frozen=True):
 
 ## 5. Document Updates
 
-### `plan/core_adapter_boundary.md`
+### `design/plans/core_adapter_boundary.md`
 - **§2.1**: Update to introduce the "Two-Layer Collision Model". Clarify that Core still owns arbitration logic, but uses sandboxed adapter-supplied executables for Layer 2. Define the exact contract for Semantic Analyzers (JSON output, runs in `IsolationUnit`).
 
-### `plan/agentic-sdlc-design-v0.5.md`
+### `design/plans/agentic-sdlc-design-v0.5.md`
 - **§4.6 (Conflict counters & governance)**: Detail the override mechanism. Explain that overriding a semantic collision relies on Phase 5 tests to catch actual breakage.
 - **§5 (Integration Phase)**: Insert the Semantic Collision Check phase before Phase 5 integration materialization.
 

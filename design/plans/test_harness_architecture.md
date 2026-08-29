@@ -8,7 +8,7 @@ layer: adapter-sdlc
 
 # Test Harness Architecture
 
-**Referenced by:** `agentic-sdlc-design-v0.5.md` §6 (Test Investigator & Failure Triage) · §9.1 (`mutation.diff_scoped`, `gate_coverage.minimum`) · §10 (anti-reward-hacking, the coverage-bypass row) · `infra_triage_matrix.md` §1 (`FailureSignature.dom_state_diff_from_baseline`) · `plan/contracts/`
+**Referenced by:** `agentic-sdlc-design-v0.5.md` §6 (Test Investigator & Failure Triage) · §9.1 (`mutation.diff_scoped`, `gate_coverage.minimum`) · §10 (anti-reward-hacking, the coverage-bypass row) · `infra_triage_matrix.md` §1 (`FailureSignature.dom_state_diff_from_baseline`) · `design/plans/contracts/`
 
 ## Purpose
 
@@ -19,7 +19,7 @@ This file owns the mechanics of the verification layer that the core design docu
 ## 1. Baseline Management
 
 ### 1.1 The problem this solves
-`FailureSignature.dom_state_diff_from_baseline` (see `plan/contracts/verification.py`) is only trustworthy if "baseline" is unambiguous and the mechanism that produces it can't itself leak state. This section defines both.
+`FailureSignature.dom_state_diff_from_baseline` (see `design/plans/contracts/verification.py`) is only trustworthy if "baseline" is unambiguous and the mechanism that produces it can't itself leak state. This section defines both.
 
 ### 1.2 Execution Tiers and Reset Mandates
 
@@ -35,7 +35,7 @@ The previous strict mandate of "construct fresh, never clean in place" has been 
 
 ### 1.3 Reset strategies are declared, not assumed
 
-The mechanism is therefore adapter data: `ResetStrategy` in `plan/contracts/governance.py`, named
+The mechanism is therefore adapter data: `ResetStrategy` in `design/plans/contracts/governance.py`, named
 per tier by `TestTier.reset_strategy_id`. A strategy declares its `strategy_type` (e.g., `browser_pool_checkout`), `pool_size` if applicable, what it recreates, what the host must give it (`ResetResource`), what it costs, and what its clean-state check actually inspects.
 
 `typical_cost_ms` is load-bearing rather than documentation. Core feeds it into the wall-clock
@@ -114,13 +114,13 @@ Because Test Author writes tests before implementation exists (TDD-first, Princi
 Protocol definitions for shared dependencies are produced at **Contract Freeze** (design doc §3, Phase 2 & 3) as part of the interface map — not invented ad hoc by whichever Test Author or Task Dev agent happens to need a fake first. Two agents independently inventing two slightly different Protocols for the same dependency reintroduces, at the type level, the same kind of semantic drift the Shared-File Intent Service (design doc §4) exists to prevent for shared files.
 
 ### 2.4 Fixture data
-Where a fake needs to return structured data — not just satisfy a call signature — that data is constructed from the same Pydantic models in `plan/contracts/` that the real code uses, not parallel dict literals or ad hoc dataclasses. A fixture built from the shared schema can't silently drift from what the real code actually produces; a hand-rolled one can.
+Where a fake needs to return structured data — not just satisfy a call signature — that data is constructed from the same Pydantic models in `design/plans/contracts/` that the real code uses, not parallel dict literals or ad hoc dataclasses. A fixture built from the shared schema can't silently drift from what the real code actually produces; a hand-rolled one can.
 
 ---
 
 ## 3. Diff-Scoped Mutation Testing
 
-*Reinstated from `agentic-sdlc-design-v0.1.md` §7, absent v0.2 through v0.4 — see `plan/versions/REGRESSION.md`.*
+*Reinstated from `agentic-sdlc-design-v0.1.md` §7, absent v0.2 through v0.4 — see `design/plans/versions/REGRESSION.md`.*
 
 ### 3.1 What Protocol fakes don't catch
 §2 makes a mock's *shape* honest: a fake can't silently accept a call the real dependency wouldn't. It says nothing about a test's *assertions*. A test that calls the real code with the real shape and then asserts `result >= expected` where the spec means `result > expected` type-checks perfectly and passes forever, on both the correct implementation and a subtly wrong one. Weakening an assertion is a different attack from mocking away behavior, and it needs a different guard.
@@ -243,16 +243,16 @@ green built out of honest per-line scope-outs.
 
 The `gate_coverage.minimum` meta-gate (design doc §9.1) is the answer, and it needs one input this
 section owns: whether the *diff itself* is code that the coverage family should have applied to.
-That label is `DiffClassification` (`plan/contracts/verification.py`), computed once by Core before
+That label is `DiffClassification` (`design/plans/contracts/verification.py`), computed once by Core before
 Phase 6 begins from the task's write-scope diff and carried on `RunManifest.diff_classification`
-(`plan/contracts/orchestration.py`), the same place the §4.5 rejection graph lives so H8 crash
+(`design/plans/contracts/orchestration.py`), the same place the §4.5 rejection graph lives so H8 crash
 recovery preserves both together.
 
 **The starting rule (illustrative, per CLAUDE.md convention):**
 
 - `TRIVIAL_DOCS` iff **every** changed path in the task's write-scope diff matches Core's
   built-in extension allow-list (`.md`, `.rst`, `.txt`) **or** matches one of
-  `RepoDeclaration.trivial_path_globs` (`plan/contracts/governance.py`) — adapter-tunable, so
+  `RepoDeclaration.trivial_path_globs` (`design/plans/contracts/governance.py`) — adapter-tunable, so
   a repo whose `docs/**` tree, `CHANGELOG.*`, or `LICENSE` file is trivial by construction can
   extend the rule without editing Core.
 - `NON_TRIVIAL_CODE` otherwise.
@@ -277,6 +277,6 @@ the same evidence: §3.6 governs per-line policy, §3.9 governs per-diff aggrega
 
 **Cross-references:** design doc §9.1 (`gate_coverage.minimum` row), §10 (the attack row this
 guard closes), §12 (the triviality-heuristic upgrade open question);
-`plan/contracts/verification.py` (`DiffClassification`); `plan/contracts/orchestration.py`
-(`RunManifest.diff_classification`); `plan/contracts/governance.py`
+`design/plans/contracts/verification.py` (`DiffClassification`); `design/plans/contracts/orchestration.py`
+(`RunManifest.diff_classification`); `design/plans/contracts/governance.py`
 (`RepoDeclaration.trivial_path_globs`).

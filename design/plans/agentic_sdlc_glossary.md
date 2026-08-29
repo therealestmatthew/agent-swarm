@@ -300,7 +300,7 @@ The fixed, ordered decision table a deterministic gate evaluates before any LLM 
 
 **Category:** Schema & Contract | **Tags:** `schema; core-orchestrator; phase; principle-2; resumability`
 
-The Core Orchestrator's entire context across every phase — a `RunManifest` (schema: `plan/contracts/orchestration.py`) plus a reference to the event log, never a plan body or a diff. Persisted as a new, immutable instance after every phase transition, so a crashed run resumes from the last recorded phase rather than restarting. Reinstated from v0.1 §3.1, absent v0.2 through v0.4 with no replacement — the Core Orchestrator's state representation was previously unspecified entirely.
+The Core Orchestrator's entire context across every phase — a `RunManifest` (schema: `design/plans/contracts/orchestration.py`) plus a reference to the event log, never a plan body or a diff. Persisted as a new, immutable instance after every phase transition, so a crashed run resumes from the last recorded phase rather than restarting. Reinstated from v0.1 §3.1, absent v0.2 through v0.4 with no replacement — the Core Orchestrator's state representation was previously unspecified entirely.
 
 ## Scope Predicate
 

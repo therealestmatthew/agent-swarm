@@ -68,16 +68,16 @@ The system will mint a `RecoveryManifest` during startup reconciliation, logging
 
 ## 4. Required Plan Document Updates
 
-- **`plan/agent_interface_contracts.py`**:
+- **`design/plans/agent_interface_contracts.py`**:
   - Add the `RecoveryStrategy` and `RecoveryManifest` Pydantic schemas.
   - Update `HaltReason` (if needed) to ensure `CRASH_RECOVERY` is represented, though the reconciler handles actual crashes.
-- **`plan/execution_isolation.md`**:
+- **`design/plans/execution_isolation.md`**:
   - Update **§4** to include the `StartupReconciler` teardown rules for orphaned worktrees.
   - Update **§5** to mandate Docker container labeling with `run_id` to facilitate deterministic orphan detection.
   - Update **§7.2** to explicitly define the `git reset --hard` protocol for the `shared/` branch during recovery.
-- **`plan/agentic-sdlc-design-v0.5.md`**:
+- **`design/plans/agentic-sdlc-design-v0.5.md`**:
   - Update **§3 (Persistence & State)** to introduce the Startup Reconciliation Protocol as step 0 of the pipeline execution sequence.
-- **`plan/budget_and_escalation_policy.md`**:
+- **`design/plans/budget_and_escalation_policy.md`**:
   - Update **§3** to clarify that `CEILING_HALT` guarantees the "Preserve and Resume" branch of the new decision tree, protecting in-flight work.
 
 ## 5. Open Questions
