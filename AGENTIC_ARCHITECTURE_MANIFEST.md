@@ -9,7 +9,7 @@ layer: repo-meta
 # Agentic Architecture Manifest
 
 A complete inventory of every file in this repository, as of `design/plans/agentic-sdlc-design-v0.5.md`.
-114 tracked files: the live design (`design/plans/`), its agent cards (`design/plans/agents/`), the two
+115 tracked files: the live design (`design/plans/`), its agent cards (`design/plans/agents/`), the two
 non-software adapters (`design/plans/optimization/`), the adversarial audit (`design/audits/`), and repo tooling.
 The frozen hackathon project this grew out of is no longer in this tree — see the last section.
 Repo history runs 2026-08-25 to present.
