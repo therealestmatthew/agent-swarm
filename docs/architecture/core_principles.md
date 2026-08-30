@@ -7,7 +7,7 @@ doc_type: reference
 
 # Core Architectural Principles
 
-The **Agentic SDLC Orchestration** system is a highly governed, multi-agent pipeline designed to take ideas from planning to production. Unlike multi-agent frameworks that rely heavily on "prompt engineering," this system relies on **structural guarantees** to solve the three biggest problems in AI agents: context rot, infinite loops, and unbounded spend.
+**Agent-Swarm** is a generalized, highly governed multi-agent framework designed to take ideas from planning to production. Unlike multi-agent frameworks that rely heavily on "prompt engineering," this system relies on **structural guarantees** to solve the three biggest problems in AI agents: context rot, infinite loops, and unbounded spend.
 
 In essence, this is not a "chat bot that codes." It is a **deterministic factory floor for non-deterministic workers**, utilizing strict software engineering principles (contracts, interfaces, isolation, and state machines) to safely harness the chaos of Large Language Models.
 
@@ -16,7 +16,7 @@ The architecture is built upon four foundational pillars:
 ## 1. The Core vs. Adapter Boundary
 The system is cleanly bifurcated into two independent layers:
 *   **The Universal Core:** The orchestration engine. It handles state machines, phase transitions, budget enforcement, intent routing, and crash recovery. The Core is entirely domain-agnostic—it simply routes structured data.
-*   **The Adapters:** The domain-specific implementations (e.g., Software Development Life Cycle, Personal Optimization, Team Optimization). Adapters provide the concrete vocabulary (like specific Git or Web intents) and define the `GovernancePolicy` and `RepoDeclaration` that the Core enforces.
+*   **The Adapters:** The domain-specific implementations. The SDLC (Software Development Life Cycle) is merely one of these adapters, operating alongside others like Personal Optimization and Team Optimization. Adapters provide the concrete vocabulary (like specific Git or Web intents) and define the `GovernancePolicy` and `RepoDeclaration` that the Core enforces.
 
 ## 2. Execution Isolation & Shared Intents
 Instead of having multiple agents stumbling over each other in a shared repository, execution is strictly isolated.

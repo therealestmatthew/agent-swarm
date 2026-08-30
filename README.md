@@ -7,7 +7,7 @@ doc_type: reference
 
 # Agent-Swarm
 
-Welcome to **Agent-Swarm**, an Agentic SDLC Orchestration system.
+Welcome to **Agent-Swarm**, a Generalized Agentic Framework.
 
 ## Our Mission
 We are building a specified, governed pipeline of AI agents that takes a change from plan to production. The core philosophy is that every generated artifact is checked by a different agent than the one that produced it. We rely on structural answers—not prompt engineering—to solve common agentic failures like context rot, infinite loops, and unbounded spend.
