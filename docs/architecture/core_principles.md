@@ -7,9 +7,16 @@ doc_type: reference
 
 # Core Architectural Principles
 
-**Agent-Swarm** is a generalized, highly governed multi-agent framework designed to take ideas from planning to production. Unlike multi-agent frameworks that rely heavily on "prompt engineering," this system relies on **structural guarantees** to solve the three biggest problems in AI agents: context rot, infinite loops, and unbounded spend.
+**Agent-Swarm** is a generalized, highly governed multi-agent framework designed to take ideas from planning to production. 
 
 In essence, this is not a "chat bot that codes." It is a **deterministic factory floor for non-deterministic workers**, utilizing strict software engineering principles (contracts, interfaces, isolation, and state machines) to safely harness the chaos of Large Language Models.
+
+## The Role of Prompt Engineering vs. Structural Guarantees
+Many multi-agent frameworks attempt to solve architectural failures (e.g., infinite loops, invalid JSON, or semantic collisions) by relying on *prompt engineering*—adding sentences to the system prompt like *"Do not loop infinitely"* or *"Ensure your JSON is valid"*. This treats the LLM like a human and inevitably fails when context rot sets in.
+
+This framework assumes the LLM **will** eventually hallucinate or fail. Therefore, responsibilities are strictly divided:
+*   **Prompt Engineering is the Gas Pedal:** We use prompts to give agents deep context, specialized personas, and clear task direction to maximize their creative and analytical output.
+*   **Structural Guarantees are the Brakes:** We do not prompt-engineer our way out of failure. We enforce safety mechanically. Instead of prompting an agent not to loop, we build a hard `max_retries` counter. Instead of prompting for valid JSON, we pipe output through a strict Pydantic v2 validator. We revoke the LLM's authority over the safety and state of the system.
 
 The architecture is built upon four foundational pillars:
 
