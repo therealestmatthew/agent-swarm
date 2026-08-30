@@ -16,7 +16,7 @@ containers. Organized by tier:
 New intent operations for the reference web adapter (or a variant of it) belong here.
 
 This module is adapter-side. Core does not import from it -- IntentOutcome.intent
-in `plan.contracts.orchestration` is typed as BaseModel precisely so Core can
+in `design.plans.contracts.orchestration` is typed as dict[str, Any] precisely so Core can
 route on the `op` string field without knowing the concrete union defined below.
 See core_adapter_boundary.md §3.
 
@@ -29,7 +29,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from plan.contracts import BaseContract
+from design.plans.contracts import BaseContract
 
 # ---------------------------------------------------------------------------
 # Shared-File Intents  (design doc §4.2)

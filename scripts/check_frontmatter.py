@@ -110,6 +110,9 @@ def infer_defaults(rel_path: str, body: str, superseded_by: dict[str, str],
     parts = Path(rel_path).parts
     if parts[0] == "archive":
         part_of, status = "glass-box", "archived"
+    elif parts[:3] == ("design", "plans", "optimization"):
+        part_of = "optimization"
+        status = "live"
     elif parts[:2] == ("design", "plans"):
         part_of = "agentic-sdlc"
         status = "superseded" if len(parts) > 2 and parts[2] == "versions" else "live"

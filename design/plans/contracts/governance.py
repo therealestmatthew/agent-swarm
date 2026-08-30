@@ -27,7 +27,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from plan.contracts import BaseContract
+from design.plans.contracts import BaseContract
 
 # ---------------------------------------------------------------------------
 # Adapter Contract  (core_adapter_boundary.md §3)

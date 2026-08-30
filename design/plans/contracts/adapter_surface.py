@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from plan.contracts import BaseContract
+from design.plans.contracts import BaseContract
 
 # ---------------------------------------------------------------------------
 # Worktree Sync  (execution_isolation.md §7.2, §7.5, §7.6)

@@ -14,7 +14,7 @@ from typing import Literal, Any, Optional
 
 from pydantic import Field
 
-from plan.contracts import BaseContract
+from design.plans.contracts import BaseContract
 
 # ---------------------------------------------------------------------------
 # Invariant Curator  (design doc §5)

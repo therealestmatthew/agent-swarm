@@ -17,12 +17,12 @@ Parsing discipline: strict (Core-internal). Models in this module are instantiat
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal
+from typing import Literal, Any
 
 from pydantic import BaseModel, Field
 
-from plan.contracts import BaseContract
-from plan.contracts.verification import DiffClassification
+from design.plans.contracts import BaseContract
+from design.plans.contracts.verification import DiffClassification
 
 # ---------------------------------------------------------------------------
 # Intent Submission Outcome  (design doc §4.5; execution_isolation.md §7)
@@ -146,11 +146,11 @@ class IntentOutcome(BaseContract):
     appears in no task's diff."""
 
     # Typed as BaseModel rather than SharedFileIntent because SharedFileIntent lives in
-    # `plan.contracts.reference_adapter.web_intents` and Core cannot import from the reference
+    # `design.plans.contracts.reference_adapter.web_intents` and Core cannot import from the reference
     # adapter (core_adapter_boundary.md §3). Core does not need the concrete type: it routes on
     # the `op` string field and serializes the payload opaquely. Adapter-level code that
     # constructs or consumes an IntentOutcome still validates against the concrete union.
-    intent: BaseModel
+    intent: dict[str, Any]
     task_id: str
     target_file: str
     applied: bool
@@ -191,11 +191,11 @@ class IntentSubmission(BaseContract):
 
     # Typed as BaseModel for the same core/adapter-boundary reason as
     # `IntentOutcome.intent`: `SharedFileIntent` lives in
-    # `plan.contracts.reference_adapter.web_intents`, and Core routes on the `op` string
+    # `design.plans.contracts.reference_adapter.web_intents`, and Core routes on the `op` string
     # field without importing from the reference adapter (core_adapter_boundary.md §3).
     # Adapter-level code that constructs an IntentSubmission still validates the intent
     # against the concrete union before wrapping it here.
-    intent: BaseModel
+    intent: dict[str, Any]
     task_id: str
     override_semantic_collisions: list[str] = Field(default_factory=list)
 

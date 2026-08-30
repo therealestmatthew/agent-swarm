@@ -1,5 +1,5 @@
 """
-plan.contracts
+design.plans.contracts
 
 Single source of truth for all schemas exchanged between agents in the
 Agentic SDLC Orchestration pipeline. Referenced by:
@@ -35,7 +35,7 @@ schemas should be added to the module whose scope they fit):
                             from this sub-package.
 
 Readers should import from this package directly:
-    from plan.contracts import GateResult, RunManifest, RepoDeclaration
+    from design.plans.contracts import GateResult, RunManifest, RepoDeclaration
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ class BaseContract(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
-from plan.contracts.governance import (
+from design.plans.contracts.governance import (
     AbsentCapabilityPolicy,
     Capability,
     EgressPayload,
@@ -72,11 +72,11 @@ from plan.contracts.governance import (
     TestTier,
     TriageRule,
 )
-from plan.contracts.adapter_surface import (
+from design.plans.contracts.adapter_surface import (
     WorktreeSyncRequest,
     WorktreeSyncResult,
 )
-from plan.contracts.orchestration import (
+from design.plans.contracts.orchestration import (
     ExactSymbolLookup,
     HaltReason,
     IntentOutcome,
@@ -88,7 +88,7 @@ from plan.contracts.orchestration import (
     RejectionEdge,
     RunManifest,
 )
-from plan.contracts.verification import (
+from design.plans.contracts.verification import (
     DiffClassification,
     FailureSignature,
     Finding,
@@ -98,7 +98,7 @@ from plan.contracts.verification import (
     NormalizationEvent,
     VerdictLedgerEntry,
 )
-from plan.contracts.reference_adapter.web_intents import (
+from design.plans.contracts.reference_adapter.web_intents import (
     DOMCaptureConfig,
 )
 
