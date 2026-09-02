@@ -36,21 +36,21 @@ CURATED_DOC_TYPES: dict[str, str] = {
     "CLAUDE.md": "guide",
     "AGENTIC_ARCHITECTURE_MANIFEST.md": "manifest",
     "FRONTMATTER_MANIFEST.md": "manifest",
-    "plan/agentic-sdlc-design-v0.5.md": "blueprint",
-    "plan/budget_and_escalation_policy.md": "companion",
-    "plan/calibration_and_measurement.md": "companion",
-    "plan/context_retrieval_strategy.md": "companion",
-    "plan/core_adapter_boundary.md": "companion",
-    "plan/execution_isolation.md": "companion",
-    "plan/infra_triage_matrix.md": "companion",
-    "plan/implementation_roadmap.md": "roadmap",
-    "plan/structural_change_runbook.md": "runbook",
-    "plan/test_harness_architecture.md": "companion",
-    "plan/versions/REGRESSION.md": "analysis",
-    "plan/versions/agentic-sdlc-design-v0.1.md": "blueprint",
-    "plan/versions/agentic-sdlc-design-v0.2.md": "blueprint",
-    "plan/versions/agentic-sdlc-design-v0.3.md": "blueprint",
-    "plan/versions/agentic-sdlc-design-v0.4.md": "blueprint",
+    "design/plans/agentic-sdlc-design-v0.5.md": "blueprint",
+    "design/plans/budget_and_escalation_policy.md": "companion",
+    "design/plans/calibration_and_measurement.md": "companion",
+    "design/plans/context_retrieval_strategy.md": "companion",
+    "design/plans/core_adapter_boundary.md": "companion",
+    "design/plans/execution_isolation.md": "companion",
+    "design/plans/infra_triage_matrix.md": "companion",
+    "design/plans/implementation_roadmap.md": "roadmap",
+    "design/plans/structural_change_runbook.md": "runbook",
+    "design/plans/test_harness_architecture.md": "companion",
+    "design/plans/versions/REGRESSION.md": "analysis",
+    "design/plans/versions/agentic-sdlc-design-v0.1.md": "blueprint",
+    "design/plans/versions/agentic-sdlc-design-v0.2.md": "blueprint",
+    "design/plans/versions/agentic-sdlc-design-v0.3.md": "blueprint",
+    "design/plans/versions/agentic-sdlc-design-v0.4.md": "blueprint",
     "archive/glass-box/README.md": "archive-notice",
     "archive/glass-box/00-MASTER-PLAN.md": "blueprint",
     "archive/glass-box/01-EVENT-SCHEMA.md": "schema",
@@ -80,15 +80,15 @@ def _version_chain() -> dict[str, str]:
     """Maps each superseded version's relative path to what supersedes it, computed fresh
     from the actual file layout every run -- see the module docstring for why."""
     live = None
-    for p in (ROOT / "plan").glob("agentic-sdlc-design-v*.md"):
+    for p in (ROOT / "design" / "plans").glob("agentic-sdlc-design-v*.md"):
         m = VERSION_RE.search(p.name)
         if m:
-            live = (m.group(1), f"plan/{p.name}")
+            live = (m.group(1), f"design/plans/{p.name}")
     historical: list[tuple[str, str]] = []
-    for p in (ROOT / "plan" / "versions").glob("agentic-sdlc-design-v*.md"):
+    for p in (ROOT / "design" / "plans" / "versions").glob("agentic-sdlc-design-v*.md"):
         m = VERSION_RE.search(p.name)
         if m:
-            historical.append((m.group(1), f"plan/versions/{p.name}"))
+            historical.append((m.group(1), f"design/plans/versions/{p.name}"))
     historical.sort(key=lambda t: [int(x) for x in t[0].split(".")])
 
     chain: dict[str, str] = {}
@@ -110,10 +110,13 @@ def infer_defaults(rel_path: str, body: str, superseded_by: dict[str, str],
     parts = Path(rel_path).parts
     if parts[0] == "archive":
         part_of, status = "glass-box", "archived"
-    elif parts[0] == "plan":
+    elif parts[:3] == ("design", "plans", "optimization"):
+        part_of = "optimization"
+        status = "live"
+    elif parts[:2] == ("design", "plans"):
         part_of = "agentic-sdlc"
-        status = "superseded" if len(parts) > 1 and parts[1] == "versions" else "live"
-        if rel_path == "plan/versions/REGRESSION.md":
+        status = "superseded" if len(parts) > 2 and parts[2] == "versions" else "live"
+        if rel_path == "design/plans/versions/REGRESSION.md":
             status = "live"  # the analysis, not a version of the blueprint itself
     else:
         part_of, status = "repo-meta", "live"

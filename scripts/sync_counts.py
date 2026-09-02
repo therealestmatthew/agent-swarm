@@ -12,7 +12,7 @@ in both modes and as a failure in --check -- the assertion may have been reworde
 under the pattern, which is worse than a stale number: it means this script silently stopped
 tracking it.
 
-**Scope, deliberately:** only counts about the *current, live* state of `plan/` and the repo
+**Scope, deliberately:** only counts about the *current, live* state of `design/plans/` and the repo
 root. Numeric claims inside `archive/glass-box/` describe a specific frozen run or dataset (96
 events, 338 rows, a golden log that will never regenerate differently) -- those are historical
 record, not a moving target, and this script never touches that directory.
@@ -49,12 +49,12 @@ class Count(NamedTuple):
 
 
 def glossary_term_count() -> int:
-    text = (ROOT / "plan" / "agentic_sdlc_glossary.md").read_text(encoding="utf-8")
+    text = (ROOT / "design" / "plans" / "agentic_sdlc_glossary.md").read_text(encoding="utf-8")
     return len(re.findall(r"^## .+$", text, re.M))
 
 
 def glossary_category_count() -> int:
-    text = (ROOT / "plan" / "agentic_sdlc_glossary.md").read_text(encoding="utf-8")
+    text = (ROOT / "design" / "plans" / "agentic_sdlc_glossary.md").read_text(encoding="utf-8")
     categories = re.findall(r"\*\*Category:\*\* (.*?) \|", text)
     return len(set(categories))
 
@@ -67,7 +67,7 @@ def tracked_file_count() -> int:
 
 
 def _v5_doc() -> str:
-    return (ROOT / "plan" / "agentic-sdlc-design-v0.5.md").read_text(encoding="utf-8")
+    return (ROOT / "design" / "plans" / "agentic-sdlc-design-v0.5.md").read_text(encoding="utf-8")
 
 
 def live_principle_count() -> int:
@@ -92,19 +92,19 @@ def live_agent_roster_count() -> int:
 
 def companion_file_count() -> int:
     """Mechanics files split out of the blueprint. Selected by front matter doc_type rather
-    than by "every plan/*.md that isn't a design doc" -- that older rule silently counted any
-    new plan/ document as a companion, which `implementation_roadmap.md` (doc_type: roadmap)
+    than by "every design/plans/*.md that isn't a design doc" -- that older rule silently counted any
+    new design/plans/ document as a companion, which `implementation_roadmap.md` (doc_type: roadmap)
     is not. `runbook` is included deliberately: `structural_change_runbook.md` was split out of
     the blueprint alongside the companions and both count assertions have always included it."""
-    plan_dir = ROOT / "plan"
+    plan_dir = ROOT / "design" / "plans"
     counted = {"companion", "runbook"}
 
     def is_sdlc_companion(path) -> bool:
         fields = fm.parse(path.read_text(encoding="utf-8"))[0]
         # part_of, not just doc_type: the assertion this feeds says the *blueprint's* mechanics
         # live in N companions. A companion belonging to another adapter would inflate a claim
-        # about the SDLC design. The glob is non-recursive, so plan/optimization/ and
-        # plan/agents/ are already excluded -- this guards a flat plan/ file declaring a
+        # about the SDLC design. The glob is non-recursive, so design/plans/optimization/ and
+        # design/plans/agents/ are already excluded -- this guards a flat design/plans/ file declaring a
         # different part_of, which is otherwise indistinguishable here.
         return (fields.get("doc_type") in counted
                 and fields.get("part_of") == "agentic-sdlc")
@@ -116,11 +116,11 @@ def companion_file_count() -> int:
 
 
 def agent_card_count() -> int:
-    """One card per agent in plan/agents/. README.md is the index and card_schema.md is the
+    """One card per agent in design/plans/agents/. README.md is the index and card_schema.md is the
     schema -- neither describes an agent. types/ is a subdirectory and so is already excluded
     by the non-recursive glob. Whether each card corresponds to a real roster row is
     scripts/check_agent_cards.py's job; this only counts them."""
-    cards_dir = ROOT / "plan" / "agents"
+    cards_dir = ROOT / "design" / "plans" / "agents"
     if not cards_dir.is_dir():
         return 0
     excluded = {"README.md", "card_schema.md"}
@@ -164,7 +164,7 @@ REGISTRY: list[Count] = [
         t("AGENTIC_ARCHITECTURE_MANIFEST.md", r"(\d+)-agent roster"),
     ]),
     Count("companion_file_count", companion_file_count, [
-        t("plan/agentic-sdlc-design-v0.5.md", r"mechanics live in (\d+) companion files"),
+        t("design/plans/agentic-sdlc-design-v0.5.md", r"mechanics live in (\d+) companion files"),
         t("CLAUDE.md", r"now (\d+) companion files, not five"),
         # A second assertion of the same count, in CLAUDE.md's "Where things live" preamble.
         # It read "Now 11 companion files" while the tracked one read 13: the original pattern
@@ -173,12 +173,12 @@ REGISTRY: list[Count] = [
         t("CLAUDE.md", r"set now holds (\d+) SDLC companion files"),
     ]),
     Count("agent_card_count", agent_card_count, [
-        t("plan/agents/README.md", r"5 Executors = (\d+)\."),
-        t("plan/agents/README.md", r"(\d+) agents: \d+ in"),
-        t("plan/agent_taxonomy.md", r"23 existing agents \+ 2 proposed = \*\*(\d+) total\*\*"),
+        t("design/plans/agents/README.md", r"5 Executors = (\d+)\."),
+        t("design/plans/agents/README.md", r"(\d+) agents: \d+ in"),
+        t("design/plans/agent_taxonomy.md", r"23 existing agents \+ 2 proposed = \*\*(\d+) total\*\*"),
     ]),
     Count("live_human_gate_count", live_human_gate_count, [
-        t("plan/implementation_roadmap.md", r"(\d+) human gates exist; nothing lets a human"),
+        t("design/plans/implementation_roadmap.md", r"(\d+) human gates exist; nothing lets a human"),
     ]),
 ]
 

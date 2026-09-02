@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git & GitHub Guide</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #24292e;
+            --sidebar-bg: #f6f8fa;
+            --border-color: #e1e4e8;
+            --code-bg: #f6f8fa;
+            --link-color: #0366d6;
+        }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            display: flex;
+            line-height: 1.6;
+        }
+        #sidebar {
+            width: 250px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            height: 100vh;
+            position: fixed;
+            overflow-y: auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #sidebar a {
+            text-decoration: none;
+            color: var(--link-color);
+            display: block;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        #sidebar a:hover {
+            text-decoration: underline;
+        }
+        #content {
+            margin-left: 250px;
+            padding: 40px;
+            max-width: 900px;
+            box-sizing: border-box;
+            width: calc(100% - 250px);
+        }
+        h1, h2, h3, h4 {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.3em;
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+        code {
+            padding: 0.2em 0.4em;
+            margin: 0;
+            font-size: 85%;
+            background-color: rgba(27,31,35,0.05);
+            border-radius: 3px;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+        }
+        pre {
+            background-color: var(--code-bg);
+            padding: 16px;
+            border-radius: 3px;
+            overflow: auto;
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+        hr {
+            height: 0.25em;
+            padding: 0;
+            margin: 24px 0;
+            background-color: var(--border-color);
+            border: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h3>Navigation</h3>
+        <a href="#cheatsheet">1. Quick Cheatsheet</a>
+        <a href="#detailed">2. Detailed Guide</a>
+    </div>
+    <div id="content">
+        <div id="cheatsheet">
+            <h1 id="git-github-cli-gh-guidebook-draft">Git &amp; GitHub CLI (<code>gh</code>) Guidebook (Draft)</h1>
+<p>This guidebook serves as a comprehensive reference for both foundational and advanced Git/GitHub workflows. </p>
+<hr />
+<h2 id="1-git-basics">1. Git Basics</h2>
+<h3 id="repository-branch-management">Repository &amp; Branch Management</h3>
+<ul>
+<li><strong>Clone a repository:</strong> <code>git clone &lt;url&gt;</code></li>
+<li><strong>Create a new branch:</strong> <code>git checkout -b &lt;branch-name&gt;</code> or <code>git switch -c &lt;branch-name&gt;</code></li>
+<li><strong>List branches:</strong> <code>git branch</code> (local), <code>git branch -a</code> (all)</li>
+<li><strong>Switch branches:</strong> <code>git switch &lt;branch-name&gt;</code></li>
+<li><strong>Delete a branch:</strong> <code>git branch -d &lt;branch-name&gt;</code> (safe) or <code>-D</code> (force)</li>
+</ul>
+<h3 id="staging-committing">Staging &amp; Committing</h3>
+<ul>
+<li><strong>Check status:</strong> <code>git status</code></li>
+<li><strong>Stage changes:</strong> <code>git add &lt;file&gt;</code> or <code>git add .</code> (all)</li>
+<li><strong>Commit changes:</strong> <code>git commit -m "Your descriptive message"</code></li>
+</ul>
+<h3 id="syncing-with-remote">Syncing with Remote</h3>
+<ul>
+<li><strong>Fetch remote changes (without merging):</strong> <code>git fetch</code></li>
+<li><strong>Pull remote changes (fetch + merge):</strong> <code>git pull origin &lt;branch-name&gt;</code></li>
+<li><strong>Push local changes:</strong> <code>git push origin &lt;branch-name&gt;</code></li>
+</ul>
+<h3 id="merging-rebasing-squashing">Merging, Rebasing &amp; Squashing</h3>
+<ul>
+<li><strong>Merge a branch into the current branch:</strong> <code>git merge &lt;branch-name&gt;</code></li>
+<li><strong>Rebase current branch onto another (e.g., main):</strong> <code>git rebase main</code></li>
+<li><strong>Squash commits:</strong> Use interactive rebase <code>git rebase -i HEAD~N</code> (where N is the number of commits) and change <code>pick</code> to <code>squash</code> for the commits you want to fold into the previous one. Alternatively, <code>git merge --squash &lt;branch&gt;</code>.</li>
+</ul>
+<h3 id="chaining-commands-time-savers">Chaining Commands (Time Savers)</h3>
+<ul>
+<li><strong>Add, commit, and push:</strong> <code>git add . &amp;&amp; git commit -m "update" &amp;&amp; git push</code></li>
+<li><strong>Create, switch, and push a new branch:</strong> <code>git switch -c new-feature &amp;&amp; git push -u origin new-feature</code></li>
+<li><strong>Fetch, rebase, and push:</strong> <code>git fetch &amp;&amp; git rebase origin/main &amp;&amp; git push --force-with-lease</code></li>
+</ul>
+<hr />
+<h2 id="2-advanced-git-workflows-10-additional-key-topics">2. Advanced Git Workflows (10+ Additional Key Topics)</h2>
+<ol>
+<li><strong>Managing Upstream &amp; Remote Branches</strong></li>
+<li>View remotes: <code>git remote -v</code></li>
+<li>Add an upstream remote: <code>git remote add upstream &lt;url&gt;</code></li>
+<li>Sync a fork: <code>git fetch upstream &amp;&amp; git rebase upstream/main</code></li>
+<li>
+<p>Track an upstream branch: <code>git branch -u origin/&lt;branch-name&gt;</code></p>
+</li>
+<li>
+<p><strong>Stashing (Saving Work in Progress)</strong></p>
+</li>
+<li>Save uncommitted work: <code>git stash</code></li>
+<li>Apply and remove stash: <code>git stash pop</code></li>
+<li>
+<p>List stashes: <code>git stash list</code></p>
+</li>
+<li>
+<p><strong>Cherry-Picking (Applying Specific Commits)</strong></p>
+</li>
+<li>
+<p>Apply a specific commit to your current branch: <code>git cherry-pick &lt;commit-hash&gt;</code></p>
+</li>
+<li>
+<p><strong>Git Reflog (Disaster Recovery)</strong></p>
+</li>
+<li>View the history of your HEAD (even deleted branches/lost commits): <code>git reflog</code></li>
+<li>
+<p>Restore a lost state: <code>git reset --hard &lt;reflog-hash&gt;</code></p>
+</li>
+<li>
+<p><strong>Resetting vs. Reverting (Undoing Changes)</strong></p>
+</li>
+<li>Revert (creates a new commit undoing the changes, safe for shared history): <code>git revert &lt;commit-hash&gt;</code></li>
+<li>
+<p>Reset (moves the branch pointer backward, rewrites history): <code>git reset --hard &lt;commit-hash&gt;</code> (destructive) or <code>git reset --soft &lt;commit-hash&gt;</code> (keeps changes staged).</p>
+</li>
+<li>
+<p><strong>Interactive Rebase (<code>git rebase -i</code>)</strong></p>
+</li>
+<li>
+<p>Edit, reorder, reword, drop, or squash older commits to clean up your history before pushing.</p>
+</li>
+<li>
+<p><strong>Git Bisect (Bug Hunting)</strong></p>
+</li>
+<li>
+<p>Perform a binary search to find the exact commit that introduced a bug:
+     <code>git bisect start</code>, <code>git bisect bad</code>, <code>git bisect good &lt;commit-hash&gt;</code></p>
+</li>
+<li>
+<p><strong>Git Worktrees (Multiple Active Branches)</strong></p>
+</li>
+<li>
+<p>Check out multiple branches simultaneously in different directories without switching contexts: <code>git worktree add ../new-dir &lt;branch&gt;</code></p>
+</li>
+<li>
+<p><strong>Git Tags &amp; Versioning</strong></p>
+</li>
+<li>Create a lightweight tag: <code>git tag v1.0.0</code></li>
+<li>Create an annotated tag: <code>git tag -a v1.0.0 -m "Version 1.0.0"</code></li>
+<li>
+<p>Push tags: <code>git push --tags</code></p>
+</li>
+<li>
+<p><strong>Git Hooks (Automation)</strong></p>
+<ul>
+<li>Run scripts automatically on specific events (e.g., <code>pre-commit</code>, <code>pre-push</code>). Scripts live in <code>.git/hooks/</code> (or a custom directory like <code>.githooks/</code>).</li>
+</ul>
+</li>
+<li>
+<p><strong>Git Aliases &amp; Configuration</strong></p>
+<ul>
+<li>Create shortcuts for long commands: <code>git config --global alias.co checkout</code></li>
+<li>View config: <code>git config --list</code></li>
+</ul>
+</li>
+<li>
+<p><strong>Submodules (Repos inside Repos)</strong></p>
+<ul>
+<li>Add a submodule: <code>git submodule add &lt;url&gt;</code></li>
+<li>Update submodules: <code>git submodule update --init --recursive</code></li>
+</ul>
+</li>
+</ol>
+<hr />
+<h2 id="3-github-cli-gh-cicd-workflows">3. GitHub CLI (<code>gh</code>) &amp; CI/CD Workflows</h2>
+<h3 id="pull-requests">Pull Requests</h3>
+<ul>
+<li><strong>Create a PR:</strong> <code>gh pr create --title "My PR" --body "Description"</code></li>
+<li><strong>List PRs:</strong> <code>gh pr list</code></li>
+<li><strong>Checkout a PR locally:</strong> <code>gh pr checkout &lt;pr-number&gt;</code></li>
+<li><strong>Review/Merge PR:</strong> <code>gh pr review</code> and <code>gh pr merge</code></li>
+</ul>
+<h3 id="managing-ci-github-actions-workflows">Managing CI &amp; GitHub Actions Workflows</h3>
+<ul>
+<li><strong>View running workflows:</strong> <code>gh run list</code></li>
+<li><strong>Watch a specific run:</strong> <code>gh run watch &lt;run-id&gt;</code></li>
+<li><strong>Manually trigger a workflow:</strong> <code>gh workflow run &lt;workflow-name&gt;.yml</code></li>
+<li><strong>Editing Workflows:</strong> Workflows live in <code>.github/workflows/</code>. They are defined in YAML and handle automated testing, building, and deployment upon triggers like <code>push</code> or <code>pull_request</code>.</li>
+</ul>
+<h3 id="issues-releases">Issues &amp; Releases</h3>
+<ul>
+<li><strong>Create an issue:</strong> <code>gh issue create</code></li>
+<li><strong>Create a release:</strong> <code>gh release create v1.0.0 --notes "Release notes"</code></li>
+</ul>
+        </div>
+        <hr>
+        <div id="detailed">
+            <h1 id="detailed-git-github-cli-gh-guidebook">Detailed Git &amp; GitHub CLI (<code>gh</code>) Guidebook</h1>
+<p>This detailed guidebook explains not just <em>how</em> to run Git and GitHub CLI commands, but <em>why</em> and <em>when</em> you should use them. It covers fundamental version control workflows, advanced techniques, and time-saving shortcuts.</p>
+<hr />
+<h2 id="1-core-git-workflows">1. Core Git Workflows</h2>
+<h3 id="11-repository-branch-management">1.1 Repository &amp; Branch Management</h3>
+<p>Branches are fundamental to Git. They represent independent lines of development.
+* <strong><code>git clone &lt;url&gt;</code></strong>: Downloads a repository and its entire history to your local machine.
+* <strong><code>git branch</code></strong>: Lists all your local branches. Use <code>-a</code> to see remote branches as well.
+* <strong><code>git switch -c &lt;branch-name&gt;</code></strong>: Creates a new branch and switches to it in one step (a more modern and safer alternative to <code>git checkout -b</code>).
+* <strong><code>git switch &lt;branch-name&gt;</code></strong>: Moves you to an existing branch.</p>
+<h3 id="12-staging-committing">1.2 Staging &amp; Committing</h3>
+<p>Git operates on a three-stage system: Working Directory (your files), Staging Area (what you plan to commit), and the Repository (committed history).
+* <strong><code>git status</code></strong>: Your most used command. It tells you what files are modified, staged, or untracked.
+* <strong><code>git add &lt;file&gt;</code></strong> or <strong><code>git add .</code></strong>: Moves changes from your working directory to the staging area.
+* <strong><code>git commit -m "Message"</code></strong>: Permanently saves the staged changes into the repository's history. <strong>Tip:</strong> Write clear, imperative commit messages like "Add login button".</p>
+<h3 id="13-syncing-with-remotes">1.3 Syncing with Remotes</h3>
+<p>To collaborate, you must synchronize your local repository with a remote repository (like GitHub).
+* <strong><code>git fetch</code></strong>: Downloads new data from a remote repository but <em>does not</em> integrate it into your working files. It’s safe and allows you to inspect changes first.
+* <strong><code>git pull</code></strong>: Fetches changes <em>and</em> merges them into your current branch. It’s equivalent to running <code>git fetch</code> followed by <code>git merge</code>.
+* <strong><code>git push</code></strong>: Uploads your local commits to the remote repository.</p>
+<h3 id="14-merging-rebasing-squashing">1.4 Merging, Rebasing &amp; Squashing</h3>
+<p>When a feature is complete, it needs to be integrated.
+* <strong><code>git merge &lt;branch&gt;</code></strong>: Takes the contents of a source branch and integrates them with a target branch. This preserves history exactly as it happened, but can create "merge commits" that clutter the timeline.
+* <strong><code>git rebase &lt;branch&gt;</code></strong>: Moves your current branch's base to the tip of another branch. This rewrites history to create a clean, linear progression without merge commits. <em>Caution: Never rebase commits that have already been pushed to a public branch.</em>
+* <strong>Squashing (<code>git rebase -i HEAD~N</code>):</strong> An interactive rebase allows you to fold multiple messy "work in progress" commits into a single, cohesive commit before merging.</p>
+<h3 id="15-chaining-commands-time-savers">1.5 Chaining Commands (Time Savers)</h3>
+<p>You can use standard bash operators like <code>&amp;&amp;</code> to combine commands. If the first command succeeds, the next runs automatically.
+* <strong>Rapid Commit &amp; Push:</strong> <code>git add . &amp;&amp; git commit -m "update" &amp;&amp; git push</code>
+* <strong>Create, Switch &amp; Push Upstream:</strong> <code>git switch -c new-feature &amp;&amp; git push -u origin new-feature</code>
+* <strong>Update, Rebase &amp; Push Cleanly:</strong> <code>git fetch &amp;&amp; git rebase origin/main &amp;&amp; git push --force-with-lease</code> (Forces a push safely by ensuring no one else has pushed in the meantime).</p>
+<hr />
+<h2 id="2-advanced-git-concepts">2. Advanced Git Concepts</h2>
+<h3 id="21-managing-upstream-remote-branches">2.1 Managing Upstream &amp; Remote Branches</h3>
+<p>When working on forks, you often need to track the original repository (the "upstream").
+* <strong><code>git remote add upstream &lt;url&gt;</code></strong>: Links the original repository so you can pull its latest changes.
+* <strong><code>git fetch upstream &amp;&amp; git rebase upstream/main</code></strong>: A common workflow to keep your fork up-to-date with the original repository.</p>
+<h3 id="22-git-stash-saving-work-in-progress">2.2 Git Stash (Saving Work in Progress)</h3>
+<p>Sometimes you are working on a feature, but need to quickly switch branches to fix a bug. You don't want to commit half-finished work.
+* <strong><code>git stash</code></strong>: Shelves your uncommitted changes temporarily.
+* <strong><code>git stash pop</code></strong>: Restores your shelved changes to your working directory.</p>
+<h3 id="23-cherry-picking">2.3 Cherry-Picking</h3>
+<p>If a colleague makes a great commit on another branch and you want <em>just that commit</em> without merging the whole branch:
+* <strong><code>git cherry-pick &lt;commit-hash&gt;</code></strong>: Copies the specified commit and applies it to your current branch.</p>
+<h3 id="24-git-reflog-disaster-recovery">2.4 Git Reflog (Disaster Recovery)</h3>
+<p>If you accidentally delete a branch, perform a bad rebase, or reset too far, Git actually keeps a hidden log of everywhere your HEAD pointer has been.
+* <strong><code>git reflog</code></strong>: Displays this history. Find the hash of where you want to be, and run <code>git reset --hard &lt;hash&gt;</code> to recover it.</p>
+<h3 id="25-resetting-vs-reverting">2.5 Resetting vs. Reverting</h3>
+<p>When you make a mistake and need to undo a commit:
+* <strong><code>git revert &lt;commit-hash&gt;</code></strong>: Creates a <em>new</em> commit that applies the exact inverse of the bad commit. This is the only safe way to undo a push on a public branch.
+* <strong><code>git reset --hard &lt;commit-hash&gt;</code></strong>: Erases history by moving the branch pointer backward. This is great for local mistakes but disastrous if pushed, as it overwrites shared history.</p>
+<h3 id="26-git-bisect-bug-hunting">2.6 Git Bisect (Bug Hunting)</h3>
+<p>When a bug surfaces but you don't know which commit caused it:
+* Run <code>git bisect start</code>, tag a known bad commit (<code>git bisect bad</code>), and a known good one (<code>git bisect good &lt;hash&gt;</code>). Git will perform a binary search, checking out commits in the middle, asking you to test until you find the exact culprit.</p>
+<h3 id="27-git-worktrees">2.7 Git Worktrees</h3>
+<p>If you need to work on two branches simultaneously (e.g., waiting for tests to pass on one while coding on another), checking out branches back-and-forth is slow.
+* <strong><code>git worktree add ../new-dir &lt;branch&gt;</code></strong>: Checks out a branch into an entirely separate directory, sharing the <code>.git</code> folder but giving you two independent working directories.</p>
+<h3 id="28-git-hooks">2.8 Git Hooks</h3>
+<p>Git can run custom scripts automatically at different stages.
+* By placing scripts in <code>.git/hooks/</code> (like <code>pre-commit</code> or <code>pre-push</code>), you can enforce linting, run tests, or block bad commits before they happen.</p>
+<h3 id="29-submodules">2.9 Submodules</h3>
+<p>If your project relies on another Git repository, you can embed it.
+* <strong><code>git submodule add &lt;url&gt;</code></strong>: Embeds a repo. When cloning a repo with submodules, you must use <code>git submodule update --init --recursive</code> to pull down the embedded code.</p>
+<hr />
+<h2 id="3-github-cli-gh-integrations">3. GitHub CLI (<code>gh</code>) Integrations</h2>
+<p>The GitHub CLI brings pull requests, issues, and actions to your terminal.</p>
+<h3 id="31-pull-requests">3.1 Pull Requests</h3>
+<ul>
+<li><strong><code>gh pr create</code></strong>: Opens a prompt to create a PR directly from the terminal. You can bypass the prompt with flags: <code>gh pr create --title "Fix bug" --body "Details"</code>.</li>
+<li><strong><code>gh pr checkout &lt;number&gt;</code></strong>: Instantly checks out a colleague's PR branch to test locally.</li>
+<li><strong><code>gh pr review</code></strong>: Review and approve a PR without opening the browser.</li>
+</ul>
+<h3 id="32-managing-ci-actions-workflows">3.2 Managing CI &amp; Actions Workflows</h3>
+<ul>
+<li><strong><code>gh run list</code></strong>: See the status of your recent GitHub Actions.</li>
+<li><strong><code>gh run watch</code></strong>: Follow the live progress of a CI run in your terminal.</li>
+<li><strong><code>gh workflow run &lt;name&gt;</code></strong>: Manually trigger a workflow (like a deployment).</li>
+</ul>
+<h3 id="33-releases-issues">3.3 Releases &amp; Issues</h3>
+<ul>
+<li><strong><code>gh issue create</code></strong>: File an issue directly from the terminal.</li>
+<li><strong><code>gh release create &lt;tag&gt;</code></strong>: Generate a new release on GitHub, automatically attaching release notes and binaries.</li>
+</ul>
+        </div>
+    </div>
+</body>
+</html>
